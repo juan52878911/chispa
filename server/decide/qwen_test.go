@@ -260,7 +260,9 @@ func TestConfigCodificadorValida(t *testing.T) {
 
 type codDim struct{ d int }
 
-func (c codDim) Codificar(context.Context, string) ([]float32, error) { return make([]float32, c.d), nil }
+func (c codDim) Codificar(context.Context, string) ([]float32, error) {
+	return make([]float32, c.d), nil
+}
 
 func TestL2KNNComprobarDim(t *testing.T) {
 	cfg := ConfigKNN{Tareas: map[string]TareaKNN{"a": {Banco: "testdata/knn/banco-a"}}} // banco de 8 dimensiones
