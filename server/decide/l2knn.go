@@ -37,6 +37,23 @@ type ConfigKNN struct {
 	E5ONNX string `json:"e5_onnx,omitempty"`
 	// E5Sesiones: sesiones ORT del codificador (cada una carga su copia de los pesos, ≈ 470 MB en fp32); 0 = min(4, núcleos).
 	E5Sesiones int `json:"e5_sesiones,omitempty"`
+	// Codificador elige el codificador del kNN: "e5-small" (por defecto, y lo que hace una config sin este campo) o "qwen3-emb" (Qwen3-Embedding-0.6B, ver qwen.go).
+	// Con "qwen3-emb" son obligatorios qwen_onnx y qwen_tok, y los bancos deben ser de Qwen (model/alt/aws/chispa-banco-qwen: mismos formatos .npy/.jsonl, dim 1024).
+	Codificador string `json:"codificador,omitempty"`
+	// QwenONNX: ruta del ONNX de Qwen3-Embedding (model/alt/exportar_qwen3emb_onnx.py, fp32 o int8; el .data de pesos va al lado).
+	QwenONNX string `json:"qwen_onnx,omitempty"`
+	// QwenTok: ruta del tokenizador BPE de Qwen (.chispa-bpe, runtime/tok/exportar_bpe.py).
+	QwenTok string `json:"qwen_tok,omitempty"`
+	// QwenSesiones: sesiones ORT de Qwen (cada una carga su copia de los pesos, ≈ 2,4 GB en fp32); 0 = 1.
+	QwenSesiones int `json:"qwen_sesiones,omitempty"`
+}
+
+// NombreCodificador es el codificador efectivo: e5-small si la config no dice nada (las configs anteriores a qwen3-emb arrancan igual que antes).
+func (c ConfigKNN) NombreCodificador() string {
+	if c.Codificador == "" {
+		return CodificadorE5Small
+	}
+	return c.Codificador
 }
 
 // TareaKNN describe una tarea.
@@ -59,6 +76,24 @@ func (c ConfigKNN) validar() error {
 	}
 	if c.E5Sesiones < 0 {
 		return errors.New("config: knn.e5_sesiones no puede ser negativo")
+	}
+	switch c.NombreCodificador() {
+	case CodificadorE5Small:
+		if c.QwenONNX != "" || c.QwenTok != "" || c.QwenSesiones != 0 {
+			return fmt.Errorf("config: knn.qwen_onnx, qwen_tok y qwen_sesiones solo valen con knn.codificador = %q", CodificadorQwen3Emb)
+		}
+	case CodificadorQwen3Emb:
+		if c.QwenONNX == "" || c.QwenTok == "" {
+			return fmt.Errorf("config: knn.codificador = %q exige knn.qwen_onnx y knn.qwen_tok", CodificadorQwen3Emb)
+		}
+		if c.E5ONNX != "" || c.E5Sesiones != 0 {
+			return fmt.Errorf("config: knn.e5_onnx y e5_sesiones no valen con knn.codificador = %q (cambia a e5-small o quítalos)", CodificadorQwen3Emb)
+		}
+		if c.QwenSesiones < 0 {
+			return errors.New("config: knn.qwen_sesiones no puede ser negativo")
+		}
+	default:
+		return fmt.Errorf("config: knn.codificador %q desconocido (valores: %q, %q)", c.Codificador, CodificadorE5Small, CodificadorQwen3Emb)
 	}
 	if c.Vecinos < 0 || c.Temperatura < 0 || c.SOro < 0 || c.SOro > 1 {
 		return errors.New("config: knn.vecinos, temperatura y s_oro deben ser ≥ 0 (s_oro ≤ 1)")
@@ -263,7 +298,11 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 	if q == nil && k.cod != nil {
 		var err error
 		t0 := time.Now()
-		q, err = k.cod.Codificar(ctx, p.Estado)
+		if cq, ok := k.cod.(CodificadorConsulta); ok {
+			q, err = cq.CodificarConsulta(ctx, p.Texto, p.Estado) // Qwen: la instrucción lleva la pregunta
+		} else {
+			q, err = k.cod.Codificar(ctx, p.Estado)
+		}
 		d := time.Since(t0)
 		k.met.knnCodificador(d)
 		pr.knnCodNs.Add(int64(d))
