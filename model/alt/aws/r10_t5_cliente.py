@@ -48,7 +48,8 @@ def num(cab, k):
 def una(c, f):
     cod, r, ms = c.decidir(f)
     out = {"id": f["id"], "tarea": f["tarea"], "http": cod, "ms": round(ms, 3), "capa": r.get("layer"), "answer": r.get("answer"), "escalate": r.get("escalate"),
-           "motivo_http": r.get("escalate_reason"), "etiqueta": f.get("etiqueta"), "escala_py": f.get("escala"), "motivo_py": f.get("motivo"), "l2_py": f.get("l2")}
+           "motivo_http": r.get("escalate_reason"), "etiqueta": f.get("etiqueta"), "escala_py": f.get("escala"), "motivo_py": f.get("motivo"), "l2_py": f.get("l2"),
+           "probs": r.get("probs")}   # probs: las lee model/alt/qwen3emb_medir.py (en score la respuesta se lee con la mediana CORAL, no con el argmax)
     for k, h in CABS.items():
         out[k] = num(c.cab, h)
     return out

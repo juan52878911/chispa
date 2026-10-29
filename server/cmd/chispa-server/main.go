@@ -567,7 +567,25 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 	}
 	if cfg.KNN != nil { // L2 = kNN por tarea (banco de oro + fondo); el vector e5 de la consulta lo inyecta quien llama (ver decide.ConVectorConsulta)
 		var cod decide.Codificador
-		if cfg.KNN.E5ONNX != "" { // codificador e5 en el servidor: el kNN contesta por HTTP
+		if cfg.KNN.NombreCodificador() == decide.CodificadorQwen3Emb { // Qwen3-Embedding en el servidor (knn.codificador)
+			cq, err := montarCodificadorQwen(cfg.KNN)
+			if err != nil {
+				if cerrar != nil {
+					cerrar()
+				}
+				return nil, err
+			}
+			cod = cq
+			previo := cerrar
+			cerrar = func() error {
+				e := cq.Close()
+				if previo != nil {
+					return errors.Join(e, previo())
+				}
+				return e
+			}
+			log.Printf("knn: codificador %s (%d sesión(es) ORT, %d vecinos)", decide.CodificadorQwen3Emb, cq.Sesiones(), vecinosKNN(cfg.KNN))
+		} else if cfg.KNN.E5ONNX != "" { // codificador e5 en el servidor: el kNN contesta por HTTP
 			if rutaTok == "" {
 				if cerrar != nil {
 					cerrar()
@@ -599,7 +617,11 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 			return nil, err
 		}
 		capaL2 = k
-		log.Printf("knn: L2 = kNN por tarea con %d bancos (%s); sin codificador e5 en el servidor: el vector de la consulta debe inyectarse", len(k.Tareas()), strings.Join(k.Tareas(), ", "))
+		if cfg.KNN.NombreCodificador() != decide.CodificadorQwen3Emb {
+			log.Printf("knn: L2 = kNN por tarea con %d bancos (%s); sin codificador e5 en el servidor: el vector de la consulta debe inyectarse", len(k.Tareas()), strings.Join(k.Tareas(), ", "))
+		} else {
+			log.Printf("knn: L2 = kNN por tarea con %d bancos (%s)", len(k.Tareas()), strings.Join(k.Tareas(), ", "))
+		}
 	}
 	capaL3, err := cfg.DecisorL3()
 	if err != nil {

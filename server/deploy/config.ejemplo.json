@@ -3,6 +3,7 @@
   "knn": {
     "umbral": 0.06641,
     "siempre": [],
+    "codificador": "e5-small",
     "e5_onnx": "/modelos/e5.onnx",
     "e5_sesiones": 4,
     "tareas": {
