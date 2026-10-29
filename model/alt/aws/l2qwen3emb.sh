@@ -1,5 +1,5 @@
 #!/bin/bash
-CHISPA_S3=__CHISPA_S3__
+CHISPA_S3=${CHISPA_S3_LOCAL:-__CHISPA_S3__}   # CHISPA_S3_LOCAL (con CHISPA_LOCAL=1): directorio en vez de S3, solo para pruebas
 # L2-qwen3emb: medida del codificador Qwen3-Embedding-0.6B del servidor Go en una c7i.xlarge (CPU, 4 hilos, 8 GB), NO en GPU. Criterio congelado: model/alt/crit-l2-qwen3emb.json (sha abajo).
 # Lanzar con un volumen raíz de >= 40 GB (modelo, ONNX fp32 e int8, venv de torch, Go; el ud lo comprueba) y rol rol-ec2-pruebas (sin ListBucket). Tope duro CHISPA_MIN (~0,5 USD).
 # Lee por nombre exacto $CHISPA_S3/{codigo.tgz,dev.tgz} (sha256 abajo); escribe $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado. Las fases viven en codigo.tgz
