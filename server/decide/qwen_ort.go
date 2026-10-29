@@ -75,8 +75,8 @@ func comprobarMetadatosQwen(s *ort.DynamicAdvancedSession) error {
 		return err
 	}
 	defer m.Destroy()
-	pide := map[string]string{"chispa.pooling": "last_token", "chispa.max_len": strconv.Itoa(QwenMaxTok)}
-	for k, esperado := range pide {
+	for _, p := range [][2]string{{"chispa.pooling", "last_token"}, {"chispa.max_len", strconv.Itoa(QwenMaxTok)}} { // en este orden: el error es siempre el mismo
+		k, esperado := p[0], p[1]
 		v, ok, err := m.LookupCustomMetadataMap(k)
 		if err != nil {
 			return err
