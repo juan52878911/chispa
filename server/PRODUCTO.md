@@ -32,6 +32,26 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
 - **Latencia**: kNN ≈ 1 ms; codificador e5 ≈ 8,6 ms en serie y, con 4 sesiones ORT y 16 clientes, p50 56 ms en local (con una sola sesión era 202 ms p50 y 1,3 s p95 en la g5);
   L3 ≈ 100 ms p50 por fila con pocas opciones y **≈ 1,2 s por fila con 60 opciones** en una A10G (relleno por `prompt_logprobs` de las etiquetas que no salen en el top 20).
 
+## Elegir el codificador del kNN: e5-small (por defecto) o Qwen3-Embedding-0.6B
+`knn.codificador` vale `"e5-small"` (por defecto: una config sin el campo arranca exactamente como antes; hay un test que lo prueba) o `"qwen3-emb"`. **Es una decisión por despliegue y los bancos no son intercambiables**
+(e5 da vectores de 384, Qwen de 1024): al cambiar de codificador hay que regenerar los bancos con el nuevo, y el servidor se niega a arrancar si la dimensión de algún banco no es la del codificador.
+- **Por qué existe**: en R11 (Python, 6 tareas de dev, solo kNN con 8 de oro por clase) Qwen3-Embedding-0.6B ganó a e5-small: macro 0,4675 con 32 vecinos y 0,4683 con 8 (+7,7 con 32 vecinos; +2,6 frente a e5 con 8).
+- **Config** (ejemplo completo: `server/deploy/config.ejemplo-qwen3emb.json`):
+  ```
+  "knn": {"codificador": "qwen3-emb", "qwen_onnx": "/modelos/qwen3emb-fp32.onnx", "qwen_tok": "/modelos/qwen3emb.chispa-bpe", "qwen_sesiones": 1, "vecinos": 32, ...}
+  ```
+  `vecinos` (32 por defecto; R11 midió 32 y 8) y `umbral` valen igual que con e5; `e5_onnx` y `e5_sesiones` no se admiten con Qwen (error de config); `-tok` no se usa. Binario con `-tags ort`.
+- **Artefactos** (todos por revisión fijada `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3`, Apache-2.0):
+  - ONNX: `python model/alt/exportar_qwen3emb_onnx.py --modelo DIR --salida DIR_SALIDA --comprobar` → `qwen3emb-fp32.onnx` + `qwen3emb-fp32.onnx.data` (los pesos pasan de 2 GB: el `.data` va SIEMPRE al lado y el servidor abre el ONNX por ruta) y `qwen3emb-int8.onnx` (int8 dinámico de ORT). Los metadatos llevan `chispa.max_len=320` y `chispa.pooling=last_token`; el servidor los comprueba al abrir.
+  - Tokenizador: `python runtime/tok/exportar_bpe.py DIR_MODELO qwen3emb.chispa-bpe` (BPE byte-level en Go puro, `runtime/tok/bpe.go`; NFC, el regex de Qwen2 a mano, fusiones y los especiales que ponga transformers).
+  - Bancos: `chispa-banco-qwen -onnx … -tok … -soporte soporte.jsonl -salida DIR` (Go, sin torch: usa la misma ruta de codificación que el servidor, así que banco y consultas comparten codificador por construcción; el `soporte.jsonl` lleva `tarea, etiqueta, pregunta, texto` por fila y el formato de salida es el de siempre, `.npy` + `.jsonl`). Elegir el oro (8 por clase) queda fuera: en la medida lo hace `model/alt/aws/qwen3emb_filas.py` con `muestrear(ys, 8, 0)`.
+    **Limitación**: la herramienta no escribe `<banco>.ejemplos.jsonl` (los ejemplos fs8 de L3, que hoy salen de `generar_banco.py`, solo e5): sin ese fichero L3 contesta zero-shot (el servidor avisa). La medida de Qwen es solo L2 (L3 apagado).
+- **Qué reproduce el codificador** (y nada más): consulta de soporte y de test «Instruct: Classify the text to answer this question: <pregunta>\nQuery:<texto>» (`<pregunta>` es el `question` de la petición); descripciones de etiqueta sin instrucción; truncado a 320 tokens; pooling del último token y norma L2. **No** normaliza las mayúsculas del mensaje (el camino de e5 sí; R11 no lo hacía con Qwen).
+- **Memoria y CPU**: cada sesión ORT carga su copia de los pesos (≈ 2,4 GB fp32, ≈ 1,2 GB int8): `qwen_sesiones` vale 1 por defecto (usa todos los núcleos en cada consulta), no el min(4, núcleos) de e5.
+- **Reglas de elección** (criterio congelado `model/alt/crit-l2-qwen3emb.json`): int8 solo si su macro e2e queda a ≤ 0,5 puntos del fp32 con los mismos vecinos; si la p50 por consulta en CPU (c7i.xlarge, 4 hilos) del modo elegido pasa de 150 ms, esta nota pasa a ser «**recomendado con GPU o cuando la latencia no importe**».
+- **Cifras de la medida en c7i.xlarge: PENDIENTE DE MEDIR** (paridad de tokens y de coseno con el modelo real, macro e2e por HTTP en v32 y v8 × fp32 e int8, latencia p50/p95, RSS, tamaños del binario, del ONNX y de la imagen). Lo único medido hasta ahora es con un Qwen3 en miniatura (pesos aleatorios, arquitectura real): tokens 200/200 y coseno 1,0 frente a transformers, y el mismo kNN que el Python de R11 (diferencia máxima de probabilidad 1e-6).
+- **Vuelta atrás**: poner `"codificador": "e5-small"` (o quitar el campo y los `qwen_*`), `e5_onnx` y `-tok` de e5 y los bancos de e5, y reiniciar. No hay migración de bancos en ningún sentido. Con la imagen `Dockerfile.producto`, el `CMD` lleva `-tok` de e5: con Qwen se arranca con `docker run … chispa-producto -config /etc/chispa/config.json -timeout 60s`.
+
 ## Límites
 - **Máximo 62 opciones** por pregunta (etiquetas de un carácter A–Z, a–z, 0–9); con más, la fila es inválida y escala. En `score` con niveles de una cifra la etiqueta es el nivel.
 - **Con más de 20 opciones, L3 ve solo el top-10 del kNN** (`l3.top_k_knn`):
@@ -43,7 +63,7 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
   - Las 10 candidatas de Python por fila están exportadas en el fixture de paridad.
 - Cada ejemplo del prompt se recorta a 1 200 caracteres; los ejemplos van solo con id y etiqueta (sin descripciones).
 - Una tarea sin oro (o sin `<banco>.ejemplos.jsonl`) contesta zero-shot; un banco vacío escala siempre (`sin_oro`).
-- El codificador carga una copia del e5 (≈ 470 MB) por sesión; `knn.e5_sesiones` (por defecto min(4, núcleos)).
+- El codificador carga una copia del e5 (≈ 470 MB) por sesión; `knn.e5_sesiones` (por defecto min(4, núcleos)). Con Qwen, ver arriba (≈ 2,4 GB por sesión).
 
 ## Estabilidad por tipo
 - **`choice` y `noul` (sí/no): estables, con demostraciones por kNN (fs8, `<banco>.ejemplos.jsonl`).**

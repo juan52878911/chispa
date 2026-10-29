@@ -12,5 +12,7 @@ FROM ${BASE}
 COPY modelos/ /modelos/
 COPY bancos/ /bancos/
 COPY config.json /etc/chispa/config.json
+# Con knn.codificador = "qwen3-emb" (ver server/PRODUCTO.md): modelos/ lleva qwen3emb-fp32.onnx (+ .data), qwen3emb.chispa-bpe y bancos de Qwen, y el CMD no lleva -tok:
+#   docker run … chispa-producto -config /etc/chispa/config.json -timeout 60s
 # El producto no arranca con forzar_l3 (sin -pruebas). -tok es el tokenizador de e5 del codificador del kNN (knn.e5_onnx).
 CMD ["-config", "/etc/chispa/config.json", "-tok", "/modelos/e5.chispa-tok", "-timeout", "60s"]

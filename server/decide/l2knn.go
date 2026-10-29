@@ -186,6 +186,24 @@ func (k *L2KNN) ComprobarEjemplos(n int) error {
 	return nil
 }
 
+// ComprobarDim codifica un texto de prueba y falla si la dimensión del codificador no es la de algún banco (un banco de e5, 384, con Qwen, 1024, o al revés):
+// sin esto el error saldría en cada consulta (errDimKNN). Sin codificador no hace nada.
+func (k *L2KNN) ComprobarDim(ctx context.Context) error {
+	if k.cod == nil {
+		return nil
+	}
+	v, err := k.cod.Codificar(ctx, "prueba")
+	if err != nil {
+		return fmt.Errorf("knn: codificador: %w", err)
+	}
+	for _, n := range k.Tareas() {
+		if d := k.tareas[n].banco.Dim; d != len(v) {
+			return fmt.Errorf("knn: el banco de la tarea %q tiene dimensión %d y el codificador da %d (¿bancos de otro codificador? regenérelos con él)", n, d, len(v))
+		}
+	}
+	return nil
+}
+
 // NuevoL2KNN carga los bancos de la config. cod puede ser nil (solo vectores inyectados).
 func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 	if err := cfg.validar(); err != nil {

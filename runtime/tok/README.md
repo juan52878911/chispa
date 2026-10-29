@@ -19,3 +19,12 @@ truncation=True, max_length=128)` de `transformers` (128 es el defecto; `Tokeniz
 `TokenizarPasaje(texto)` = `TokenizarCon("passage: ", texto)`: mismo pipeline, prefijo de pasaje, truncado a 128 por defecto. `referencia.py <dir> <salida> --pasaje`
 genera los ids de transformers con ese prefijo (más 9 textos con el formato `pregunta · opción · descripción`, U+00B7 y descripción vacía);
 `testdata/ids_e5_passage.jsonl` (2.324 frases) lo comprueba `TestIgualdadTransformersPasaje`.
+
+## BPE byte-level de Qwen2/Qwen3 (`bpe.go`; Qwen3-Embedding-0.6B)
+`tok.AbrirBPE("qwen3emb.chispa-bpe").IDs(texto, 320)` da los ids de `AutoTokenizer.from_pretrained(dir, padding_side="left")(texto, truncation=True, max_length=320)` de transformers 5.x: NFC (`nfc.go`, con tablas
+generadas por `gen_nfc.py`; igual que `unicodedata.normalize('NFC')` en 4 015 cadenas de prueba, Unicode 14.0), separación de los tokens añadidos, pretokenizador regex de Qwen2 hecho a mano (RE2 no tiene mirada adelante;
+igual que `regex.findall` en 6 000 cadenas), fusiones por rango con cola de prioridad, y la plantilla de especiales que aplique transformers (p. ej. `<|endoftext|>` al final), con el truncado recortando el cuerpo.
+- **Exportar**: `python runtime/tok/exportar_bpe.py DIR_MODELO SALIDA.chispa-bpe` (JSON determinista; lee el tokenizador EFECTIVO de transformers y falla si no es el esperado: regex, ignore_merges, añadidos con lstrip…).
+- **Referencia**: `python runtime/tok/referencia_bpe.py DIR_MODELO testdata/qwen/fixture_paridad.jsonl SALIDA.jsonl [--fuzz N]` (ids de transformers; sin torch). El fixture son 200 textos inventados (`gen_fixture_qwen.py`).
+- **Pruebas**: `go test ./...` compara con `testdata/qwen/ids_mini.jsonl` (200 del fixture + 1 500 de borde) usando un tokenizador de juguete con el MISMO pipeline que el de Qwen (`model/alt/qwen3emb_mini.py`); con el vocabulario
+  real lo repite el ud (`server/decide/qwen_tokens_real_test.go`). Lo que NO cubre el juguete: las fusiones y los especiales del vocabulario real de Qwen.

@@ -2271,3 +2271,14 @@ Macro de las 6 tareas de dev (entre paréntesis, sin las sintéticas):
 - AUROC del margen: 0,633, frente a 0,61 con e5 en E.
 
 **Lectura:** Qwen3-Embedding-0.6B es la primera palanca barata que mueve el kNN de verdad: +2,6 en la comparación justa y +7,7 frente a la configuración de T3a. Casi iguala al 4B zs sin LLM, con 38 ms por consulta. El reranker no sirve como clasificador: es peor que el 4B y no es más rápido. Todo es dev, así que es indicativo; confirmarlo exige la batería v3.
+
+## 19. L2-qwen3emb: Qwen3-Embedding-0.6B como codificador del kNN del servidor Go (rama `delega/20261119-014643-69817`, sin push)
+
+### 19.1 Preparado (criterio congelado antes de medir: `crit-l2-qwen3emb.json`, sha256 58a62d61…ade0b)
+- Servidor: `knn.codificador` = `e5-small` (por defecto y vuelta atrás; una config vieja arranca igual) o `qwen3-emb` (`qwen_onnx`, `qwen_tok`, `qwen_sesiones`, `vecinos`); ver `server/PRODUCTO.md`.
+- Tokenizador BPE byte-level de Qwen en Go puro (`runtime/tok/bpe.go`, NFC propio con tablas generadas, pretokenizador regex de Qwen2 a mano), exportador (`exportar_bpe.py`) y referencia (`referencia_bpe.py`); ONNX con `exportar_qwen3emb_onnx.py`; bancos con `server/cmd/chispa-banco-qwen`.
+- ud preparado y NO lanzado: `aws/l2qwen3emb.sh` (+ `l2qwen3emb_fases.sh`, `empaquetar_l2qwen3emb.sh`); c7i.xlarge, CPU, 4 hilos.
+- Verificado sin el modelo real (Qwen3 en miniatura, arquitectura real, pesos aleatorios): tokens 1700/1700 y coseno 1,0 frente a transformers 5.22.0, y las probabilidades del servidor por HTTP iguales a las del Python de R11 (máx. 1e-6, 60 filas × v32/v8 × 6 tareas).
+
+### 19.2 Resultado de la corrida en c7i.xlarge: **PENDIENTE DE MEDIR**
+Tokens 200/200 con el vocabulario real, coseno del fixture (≥ 0,999), macro e2e por HTTP en v32 y v8 × fp32 e int8 (referencia R11: 0,4675 y 0,4683; tolerancia 0,5 puntos), latencia p50/p95, RSS, tamaños de binario, ONNX e imagen.
