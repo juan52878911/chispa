@@ -94,7 +94,7 @@ def etiquetar(filas, modelo, minutos, top_logprobs=20, trozo=4096, log=print):
             lp = r.outputs[0].logprobs[0] if r.outputs and r.outputs[0].logprobs else {}
             out[f["id"]] = distribucion({k: v.logprob for k, v in lp.items()}, f["opciones"], letras_id)
         log("%d/%d filas, %d saltadas por largas, %.1f filas/s" % (len(out), len(filas), largas, len(out) / max(time.time() - t0, 1e-9)))
-    return out, time.time() - t0
+    return out, time.time() - t0, largas
 
 
 def reescribir(manifiesto, raiz, blandas):
@@ -129,12 +129,14 @@ def main(argv=None):
     m = cargar(a.manifiesto) if a.manifiesto else cargar()
     filas = elegir(m, a.datos, a.max_filas, a.tope_tarea, a.semilla)
     print("a etiquetar: %d filas" % len(filas), flush=True)
-    blandas, seg = etiquetar(filas, a.modelo, a.minutos, log=lambda s: print(s, flush=True))
+    blandas, seg, largas = etiquetar(filas, a.modelo, a.minutos, log=lambda s: print(s, flush=True))
     escritas = reescribir(m, a.datos, blandas)
     por_id = {f["id"]: f for f in filas}
     acuerdo = [max(b, key=b.get) == por_id[i]["etiqueta"] for i, b in blandas.items() if isinstance(por_id[i].get("etiqueta"), str)]
-    res = {"modelo": a.modelo, "licencia_modelo": "apache-2.0", "elegidas": len(filas), "etiquetadas": len(blandas),
-           "escritas": escritas, "segundos": round(seg, 1), "filas_por_s": round(len(blandas) / max(seg, 1e-9), 2),
+    pct = round(100 * largas / len(filas), 2) if filas else 0.0
+    res = {"elegidas": len(filas), "etiquetadas": len(blandas), "saltadas_largas": largas, "pct_saltadas": pct,
+           "aviso_saltadas": pct > 5, "completa": len(blandas) + largas == len(filas),
+           "modelo": a.modelo, "licencia_modelo": "apache-2.0", "escritas": escritas, "segundos": round(seg, 1), "filas_por_s": round(len(blandas) / max(seg, 1e-9), 2),
            "acuerdo_top1": round(sum(acuerdo) / len(acuerdo), 4) if acuerdo else None,
            "por_tarea": dict(sorted(__import__("collections").Counter(por_id[i]["tarea"] for i in blandas).most_common(20)))}
     Path(a.resumen).write_text(json.dumps(res, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

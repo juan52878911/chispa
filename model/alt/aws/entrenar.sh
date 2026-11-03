@@ -167,6 +167,8 @@ if [ "$DESTILAR" = 1 ] && [ "$LOCAL" != 1 ]; then
         --resumen "$OUT/destilacion.json" > "$OUT/destilar.log" 2>&1
       [ -s "$OUT/destilacion.json" ] && estado destilar "OK $(tr -d '\n' < "$OUT/destilacion.json" | cut -c1-240)" \
         || { tail -5 "$OUT/destilar.log"; fallo "destilar"; estado destilar "FALLO sin blandas (ver destilar.log)"; cierre; }
+      grep -q '"aviso_saltadas": true' "$OUT/destilacion.json" 2>/dev/null && estado destilar-saltadas "AVISO más del 5 % de prompts saltados por largos"
+      grep -q '"completa": false' "$OUT/destilacion.json" 2>/dev/null && estado destilar-completa "AVISO etiquetado incompleto (tope de minutos)"
     else fallo "destilar sin tiempo"; estado destilar "FALLO sin tiempo tras instalar ($resto min)"; cierre; fi
   else tail -5 "$OUT/vllm-pip.log"; fallo "instalar vLLM o Qwen"; estado destilar "FALLO vLLM o Qwen no se instalaron (ver vllm-pip.log)"; cierre; fi
 fi
