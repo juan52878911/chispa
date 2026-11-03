@@ -56,9 +56,9 @@ subir_y_apagar() {
       || echo "no se pudo subir mejor-$m"; }
   done
   s3cp "$BASE/log.txt" "$CHISPA_S3/log.txt" || echo "no se pudo subir log.txt"
-  if [ "$LOCAL" != 1 ]; then   # sin ListBucket: GetObject de la marca; el shutdown -h +$SHUTDOWN_MIN sigue siendo el techo
+  if [ "$LOCAL" != 1 ]; then   # con FALLO no espera: el log ya está subido y no hay nada que verificar. Sin ListBucket: GetObject de la marca; el shutdown -h +$SHUTDOWN_MIN sigue siendo el techo
     echo listo > "$BASE/listo"; s3cp "$BASE/listo" "$CHISPA_S3/listo" || true
-    for _ in $(seq $((ESPERA_MIN * 2))); do aws s3 cp --only-show-errors "$CHISPA_S3/terminar" "$BASE/terminar" 2>/dev/null && break; sleep 30; done
+    [ -z "$FALLO" ] && for _ in $(seq $((ESPERA_MIN * 2))); do aws s3 cp --only-show-errors "$CHISPA_S3/terminar" "$BASE/terminar" 2>/dev/null && break; sleep 30; done
     shutdown -h now
   fi
 }
@@ -154,7 +154,8 @@ fi
 estado manifiesto "OK $(cat "$OUT/tsjev-filtrado.txt" 2>/dev/null)"
 
 # --- 3b. destilación (opcional): Qwen3-4B-Instruct-2507 (Apache-2.0) en un venv aparte con vLLM, solo filas del manifiesto.
-# Si falla o se queda sin tiempo, se entrena con lo etiquetado hasta ahí o solo con la etiqueta dura: es un aviso, no un FALLO.
+# Si falla, es un FALLO y se cierra (sube log y apaga sin esperar): no se entrena solo con la etiqueta dura sin que nadie lo decida.
+# Si se queda sin tiempo a mitad, destilar escribe lo etiquetado hasta ahí y se sigue.
 if [ "$DESTILAR" = 1 ] && [ "$LOCAL" != 1 ]; then
   echo "== 3b. destilación $(date -u +%T)"
   T3=$(date +%s)
@@ -165,9 +166,9 @@ if [ "$DESTILAR" = 1 ] && [ "$LOCAL" != 1 ]; then
       timeout -s TERM $(( resto + 8 ))m /opt/vllm/bin/python -m model.alt.destilar --datos "$RAIZ" --minutos "$resto" --max-filas "$MAX_BLANDAS" \
         --resumen "$OUT/destilacion.json" > "$OUT/destilar.log" 2>&1
       [ -s "$OUT/destilacion.json" ] && estado destilar "OK $(tr -d '\n' < "$OUT/destilacion.json" | cut -c1-240)" \
-        || { tail -5 "$OUT/destilar.log"; estado destilar "AVISO sin blandas (ver destilar.log)"; }
-    else estado destilar "AVISO sin tiempo tras instalar ($resto min)"; fi
-  else tail -5 "$OUT/vllm-pip.log"; estado destilar "AVISO vLLM o Qwen no se instalaron (ver vllm-pip.log)"; fi
+        || { tail -5 "$OUT/destilar.log"; fallo "destilar"; estado destilar "FALLO sin blandas (ver destilar.log)"; cierre; }
+    else fallo "destilar sin tiempo"; estado destilar "FALLO sin tiempo tras instalar ($resto min)"; cierre; fi
+  else tail -5 "$OUT/vllm-pip.log"; fallo "instalar vLLM o Qwen"; estado destilar "FALLO vLLM o Qwen no se instalaron (ver vllm-pip.log)"; cierre; fi
 fi
 
 # --- 4. entrenar (--sellar fija filas y sha256 de lo que se entrena; entrenar se niega si algo no valida)
@@ -191,7 +192,7 @@ evaluar_con() {
 CODS="e5-small"; [ "$MMBERT" = 1 ] && CODS="e5-small mmbert-small"
 for m in $CODS; do
   echo "== 4/5. $m $(date -u +%T), quedan $(quedan_min) min"
-  entrenar_con "$m" && evaluar_con "$m"
+  { entrenar_con "$m" && evaluar_con "$m"; } || cierre   # al primer fallo se cierra: no se sigue con el siguiente codificador
 done
 kill "$VIGILANTE" 2>/dev/null
 cierre
