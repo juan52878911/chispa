@@ -23,7 +23,7 @@ import torch
 from model.l2.datos import iterar
 
 from .manifiesto import ManifiestoInvalido, cargar, verificar_filas
-from .modelo import CrossEncoder
+from .modelo import CrossEncoder, trozos
 
 
 def fijar_semilla(s):
@@ -70,8 +70,9 @@ def tope_por_tarea(filas, tope, semilla=0):
 
 
 def entrenar(modelo, manifiesto, train, dev, salida, epocas=3, lote=16, lr=3e-5, pasos=None, peso_blanda=0.5, semilla=0, log=print,
-             minutos=None, bf16=False):
-    """Con `minutos`, corta (tras guardar la época en curso) al pasar ese tiempo. Devuelve la lista de {epoca, perdida, exactitud_dev}. Escribe epoca-N/ y mejor/ bajo `salida`."""
+             minutos=None, bf16=False, max_secuencias=384):
+    """Cada lote se parte en trozos de ≤ `max_secuencias` (fila, opción) con acumulación de gradiente (clinc150 trae 150 opciones).
+    Con `minutos`, corta (tras guardar la época en curso) al pasar ese tiempo. Devuelve la lista de {epoca, perdida, exactitud_dev}. Escribe epoca-N/ y mejor/ bajo `salida`."""
     dev_, salida = next(modelo.parameters()).device, Path(salida)
     enc = [p for n, p in modelo.named_parameters() if not n.startswith("cabeza")]
     opt = torch.optim.AdamW([{"params": enc, "lr": lr}, {"params": modelo.cabeza.parameters(), "lr": lr * 10}], weight_decay=0.01)
@@ -92,14 +93,17 @@ def entrenar(modelo, manifiesto, train, dev, salida, epocas=3, lote=16, lr=3e-5,
                 break
             fs = [train[j] for j in orden[i:i + lote]]
             opt.zero_grad()
-            with torch.autocast("cuda", dtype=torch.bfloat16, enabled=bf16 and dev_.type == "cuda"):
-                p = modelo.perdida(fs, peso_blanda)
-            p.backward()
+            p = 0.0
+            for tr in trozos(fs, max_secuencias):
+                with torch.autocast("cuda", dtype=torch.bfloat16, enabled=bf16 and dev_.type == "cuda"):
+                    pt = modelo.perdida(tr, peso_blanda) * len(tr) / len(fs)
+                pt.backward()
+                p += float(pt.detach())
             torch.nn.utils.clip_grad_norm_(modelo.parameters(), 1.0)
             opt.step()
             sched.step()
             paso += 1
-            suma, n = suma + float(p.detach()), n + 1
+            suma, n = suma + p, n + 1
             if paso % 50 == 0:
                 log("época %d paso %d/%d pérdida %.4f (%.0f s)" % (ep, paso, total, suma / n, time.time() - t0))
         acc = exactitud_dev(modelo, dev, lote)
@@ -136,6 +140,7 @@ def main(argv=None):
     ap.add_argument("--minutos", type=float, help="tope de tiempo de entrenamiento")
     ap.add_argument("--bf16", action="store_true")
     ap.add_argument("--tope-tarea", type=int, default=1000, help="filas de train por tarea (0 = todas)")
+    ap.add_argument("--max-secuencias", type=int, default=384, help="(fila, opción) por pasada; el lote se acumula en trozos")
     ap.add_argument("--max-dev", type=int, default=2000)
     ap.add_argument("--dispositivo", default="auto")
     a = ap.parse_args(argv)
@@ -155,7 +160,7 @@ def main(argv=None):
     modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
     print("train %d filas, dev %d, dispositivo %s" % (len(train), len(dev), dis))
     entrenar(modelo, m, train, dev, a.salida, a.epocas, a.lote, a.lr, a.pasos, a.peso_blanda, a.semilla,
-             minutos=a.minutos, bf16=a.bf16)
+             minutos=a.minutos, bf16=a.bf16, max_secuencias=a.max_secuencias)
     return 0
 
 

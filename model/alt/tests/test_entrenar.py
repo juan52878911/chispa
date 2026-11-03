@@ -181,6 +181,13 @@ if __name__ == "__main__":
 
 
 class Tope(unittest.TestCase):
+    def test_trozos_por_secuencias_sin_partir_filas(self):
+        from model.alt.modelo import trozos
+        fs = [{"opciones": ["a"] * k} for k in (150, 3, 3, 400, 2)]
+        tr = trozos(fs, 154)
+        self.assertEqual([[len(f["opciones"]) for f in t] for t in tr], [[150, 3], [3], [400], [2]])
+        self.assertEqual(sum(len(t) for t in tr), len(fs))
+
     def test_tope_por_tarea_determinista(self):
         fs = [dict(f, tarea="t%d" % (i % 2)) for i, f in enumerate(filas(20))]
         a, b = EN.tope_por_tarea(fs, 3, 0), EN.tope_por_tarea(fs, 3, 0)

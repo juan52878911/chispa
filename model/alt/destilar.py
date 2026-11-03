@@ -12,6 +12,7 @@ import argparse
 import gzip
 import json
 import math
+import os
 import random
 import sys
 import time
@@ -65,8 +66,11 @@ def recortar(fila):
 
 
 def etiquetar(filas, modelo, minutos, top_logprobs=20, trozo=4096, log=print):
+    # La DLAMI no trae nvcc: el muestreador de FlashInfer se compila con JIT y tumbaba el motor; modo eager sin grafos CUDA.
+    os.environ.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
     from vllm import LLM, SamplingParams
-    llm = LLM(model=modelo, dtype="bfloat16", max_model_len=4096, gpu_memory_utilization=0.85, enable_prefix_caching=True)
+    llm = LLM(model=modelo, dtype="bfloat16", max_model_len=4096, gpu_memory_utilization=0.85, enable_prefix_caching=True,
+              enforce_eager=True)
     tok = llm.get_tokenizer()
     letras_id = ids_letras(tok)
     sp = SamplingParams(max_tokens=1, temperature=0.0, logprobs=top_logprobs)

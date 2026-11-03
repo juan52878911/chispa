@@ -19,16 +19,18 @@ from model.evaluacion.jevbench import cargar_jevbench
 from model.evaluacion.metricas import latencia
 from model.l2.datos import conjunto, iterar
 
+from .modelo import trozos
+
 BATERIA = ("massive", "clinc150", "hatecheck", "spam", "inyecciones", "herramientas")
 COLUMNAS = ("n", "exactitud", "macro_f1", "ece", "cobertura_p95")
 
 
-def predecir(modelo, filas, lote=16):
-    """[{id, probs}] en el orden de `filas`."""
+def predecir(modelo, filas, lote=16, max_secuencias=384):
+    """[{id, probs}] en el orden de `filas` (cada lote en trozos de ≤ `max_secuencias` pares fila-opción)."""
     out = []
     for i in range(0, len(filas), lote):
-        fs = filas[i:i + lote]
-        out += [{"id": r["id"], "probs": p} for r, p in zip(fs, modelo.probs(fs))]
+        for fs in trozos(filas[i:i + lote], max_secuencias):
+            out += [{"id": r["id"], "probs": p} for r, p in zip(fs, modelo.probs(fs))]
     return out
 
 
