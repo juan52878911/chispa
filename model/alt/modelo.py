@@ -34,6 +34,19 @@ def opciones_ordenadas(fila):
     return sorted(ops, key=int) if fila.get("tipo") == "score" else ops
 
 
+def trozos(filas, max_secuencias):
+    """Grupos consecutivos de `filas` con como mucho `max_secuencias` (fila, opción) cada uno; una fila sola nunca se parte."""
+    out, act, n = [], [], 0
+    for f in filas:
+        k = len(f["opciones"])
+        if act and n + k > max_secuencias:
+            out.append(act)
+            act, n = [], 0
+        act.append(f)
+        n += k
+    return out + [act] if act else out
+
+
 def descripcion(fila, o):
     d = (fila.get("descripciones") or {}).get(o) or ""
     if fila.get("tipo") == "noul":
