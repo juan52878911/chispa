@@ -25,6 +25,8 @@ from .manifiesto import cargar, verificar_filas
 
 MODELO = "Qwen/Qwen3-4B-Instruct-2507"   # Apache-2.0
 MAX_CHARS_TEXTO = 3000
+MAX_LEN = 4096
+MAX_TOKENS_PROMPT = MAX_LEN - 8   # margen para el token generado
 
 
 def tope_por_tarea(filas, tope, semilla=0):
@@ -69,22 +71,29 @@ def etiquetar(filas, modelo, minutos, top_logprobs=20, trozo=4096, log=print):
     # La DLAMI no trae nvcc: el muestreador de FlashInfer se compila con JIT y tumbaba el motor; modo eager sin grafos CUDA.
     os.environ.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
     from vllm import LLM, SamplingParams
-    llm = LLM(model=modelo, dtype="bfloat16", max_model_len=4096, gpu_memory_utilization=0.85, enable_prefix_caching=True,
+    llm = LLM(model=modelo, dtype="bfloat16", max_model_len=MAX_LEN, gpu_memory_utilization=0.85, enable_prefix_caching=True,
               enforce_eager=True)
     tok = llm.get_tokenizer()
     letras_id = ids_letras(tok)
     sp = SamplingParams(max_tokens=1, temperature=0.0, logprobs=top_logprobs)
-    t0, out = time.time(), {}
+    t0, out, largas = time.time(), {}, 0
     for i in range(0, len(filas), trozo):
         if (time.time() - t0) / 60 > minutos:
             log("tope de %.0f min: %d de %d filas etiquetadas" % (minutos, len(out), len(filas)))
             break
-        lote = filas[i:i + trozo]
-        res = llm.generate([construir_prompt(tok, recortar(f), f["opciones"]) for f in lote], sp, use_tqdm=False)
+        lote, prompts = [], []
+        for f in filas[i:i + trozo]:   # opciones y descripciones largas pasan de 4096 aunque el texto vaya recortado: esas se saltan
+            pr = construir_prompt(tok, recortar(f), f["opciones"])
+            if len(tok.encode(pr, add_special_tokens=False)) < MAX_TOKENS_PROMPT:
+                lote.append(f)
+                prompts.append(pr)
+            else:
+                largas += 1
+        res = llm.generate(prompts, sp, use_tqdm=False) if prompts else []
         for f, r in zip(lote, res):
             lp = r.outputs[0].logprobs[0] if r.outputs and r.outputs[0].logprobs else {}
             out[f["id"]] = distribucion({k: v.logprob for k, v in lp.items()}, f["opciones"], letras_id)
-        log("%d/%d filas, %.1f filas/s" % (len(out), len(filas), len(out) / max(time.time() - t0, 1e-9)))
+        log("%d/%d filas, %d saltadas por largas, %.1f filas/s" % (len(out), len(filas), largas, len(out) / max(time.time() - t0, 1e-9)))
     return out, time.time() - t0
 
 
