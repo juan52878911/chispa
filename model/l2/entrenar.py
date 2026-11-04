@@ -207,6 +207,7 @@ def main(argv=None):
     ap.add_argument("--frac-meta", type=float, default=0.5, help="tope de la fracción de pasos con datos de meta")
     ap.add_argument("--frac-zeroshot", type=float, default=0.25, help="fracción de pasos sin soporte")
     ap.add_argument("--cache-mensajes", action="store_true", help="guarda los estados e5 de cada mensaje (pruebas en seco)")
+    ap.add_argument("--cache-disco", help="directorio con los estados e5 (fp16) de mensajes y pasajes, compartido entre ejecuciones")
     ap.add_argument("--excluir-tareas", type=lambda x: [t for t in x.split(",") if t], default=[],
                     help="conjuntos (datos.conjunto) cuyas filas se quitan de train, meta y dev, p. ej. massive,hatecheck,inyecciones")
     ap.add_argument("--excluir-fuera", action="store_true",
@@ -272,7 +273,8 @@ def main(argv=None):
             por_conjunto.setdefault(D.conjunto(r), []).append(r)
         sop_dev = SoporteEval(por_conjunto, a.k_max, a.semilla, a.kappa)
 
-    enc = Codificador(device=a.device, max_tok=a.max_tok, cache_mensajes=a.cache_mensajes, descongelar=a.descongelar)
+    enc = Codificador(device=a.device, max_tok=a.max_tok, cache_mensajes=a.cache_mensajes, descongelar=a.descongelar,
+                      cache_disco=a.cache_disco)
     if not 0 <= a.ruido_cond < 1:
         ap.error("--ruido-cond debe estar en [0, 1)")
     cabeza = a.cabeza_score
