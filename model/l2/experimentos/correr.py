@@ -9,7 +9,8 @@ Variantes (solo cambia lo indicado; todo lo demás es idéntico):
   coral_vec    `--cabeza-score coral`: CORAL sobre el vector de las K similitudes (una por texto de torre de nivel);
   acumulados   `--cabeza-score acumulados` sobre el vector de K similitudes (el checkpoint coral1 se convierte sin cambiar la función);
   grueso_fino  `--cabeza-score grueso_fino` (la cabeza de score arranca con su init);
-  ruido        `coral1` y `--ruido-cond P` (`--ruido-p`, 0,15 por defecto).
+  ruido        `coral1` y `--ruido-cond P` (`--ruido-p`, 0,15 por defecto);
+  noul_dif, noul_softmax, k1, coseno, sin_nce, sin_brier   ablaciones de L2 (ver `ABLACIONES`), con la cabeza de score de `control`.
 Datos y parámetros como el ajuste 1 (`aws/ajuste.sh` de 80ab8ef) donde aplican: partida de M1 con `--desde` (lr 3e-5 y torre 1e-5),
 `--max-tok 256`, lote 64, `--tope-tarea 2000 --alfa 0.3 --excluir-fuera` sobre tsjev tratado como meta (mismo tope por tarea y mismas
 tareas «fuera»), sin otro meta, sin aumento, sin etiquetas blandas, sin episodios (k=0). El orden de los lotes es una función pura de
@@ -26,7 +27,16 @@ import sys
 import time
 from pathlib import Path
 
-VARIANTES = ("control", "coral_vec", "acumulados", "grueso_fino", "ruido")
+VARIANTES = ("control", "coral_vec", "acumulados", "grueso_fino", "ruido", "noul_dif", "noul_softmax", "k1", "coseno", "sin_nce", "sin_brier")
+# Ablaciones de L2 (todas desactivadas por defecto; cada una cambia solo lo indicado):
+#   noul_dif / noul_softmax  `--cabeza-noul dos_dif|dos_softmax` (las dos torres de noul; `control` usa `una`);
+#   k1                       `--k-ranuras 1` (parte de las primeras ranuras del checkpoint M1);
+#   coseno                   `--sim coseno` (coseno entre la media de las ranuras y la torre, en vez de MaxSim; no exportable);
+#   sin_nce / sin_brier      `--lambda-nce 0` / `--lambda-brier 0`.
+# `knn_e5` no entrena: línea base de e5 (media de tokens) + kNN-32 sobre el mismo soporte (`model.l2.linea_base_knn_e5`); ignora --ckpt, --tsjev y --pasos.
+SIN_ENTRENAR = ("knn_e5",)
+ABLACIONES = {"noul_dif": ["--cabeza-noul", "dos_dif"], "noul_softmax": ["--cabeza-noul", "dos_softmax"], "k1": ["--k-ranuras", "1"],
+              "coseno": ["--sim", "coseno"], "sin_nce": ["--lambda-nce", "0"], "sin_brier": ["--lambda-brier", "0"]}
 RUIDO_P = 0.15
 PASOS_TIEMPO = 20
 
@@ -40,6 +50,7 @@ def args_entrenar(a, salida, pasos=None):
     arg += ["--cabeza-score", {"coral_vec": "coral"}.get(a.variante, a.variante) if a.variante in ("coral_vec", "acumulados", "grueso_fino") else "coral1"]
     if a.variante == "ruido":
         arg += ["--ruido-cond", str(a.ruido_p)]
+    arg += ABLACIONES.get(a.variante, [])
     return arg
 
 
@@ -51,13 +62,13 @@ def segundos_por_paso(log):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--ckpt", required=True, help="M1: el mejor.pt del ajuste 1")
-    ap.add_argument("--tsjev", required=True, help="directorio con el train de tsjev ya convertido (model.meta.convertir)")
+    ap.add_argument("--ckpt", help="M1: el mejor.pt del ajuste 1 (no hace falta con knn_e5)")
+    ap.add_argument("--tsjev", help="directorio con el train de tsjev ya convertido (model.meta.convertir); no hace falta con knn_e5")
     ap.add_argument("--jevbench", help="clon del repo, datasets/public o un .jsonl (obligatorio salvo con --solo-tiempo)")
     ap.add_argument("--salida", required=True)
-    ap.add_argument("--pasos", type=int, required=True)
+    ap.add_argument("--pasos", type=int, default=0)
     ap.add_argument("--semilla", type=int, default=0)
-    ap.add_argument("--variante", choices=VARIANTES, required=True)
+    ap.add_argument("--variante", choices=VARIANTES + SIN_ENTRENAR, required=True)
     ap.add_argument("--ruido-p", type=float, default=RUIDO_P, help="P de la variante ruido (por defecto %g)" % RUIDO_P)
     ap.add_argument("--lote", type=int, default=64)
     ap.add_argument("--dev-max", type=int, default=500, help="filas de dev (solo para el log; no elige el checkpoint)")
@@ -66,9 +77,17 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if not a.solo_tiempo and not a.jevbench:
         ap.error("falta --jevbench")
-    from model.l2 import entrenar
     sal = Path(a.salida)
     sal.mkdir(parents=True, exist_ok=True)
+    if a.variante in SIN_ENTRENAR:
+        from model.l2 import linea_base_knn_e5
+        t0 = time.time()
+        rc = linea_base_knn_e5.main(["--jevbench", a.jevbench, "--salida", str(sal / "jevbench"), "--k", "8", "32", "--device", a.device])
+        (sal / "correr.json").write_text(json.dumps({"variante": a.variante, "evaluar_s": time.time() - t0}, indent=1))
+        return rc
+    if not a.ckpt or not a.tsjev or a.pasos <= 0:
+        ap.error("--ckpt, --tsjev y --pasos son obligatorios salvo con %s" % ", ".join(SIN_ENTRENAR))
+    from model.l2 import entrenar
     t0 = time.time()
     if a.solo_tiempo:
         buf = io.StringIO()

@@ -68,7 +68,8 @@ def macro_f1_medio(filas, preds):
 
 def cargar_modelo(ruta, device="cpu"):
     ck = torch.load(ruta, map_location=device, weights_only=False)
-    m = ModeloL2(texto_torre=ck.get("texto_torre", "v1"), cabeza_score=ck.get("cabeza_score", "coral1")).to(device)
+    m = ModeloL2(k=ck["modelo"]["ranuras.q"].shape[0], texto_torre=ck.get("texto_torre", "v1"), cabeza_score=ck.get("cabeza_score", "coral1"),
+                 cabeza_noul=ck.get("cabeza_noul", "una"), sim=ck.get("sim", "maxsim")).to(device)   # los antiguos: una, maxsim, K de las ranuras
     for k in ck.get("cabezas", []):
         m.asegurar_cabeza(k, device)
     m.load_state_dict(ck["modelo"])

@@ -127,7 +127,7 @@ def sim_ventanas(modelo, enc, listas, h):
     """s (n_ventanas, U): MaxSim de cada ventana (ids con especiales) contra los vectores de torre h (U,d)."""
     dev = modelo.ranuras.q.device
     H, m = pase_ids(enc, listas)
-    return maxsim(modelo.ranuras(H.to(dev), m.to(dev)), h)
+    return modelo.sim(modelo.ranuras(H.to(dev), m.to(dev)), h)
 
 
 def agregar(s, estrategia):
@@ -147,14 +147,19 @@ def probs_de_s(modelo, fila, s):
         return F.softmax(s / T, -1)
     if tipo == "noul":
         a, b = modelo.ab["noul"]
-        pt = torch.sigmoid(a * s[0] + b)
+        if modelo.cabeza_noul == "una":
+            pt = torch.sigmoid(a * s[0] + b)
+        elif modelo.cabeza_noul == "dos_dif":
+            pt = torch.sigmoid(a * (s[0] - s[1]) + b)
+        else:
+            pt = F.softmax(s[:2] / modelo.log_t["noul"].exp().clamp(min=5e-3), -1)[0]
         return torch.stack([1 - pt, pt])
     cab = modelo.coral["score%d" % len(fila["opciones"])]
     return cab(s[:1])[0] if modelo.cabeza_score == "coral1" else cab(s.unsqueeze(0))[0]   # coral1: escalar; las demás, el vector de K niveles
 
 
-def textos_torre(fila, version="v1", cabeza_score="coral1"):
-    return textos_torre_fila(fila, version, cabeza_score)
+def textos_torre(fila, version="v1", cabeza_score="coral1", cabeza_noul="una"):
+    return textos_torre_fila(fila, version, cabeza_score, cabeza_noul)
 
 
 @torch.no_grad()
@@ -164,7 +169,7 @@ def predecir_estrategias(modelo, enc, fila, estrategias=ESTRATEGIAS, max_tok=Non
     dev = modelo.ranuras.q.device
     modelo.asegurar_cabeza("score%d" % len(fila["opciones"]) if fila["tipo"] == "score" else fila["tipo"], dev)
     pref, cuerpo = tokenizar(enc.tok, fila["texto"])
-    h = modelo.torre(enc.pasaje(textos_torre(fila, modelo.texto_torre, modelo.cabeza_score)).to(dev))
+    h = modelo.torre(enc.pasaje(textos_torre(fila, modelo.texto_torre, modelo.cabeza_score, modelo.cabeza_noul)).to(dev))
     vent = {e: [tuple(con_especiales(enc.tok, w)) for w in ventanas(pref, cuerpo, max_tok, e)] for e in estrategias}
     unicas = list(dict.fromkeys(w for ws in vent.values() for w in ws))
     s_por = dict(zip(unicas, sim_ventanas(modelo, enc, [list(w) for w in unicas], h)))

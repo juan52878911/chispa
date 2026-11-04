@@ -26,6 +26,11 @@ D = 256
 LAMBDA_KL, LAMBDA_NCE, LAMBDA_B = 1.0, 0.5, 0.5
 SEP = " · "
 TIPOS_BETA = ("choice", "noul", "score")
+# Cabeza de noul. `una` (la de siempre): solo se codifica la descripción de «true» y p(true) = σ(a·s_true + b); la descripción de «false»
+# no entra en el modelo. `dos_dif`: se codifican las dos y p(true) = σ(a·(s_true − s_false) + b). `dos_softmax`: las dos y
+# p = softmax([s_true, s_false] / T) con una T propia (sin sesgo; log_t["noul"]).
+CABEZAS_NOUL = ("una", "dos_dif", "dos_softmax")
+T_NOUL_INICIAL = 0.25     # 1/a con a = 4, el a inicial de las otras dos
 
 
 def normalizar_mayusculas(texto):
@@ -287,6 +292,14 @@ def maxsim(S, h):
     return F.softplus(torch.einsum("bkd,ud->bku", S, h)).max(dim=1).values
 
 
+def coseno_medio(S, h):
+    """Ablación: coseno simple entre la media de las K ranuras (renormalizada) y h. S (B,K,d), h (U,d) → (B,U). No tiene runtime."""
+    return F.normalize(S.mean(dim=1), dim=-1) @ h.T
+
+
+SIMILITUDES = {"maxsim": maxsim, "coseno": coseno_medio}
+
+
 def prototipos(modelo, enc, filas_soporte, lote=256, kappa=0.0):
     """Prototipos de clase: (idx {etiqueta: i}, P (C,K,d)). Sin `kappa`, P_c es, ranura a ranura, la media normalizada de las
     ranuras de los ejemplos de soporte de la clase. e5 va sin gradiente (aunque haya capas descongeladas); las ranuras, con el del
@@ -403,11 +416,16 @@ class Coral(nn.Module):
 CABEZAS_SCORE = ("coral1", "coral", "acumulados", "grueso_fino")
 
 
-def textos_torre_fila(fila, version="v1", cabeza_score="coral1"):
-    """Textos de torre de una fila: choice, uno por opción; noul, el de «true»; score, el del nivel máximo (`coral1`) o uno por nivel, en
-    orden de nivel (las cabezas de vector). Los textos se repiten con los de otras filas y comparten caché."""
+def textos_torre_fila(fila, version="v1", cabeza_score="coral1", cabeza_noul="una"):
+    """Textos de torre de una fila: choice, uno por opción; noul, el de «true» (`una`) o los de «true» y «false», en ese orden (`dos_*`);
+    score, el del nivel máximo (`coral1`) o uno por nivel, en orden de nivel (las cabezas de vector). Los textos se repiten con los de
+    otras filas y comparten caché."""
     if fila["tipo"] == "choice":
         return [texto_opcion(fila, o, version) for o in fila["opciones"]]
+    if fila["tipo"] == "noul" and cabeza_noul != "una":
+        if "false" not in fila["opciones"]:
+            raise ValueError("pregunta noul sin opción «false»: %r" % (fila["pregunta"],))
+        return [texto_consulta(fila, version), texto_opcion(fila, "false", version)]
     if fila["tipo"] == "score" and cabeza_score != "coral1":
         return [texto_opcion(fila, n, version) for n in niveles_score(fila["opciones"])]
     return [texto_consulta(fila, version)]
@@ -532,24 +550,40 @@ CLASES_CABEZA = {"coral1": Coral, "coral": CoralV, "acumulados": AcumuladosV, "g
 class ModeloL2(nn.Module):
     """Parte entrenable de L2 (el codificador e5 va aparte, congelado)."""
 
-    def __init__(self, k=K_RANURAS, d=D, texto_torre="v1", cabeza_score="coral1"):
+    def __init__(self, k=K_RANURAS, d=D, texto_torre="v1", cabeza_score="coral1", cabeza_noul="una", sim="maxsim",
+                 lambda_nce=LAMBDA_NCE, lambda_brier=LAMBDA_B):
         super().__init__()
+        if sim not in SIMILITUDES:
+            raise ValueError("sim %r desconocida (hay %s)" % (sim, ", ".join(SIMILITUDES)))
+        self.sim_modo = sim  # «maxsim» (el del runtime) o «coseno» (ablación); va en el checkpoint
+        self.lambda_nce, self.lambda_brier = lambda_nce, lambda_brier  # pesos de entrenamiento; con 0 la pérdida se apaga (ablación)
         if cabeza_score not in CABEZAS_SCORE:
             raise ValueError("cabeza_score %r desconocida (hay %s)" % (cabeza_score, ", ".join(CABEZAS_SCORE)))
+        if cabeza_noul not in CABEZAS_NOUL:
+            raise ValueError("cabeza_noul %r desconocida (hay %s)" % (cabeza_noul, ", ".join(CABEZAS_NOUL)))
+        self.cabeza_noul = cabeza_noul  # cabeza de noul (configuración del modelo; va en el checkpoint; los antiguos son `una`)
         self.texto_torre = texto_torre  # versión del texto de torre (configuración del modelo; va en el checkpoint)
         self.cabeza_score = cabeza_score  # tipo de cabeza de score (configuración del modelo; va en el checkpoint; los antiguos son coral)
         self.ranuras = Ranuras(k, DIM_E5, d)
         self.torre = Torre(DIM_E5, d)
         self.log_t = nn.ParameterDict({"choice": nn.Parameter(torch.tensor(math.log(0.02)))})
+        if cabeza_noul == "dos_softmax":   # solo con esta cabeza: el estado de `una` y `dos_dif` no cambia
+            self.log_t["noul"] = nn.Parameter(torch.tensor(math.log(T_NOUL_INICIAL)))
         self.ab = nn.ParameterDict({"noul": nn.Parameter(torch.tensor([4.0, -4.0]))})  # a, b
         self.coral = nn.ModuleDict()
         self.beta = nn.ParameterDict({t: nn.Parameter(torch.tensor(1.0)) for t in TIPOS_BETA})  # peso de simproto, por tipo
 
     def load_state_dict(self, estado, strict=True):
-        """Admite checkpoints anteriores a T2.1b (sin β): conservan el β actual."""
+        """Admite checkpoints anteriores a T2.1b (sin β): conservan el β actual. Un checkpoint de `una` cargado en `dos_softmax` conserva
+        la T de noul que tiene el modelo."""
         estado = dict(estado)
+        q = estado.get("ranuras.q")
+        if q is not None and q.shape[0] != self.ranuras.q.shape[0]:   # ablación de ranuras: se parte de las primeras k del checkpoint
+            if q.shape[0] < self.ranuras.q.shape[0]:
+                raise ValueError("el checkpoint tiene %d ranuras y el modelo %d: solo se admite recortar" % (q.shape[0], self.ranuras.q.shape[0]))
+            estado["ranuras.q"] = q[:self.ranuras.q.shape[0]].clone()
         for k, v in self.state_dict().items():
-            if k.startswith("beta.") and k not in estado:
+            if (k.startswith("beta.") or k == "log_t.noul") and k not in estado:
                 estado[k] = v
         if self.cabeza_score != "coral1":
             estado = self._de_coral(estado)
@@ -574,6 +608,20 @@ class ModeloL2(nn.Module):
                 if k2.startswith(pref + ".") and k2 not in estado:
                     estado[k2] = v
         return estado
+
+    def sim(self, S, h):
+        """Similitud S (B,K,d) × h (U,d) → (B,U) con la que se entrenó el modelo (MaxSim salvo la ablación `coseno`)."""
+        return SIMILITUDES[self.sim_modo](S, h)
+
+    def exportable(self):
+        """Lanza ValueError si el modelo usa una variante de ablación que el runtime no implementa."""
+        malas = []
+        if self.sim_modo != "maxsim":
+            malas.append("sim=%s" % self.sim_modo)
+        if self.cabeza_noul != "una":
+            malas.append("cabeza_noul=%s" % self.cabeza_noul)
+        if malas:
+            raise ValueError("el runtime solo implementa MaxSim y la cabeza noul `una`; este modelo tiene %s" % ", ".join(malas))
 
     def asegurar_cabeza(self, clave, device=None):
         if clave.startswith("score") and clave not in self.coral:
@@ -612,7 +660,7 @@ class ModeloL2(nn.Module):
         S = self.ranuras(H.to(dev), m.to(dev))
         textos, pos, fila_txt = [], {}, []
         for r in filas:
-            ts = textos_torre_fila(r, self.texto_torre, self.cabeza_score)
+            ts = textos_torre_fila(r, self.texto_torre, self.cabeza_score, self.cabeza_noul)
             ix = []
             for t in ts:
                 if t not in pos:
@@ -621,7 +669,7 @@ class ModeloL2(nn.Module):
                 ix.append(pos[t])
             fila_txt.append(ix)
         h = self.torre(enc.pasaje(textos).to(dev))
-        sim = maxsim(S, h)  # (B,U)
+        sim = self.sim(S, h)  # (B,U)
         sp_filas = self._simproto(S, filas, protos)
         probs, p_ce, p_kl, p_nce, p_b = [], [], [], [], []
         T = self.log_t["choice"].exp().clamp(min=5e-3)
@@ -642,8 +690,16 @@ class ModeloL2(nn.Module):
                 p_nce.append(nce)
             elif tipo == "noul":
                 a, b = self.ab["noul"]
-                pt = torch.sigmoid(a * (s[0] + self._ajuste(sp, "noul")) + b)
-                p = torch.stack([1 - pt, pt])
+                if self.cabeza_noul == "una":
+                    pt = torch.sigmoid(a * (s[0] + self._ajuste(sp, "noul")) + b)
+                    p = torch.stack([1 - pt, pt])
+                elif self.cabeza_noul == "dos_dif":      # s = [s_true, s_false]
+                    pt = torch.sigmoid(a * (s[0] - s[1] + self._ajuste(sp, "noul")) + b)
+                    p = torch.stack([1 - pt, pt])
+                else:                                    # dos_softmax: p = softmax([s_true + ajuste, s_false] / T)
+                    T_n = self.log_t["noul"].exp().clamp(min=5e-3)
+                    pt = F.softmax(torch.stack([s[0] + self._ajuste(sp, "noul"), s[1]]) / T_n, -1)[0]
+                    p = torch.stack([1 - pt, pt])
                 ce = -torch.log(p[y].clamp(min=1e-7))
             else:
                 # CORAL se indexa por el nivel (orden por int), no por la posición declarada; se devuelve en el orden de `opciones`
@@ -670,7 +726,7 @@ class ModeloL2(nn.Module):
         cero = sim.sum() * 0
         media = lambda xs: torch.stack(xs).mean() if xs else cero
         ps = {"ce": media(p_ce), "kl": media(p_kl), "nce": media(p_nce), "brier": media(p_b)}
-        ps["total"] = ps["ce"] + LAMBDA_KL * ps["kl"] + LAMBDA_NCE * ps["nce"] + LAMBDA_B * ps["brier"]
+        ps["total"] = ps["ce"] + LAMBDA_KL * ps["kl"] + self.lambda_nce * ps["nce"] + self.lambda_brier * ps["brier"]
         return probs, ps
 
 
