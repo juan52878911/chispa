@@ -8,6 +8,8 @@ Cinco estrategias sobre los ids de «query: » + texto (el contrato exacto, para
   cabeza_cola  la primera mitad y la última mitad de `b` (la cabeza se queda con el token impar);
   trozos_max   trozos de `b` tokens con solape 32, un pase por trozo; s por opción = máximo entre trozos;
   trozos_media lo mismo, s = media entre trozos.
+Opcional (`--con-cabeza128-cola512`, E1): `cabeza128_cola512`, en los casos largos una sola ventana con los 128 primeros tokens de cuerpo y
+los últimos hasta 512 en total (prefijo y especiales incluidos); si el cuerpo cabe en 512 entra entero. Los cortos no cambian.
 `b` = max_tok − 2 (<s> y </s>) − tokens del prefijo «query: ». El prefijo se repite en cada ventana. Si el cuerpo cabe en `b`, las
 cinco estrategias dan la misma ventana. La agregación va sobre s (MaxSim, antes de la cabeza), y la cabeza (T de choice, a y b de
 noul, CORAL de score) se aplica al s agregado, como en `ModeloL2.forward` sin soporte (k = 0).
@@ -32,6 +34,10 @@ from .modelo import MAX_TOK, maxsim, normalizar_mayusculas, texto_consulta, text
 
 SOLAPE = 32
 ESTRATEGIAS = ("cabeza", "cola", "cabeza_cola", "trozos_max", "trozos_media")
+# E1: una sola ventana larga (hasta 512 posiciones de e5) solo en los casos largos; no va en ESTRATEGIAS para no cambiar el informe de siempre
+CABEZA128_COLA512 = "cabeza128_cola512"
+ESTRATEGIAS_EXT = ESTRATEGIAS + (CABEZA128_COLA512,)
+CABEZA_TOK, TOTAL_TOK = 128, 512
 PREFIJO = "query: "
 REMUESTREOS = 2000
 
@@ -58,6 +64,13 @@ def ventanas(prefijo, cuerpo, max_tok, estrategia, solape=SOLAPE):
     n = len(cuerpo)
     if n <= b:
         return [prefijo + cuerpo]
+    if estrategia == CABEZA128_COLA512:
+        # largo = no cabe en max_tok: 128 tokens de cuerpo de cabeza y los últimos hasta TOTAL_TOK contando prefijo y <s>/</s>
+        total = presupuesto(prefijo, TOTAL_TOK)
+        if n <= total:
+            return [prefijo + cuerpo]
+        cab = min(CABEZA_TOK, total)
+        return [prefijo + cuerpo[:cab] + cuerpo[n - (total - cab):]]
     if estrategia == "cabeza":
         return [prefijo + cuerpo[:b]]
     if estrategia == "cola":
@@ -262,6 +275,7 @@ def main(argv=None):
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-tok", type=int, default=0, help="0 = el del checkpoint (sin él, %d)" % MAX_TOK)
     ap.add_argument("--max-casos", type=int, default=0)
+    ap.add_argument("--con-cabeza128-cola512", action="store_true", help="añade la estrategia E1 cabeza128_cola512 (ventana de hasta 512)")
     a = ap.parse_args(argv)
     from model.evaluacion.jevbench import cargar_jevbench
     from .evaluar import cargar_modelo
@@ -273,12 +287,13 @@ def main(argv=None):
     max_tok = a.max_tok or ck.get("max_tok", MAX_TOK)
     enc = Codificador(device=a.device, max_tok=max_tok)
     enc.cargar_enc(ck.get("enc"))
+    estr = ESTRATEGIAS_EXT if a.con_cabeza128_cola512 else ESTRATEGIAS
     preds = {}
     for i, r in enumerate(filas):
-        preds[r["id"]] = predecir_estrategias(modelo, enc, r, max_tok=max_tok)
+        preds[r["id"]] = predecir_estrategias(modelo, enc, r, estrategias=estr, max_tok=max_tok)
         if (i + 1) % 25 == 0:
             print("  %d/%d casos" % (i + 1, len(filas)), flush=True)
-    res = resumir(filas, preds)
+    res = resumir(filas, preds, estr)
     n_largos = sum(p["largo"] for p in preds.values())
     rec = recomendar(res)
     sal = Path(a.salida)
