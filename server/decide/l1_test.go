@@ -155,7 +155,7 @@ func cascadaTiny(t testing.TB, calib chispa3.Calib, cfg Config) (*Cascada, *Mont
 	t.Helper()
 	f := v3Tiny(t, calib)
 	l0 := NuevoL0(cfg.CacheEsquemas)
-	mt, err := ArmarDesde(f, l0, &cfg, false, nil)
+	mt, err := ArmarDesde(f, l0, &cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func TestCascadaTauL1(t *testing.T) {
 
 func TestL1CacheDeEsquemas(t *testing.T) {
 	f := v3Tiny(t, calibTiny())
-	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 16, CacheRespuestas: 16}, false, nil)
+	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 16, CacheRespuestas: 16}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func TestL1CacheDeEsquemas(t *testing.T) {
 func TestTauDeCalib(t *testing.T) {
 	cfg := ConfigPorDefecto()
 	f := v3Tiny(t, calibTiny())
-	if _, err := ArmarDesde(f, NuevoL0(8), &cfg, true, nil); err != nil {
+	if _, err := ArmarDesde(f, NuevoL0(8), &cfg, nil); err != nil {
 		t.Fatal(err)
 	}
 	if cfg.Capas[0].Tau != 0.80 || cfg.Capas[1].Tau != 0.7 || cfg.Capas[2].Tau != 0.7 || cfg.Capas[3].Tau != 0.60 {
@@ -280,7 +280,7 @@ func TestV2Envuelto(t *testing.T) {
 	}
 	defer f.Close()
 	l0 := NuevoL0(8)
-	mt, err := ArmarDesde(f, l0, &Config{CacheEsquemas: 8}, false, nil)
+	mt, err := ArmarDesde(f, l0, &Config{CacheEsquemas: 8}, nil)
 	if err != nil || !f.Compat() || l0.NumModelos() != 1 {
 		t.Fatal(err, f.Compat(), l0.NumModelos())
 	}
@@ -293,7 +293,7 @@ func TestV2Envuelto(t *testing.T) {
 func TestL2SinORTQuedaStub(t *testing.T) {
 	esq, _ := chispa3.CodificarEsquemas(4, nil)
 	f := v3Tiny(t, calibTiny(), chispa3.Seccion{Tipo: chispa3.L2, Datos: []byte("onnx")}, chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: esq})
-	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, false, nil)
+	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

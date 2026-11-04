@@ -113,6 +113,15 @@ func NuevaCascadaConTauNuevo(cfg []Capa, ds []Decisor, met *Metricas, tauNuevo *
 	return c, nil
 }
 
+// Taus devuelve el τ efectivo de cada capa de la cascada, por nombre.
+func (c *Cascada) Taus() map[string]float64 {
+	m := make(map[string]float64, len(c.capas))
+	for _, cp := range c.capas {
+		m[cp.d.Nombre()] = cp.tau
+	}
+	return m
+}
+
 // PublicaCalib pone en /metrics la CALIB y los τ de esta cascada, y quita las series de las capas que ya no están. Se llama
 // cuando la cascada ya está en servicio (arranque y Recargar tras sustituir el modelo), nunca al armarla.
 func (c *Cascada) PublicaCalib() {

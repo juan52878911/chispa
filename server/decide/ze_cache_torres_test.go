@@ -16,7 +16,7 @@ func armarSinTorreZE(t *testing.T, cfg Config) Montaje {
 		t.Fatal(err)
 	}
 	f := v3Tiny(t, calibTiny(), chispa3.Seccion{Tipo: chispa3.L2, Datos: []byte("onnx-l2")}, chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: esq})
-	mt, err := ArmarDesde(f, NuevoL0(8), &cfg, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
+	mt, err := ArmarDesde(f, NuevoL0(8), &cfg, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
 	if err != nil {
 		t.Fatal(err)
 	}

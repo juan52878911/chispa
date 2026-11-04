@@ -523,7 +523,7 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 			}
 			tk = decide.NuevoTokenizadorE5(t)
 		}
-		mt, err := decide.ArmarDesde(f, l0, &cfg, cfgPath == "", tk)
+		mt, err := decide.ArmarDesde(f, l0, &cfg, tk)
 		if err != nil {
 			return fallo(err)
 		}
