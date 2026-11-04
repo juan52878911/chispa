@@ -145,7 +145,7 @@ estado manifiesto "OK $(cat "$OUT/tsjev-filtrado.txt" 2>/dev/null)"
 
 # --- 3a. sondeo: un paso de entrenamiento con el peor trozo posible (max_tok y el máximo de opciones). Si no cabe, se sabe ahora y no tras destilar.
 if [ "$LOCAL" != 1 ]; then
-  "$PY" -m model.alt.entrenar --sondeo "$OUT/sondeo.json" --datos "$RAIZ" --salida "$CK/sondeo" --max-tok 256 --bf16 --tope-tarea 1000 > "$OUT/sondeo.log" 2>&1 \
+  "$PY" -m model.alt.entrenar --sondeo "$OUT/sondeo.json" --datos "$RAIZ" --salida "$CK/sondeo" --max-tok 256 --bf16 --recomputar --tope-tarea 1000 > "$OUT/sondeo.log" 2>&1 \
     && estado sondeo "OK $(cut -c1-200 "$OUT/sondeo.json")" || { tail -5 "$OUT/sondeo.log"; fallo "sondeo de memoria"; estado sondeo "FALLO (ver sondeo.json/sondeo.log)"; cierre; }
 fi
 
@@ -184,7 +184,7 @@ entrenar_con() {  # $1 = alias del codificador
   local m=$1 min; min=$(( $(quedan_min) - 25 - ESPERA_MIN ))
   [ "$MMBERT" = 1 ] && [ "$m" = e5-small ] && [ "$min" -gt "$MIN_E5" ] && min=$MIN_E5
   [ "$min" -ge 5 ] || { fallo "sin tiempo para $m"; estado "entrenar-$m" "OMITIDO sin tiempo"; return 1; }
-  [ "$LOCAL" = 1 ] && EXTRA="--pasos 2 --epocas 1 --lote 4 --max-tok 64" || EXTRA="--epocas 2 --lote 16 --max-tok 256 --lr 3e-5 --bf16 --tope-tarea 1000"
+  [ "$LOCAL" = 1 ] && EXTRA="--pasos 2 --epocas 1 --lote 4 --max-tok 64" || EXTRA="--epocas 2 --lote 16 --max-tok 256 --lr 3e-5 --bf16 --recomputar --tope-tarea 1000"
   "$PY" -m model.alt.entrenar --datos "$RAIZ" --salida "$CK/$m" --codificador "$m" --semilla 0 --sellar --minutos "$min" $EXTRA \
     || { fallo "entrenar $m"; estado "entrenar-$m" "FALLO"; return 1; }
   estado "entrenar-$m" "OK $(tr -d '\n ' < "$CK/$m/historial.json" | cut -c1-200)"
