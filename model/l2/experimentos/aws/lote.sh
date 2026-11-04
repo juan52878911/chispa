@@ -3,7 +3,7 @@ CHISPA_S3=__CHISPA_S3__
 # Lote de experimentos de L2 en una g5.xlarge (OK de Juan 2026-11-04: «Usa aws para agilizar el entrenamiento»).
 # user-data (≤ 16 KB; AMI DLAMI GPU PyTorch AL2023, root, rol con s3:Get/PutObject sin ListBucket), lanzada con
 # --instance-initiated-shutdown-behavior terminate: el `shutdown -h` termina la instancia. El orquestador sustituye __CHISPA_S3__ y sube
-# $CHISPA_S3/codigo.tgz (`git archive HEAD model`). M1, tsjev (train y dev) y e5 se bajan aquí; JevBench se clona.
+# $CHISPA_S3/codigo.tgz (`git archive HEAD model sdk/python`: `model.l2.aumento` importa `chispa`). M1, tsjev (train y dev) y e5 se bajan aquí; JevBench se clona.
 # Orden: M1 sin tocar (k=0) · E1 (largos, solo inferencia) · knn_e5 · variantes por prioridad (puntos 2 y 3, luego 5 y E3) × semillas,
 # CHISPA_PASOS cada una. Tras cada ejecución sube su carpeta a $CHISPA_S3/partes/ (lo que no llegue queda sin medir) y antes de cada
 # una comprueba que queda tiempo para otra como la más lenta medida. Si falla la primera ejecución entrenada, se cierra.
@@ -71,7 +71,7 @@ else
   HF_HOME=$HOME/hf "$PY" -c 'from huggingface_hub import snapshot_download as s; s("intfloat/multilingual-e5-small", allow_patterns=["*.json","*.safetensors","*.txt","*.model","tokenizer*"])' \
     || { fallo "e5"; estado datos "FALLO e5"; exit 1; }
 fi
-export HF_HOME=${HF_HOME:-$HOME/hf} PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}"
+export HF_HOME=${HF_HOME:-$HOME/hf} PYTHONPATH="$REPO:$REPO/sdk/python${PYTHONPATH:+:$PYTHONPATH}"
 cd "$REPO" || exit 1
 estado entorno "OK $DEV, $(ls "$DATOS/tsjev" | wc -l) ficheros de tsjev, $(cat "$DATOS"/jevbench/datasets/public/*.jsonl | wc -l) casos de JevBench"
 J=$DATOS/jevbench CACHE=$BASE/cache
