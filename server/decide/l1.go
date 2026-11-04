@@ -84,7 +84,7 @@ func (l *L1) ConTextoLargo(tl TextoLargo) *L1 {
 
 // ventanasMsg devuelve el embedding de cada ventana del mensaje (las que no tienen tokens se omiten) y cuenta en /metrics los
 // textos que pasan del tope. Sin estrategia, o con un texto que cabe, es la única ventana de siempre (Embed del texto entero).
-func (l *L1) ventanasMsg(ctx context.Context, estado string) [][]float32 {
+func (l *L1) ventanasMsg(ctx context.Context, estado string) ([][]float32, SenalTexto) {
 	dim := l.m.Dim()
 	un := func(ids []int32) [][]float32 {
 		e := make([]float32, dim)
@@ -97,12 +97,21 @@ func (l *L1) ventanasMsg(ctx context.Context, estado string) [][]float32 {
 	if l.largo.VentanaL1 > 0 {
 		n = min(n, l.largo.VentanaL1)
 	}
+	// La señal sale de la tokenización que L1 ya hace (sin tokenizar otra vez): solo un texto truncado cuesta una pasada más
+	// para contar sus tokens enteros.
+	senal := func(ids []int32, trunc bool) SenalTexto {
+		s := SenalTexto{Tokens: len(ids), Unk: l.m.ContarUnk(ids), Truncado: trunc}
+		if trunc {
+			s.Tokens = len(l.m.TokenizarSinTope(estado, 0))
+		}
+		return s
+	}
 	if !l.largo.Activa() {
 		ids, trunc := l.m.TokenizarTruncado(estado)
 		if trunc {
 			l.textoLargo(ctx, estado, 1)
 		}
-		return un(ids)
+		return un(ids), senal(ids, trunc)
 	}
 	todo := l.m.TokenizarSinTope(estado, l.largo.NecesitaTokens(n)*16)
 	if len(todo) <= n {
@@ -110,8 +119,10 @@ func (l *L1) ventanasMsg(ctx context.Context, estado string) [][]float32 {
 		if trunc {
 			l.textoLargo(ctx, estado, 1)
 		}
-		return un(ids)
+		return un(ids), senal(ids, trunc)
 	}
+	// Texto largo con estrategia: «trozos» lo lee entero; «cabeza_cola» pierde el centro.
+	sl := SenalTexto{Tokens: len(todo), Unk: l.m.ContarUnk(todo), Truncado: !leeEntero(l.largo)}
 	// Memoria por texto: las ventanas se eligen, se embeben y se cobran una vez por petición; todas las preguntas sobre el mismo
 	// texto usan las mismas ventanas, sea cual sea su orden o cuántas haya en la petición.
 	pr := presupuestoDe(ctx)
@@ -136,7 +147,7 @@ func (l *L1) ventanasMsg(ctx context.Context, estado string) [][]float32 {
 		}
 		l.textoLargo(ctx, estado, len(ws))
 	})
-	return m.v
+	return m.v, sl
 }
 
 // textoLargo cuenta en /metrics un texto largo y sus ventanas una sola vez por petición, aunque tenga muchas preguntas.
@@ -211,10 +222,20 @@ func coseno(a, b []float32) float64 {
 }
 
 func (l *L1) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
+	var s SenalTexto
+	r, err := l.decidir(ctx, p, &s)
+	if s.Tokens > 0 {
+		r.Senal = &s
+	}
+	return r, err
+}
+
+func (l *L1) decidir(ctx context.Context, p Pregunta, s *SenalTexto) (Respuesta, error) {
 	if len(p.Opciones) == 0 || !scoreValido(p) { // score con ids que no son 1..K: no opina
 		return Respuesta{}, nil
 	}
-	msgs := l.ventanasMsg(ctx, p.Estado)
+	msgs, senal := l.ventanasMsg(ctx, p.Estado)
+	*s = senal
 	if len(msgs) == 0 {
 		return Respuesta{}, nil
 	}

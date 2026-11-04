@@ -69,6 +69,7 @@ func TestTextoLargoL1CabezaCola(t *testing.T) {
 		got, _ := l.Decidir(context.Background(), q)
 		q.Estado = resumen
 		want, _ := base.Decidir(context.Background(), q)
+		got.Senal, want.Senal = nil, nil // la señal describe el texto, que aquí es distinto a propósito
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("%d (%s): %+v ≠ %+v", i, q.Kind, got, want)
 		}
@@ -101,6 +102,7 @@ func TestTextoLargoL1TrozosAgrega(t *testing.T) {
 			if q.Kind == KindNoul {
 				want = agregarRespuestas(q, rs, agg, calibTiny().Tipos["noul"].Theta)
 			}
+			got.Senal = nil // la agregación de ventanas no lleva señal; L1 la añade aparte
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("%s %s: %+v ≠ %+v", agg, q.Kind, got, want)
 			}

@@ -249,7 +249,9 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 			r, err = l.d.Decidir(ctx, p)
 		}
 		c.met.ObservaCapa(l.d.Nombre(), time.Since(t), err)
-		if cs, ok := l.d.(ConSenales); ok && err == nil {
+		if err == nil && r.Senal != nil {
+			sen.suma(*r.Senal)
+		} else if cs, ok := l.d.(ConSenales); ok && err == nil {
 			if s, ok := cs.Senales(p.Estado); ok {
 				sen.suma(s)
 			}
