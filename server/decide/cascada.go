@@ -23,8 +23,14 @@ type Resultado struct {
 	EscalateReason string `json:"escalate_reason,omitempty"`
 	// Calibrada: la capa que contestó tiene calibración (CALIB.calibracion, o tipos_l2 en L2). Solo sale si la cascada sabe qué capas
 	// lo están (Cascada.ConCalibracion) y una capa contestó; false = su confianza no está calibrada y el τ se cortó sobre la cruda.
-	Calibrada *bool   `json:"calibrada,omitempty"`
-	Ms        float64 `json:"ms"`
+	Calibrada *bool `json:"calibrada,omitempty"`
+	// Truncado: alguna capa que corrió vio solo una parte del texto (pasaba de su max_tokens o max_len y la estrategia no es
+	// «trozos»); TokensOriginales son los tokens del texto entero (el mayor entre las capas). Solo salen con truncado.
+	Truncado         bool `json:"truncado,omitempty"`
+	TokensOriginales int  `json:"tokens_originales,omitempty"`
+	// UnkPct: fracción de tokens <unk> del texto (la mayor entre las capas que tokenizaron); no sale si ninguna tokenizó.
+	UnkPct *float64 `json:"unk_pct,omitempty"`
+	Ms     float64  `json:"ms"`
 	Nonce          string  `json:"nonce,omitempty"`
 	// Incompleto: una capa falló o el ctx se canceló; no debe guardarse bajo un nonce.
 	Incompleto bool `json:"-"`
@@ -215,6 +221,7 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 	sinPres := false            // alguna capa quedó sin presupuesto de torres nuevas
 	otraFalla := false          // alguna capa falló por error o plazo, o quedó incompleta por otra causa que el presupuesto de torres
 	previas := Previas{}
+	var sen senalesRespuesta
 	ctx = conPresupuesto(ctx)
 	for _, l := range c.capas {
 		if ctx.Err() != nil {
@@ -234,6 +241,11 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 			r, err = l.d.Decidir(ctx, p)
 		}
 		c.met.ObservaCapa(l.d.Nombre(), time.Since(t), err)
+		if cs, ok := l.d.(ConSenales); ok && err == nil {
+			if s, ok := cs.Senales(p.Estado); ok {
+				sen.suma(s)
+			}
+		}
 		if err != nil || ctx.Err() != nil {
 			res.Incompleto = true
 			otraFalla = true
@@ -286,6 +298,7 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 				res.Calibrada = &cb
 			}
 			c.met.Decidida(res.Layer, false)
+			sen.aplica(&res)
 			res.Ms = ms(time.Since(t0))
 			return res
 		}
@@ -311,6 +324,7 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 		res.Probs = mejor.Probs
 	}
 	c.met.Decidida(res.Layer, true)
+	sen.aplica(&res)
 	res.Ms = ms(time.Since(t0))
 	return res
 }
