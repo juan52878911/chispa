@@ -60,7 +60,7 @@ func TestModelosV3SoloL0ConviveConModelo(t *testing.T) {
 		t.Fatalf("un v3 solo-L0 no avisa: %v", l0.Avisos)
 	}
 	cfg := ConfigPorDefecto()
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), l0, &cfg, false, nil) // el -modelo trae el L0 de injection
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), l0, &cfg, nil) // el -modelo trae el L0 de injection
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestModelosConflictoDeEtiquetas(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := ConfigPorDefecto()
-	_, err = ArmarDesde(v3Tiny(t, calibTiny()), l0, &cfg, false, nil)
+	_, err = ArmarDesde(v3Tiny(t, calibTiny()), l0, &cfg, nil)
 	if err == nil || !strings.Contains(err.Error(), "riesgo.chispa") || !strings.Contains(err.Error(), "sección L0") {
 		t.Fatalf("error: %v", err)
 	}

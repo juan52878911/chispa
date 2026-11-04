@@ -17,7 +17,7 @@ import (
 func l1Largo(t *testing.T, tl *TextoLargo) *L1 {
 	t.Helper()
 	cfg := Config{CacheEsquemas: 16, CacheRespuestas: 16, L1ShrinkageApagado: true, TextoLargo: tl}
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), NuevoL0(8), &cfg, false, nil)
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), NuevoL0(8), &cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,8 +227,9 @@ func l2Largo(t *testing.T, tl *TextoLargo, maxLen string) (*L2, *[][]int64, *Met
 	if maxLen != "" {
 		onnx = maxLen
 	}
-	mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, onnx), 0), NuevoL0(8), &Config{CacheEsquemas: 8, TextoLargo: tl}, false,
+	mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, onnx), 0), NuevoL0(8), &Config{CacheEsquemas: 8, TextoLargo: tl},
 		NuevoTokenizadorE5(tk), ConSesionS(sesionMarca{marca, &vistos, &n}))
+
 	if err != nil {
 		t.Fatal(err)
 	}

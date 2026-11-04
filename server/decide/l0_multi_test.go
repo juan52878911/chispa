@@ -23,7 +23,7 @@ func TestArmarDesdeL0Multi(t *testing.T) {
 	}
 	l0 := NuevoL0(8)
 	cfg := ConfigPorDefecto()
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), l0, &cfg, false, nil)
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), l0, &cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestArmarDesdeL0MultiRepetidoContraElL0(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := ConfigPorDefecto()
-	_, err = ArmarDesde(v3Tiny(t, calibTiny(), chispa3.Seccion{Tipo: chispa3.L0MULTI, Datos: b}), NuevoL0(8), &cfg, false, nil)
+	_, err = ArmarDesde(v3Tiny(t, calibTiny(), chispa3.Seccion{Tipo: chispa3.L0MULTI, Datos: b}), NuevoL0(8), &cfg, nil)
 	if err == nil || !strings.Contains(err.Error(), "sección L0") || !strings.Contains(err.Error(), "injection.chispa") {
 		t.Fatalf("error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestModelosL0Multi(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := ConfigPorDefecto()
-	if _, err := ArmarDesde(v3Tiny(t, calibTiny()), l02, &cfg, false, nil); err == nil || !strings.Contains(err.Error(), "m.chispa") {
+	if _, err := ArmarDesde(v3Tiny(t, calibTiny()), l02, &cfg, nil); err == nil || !strings.Contains(err.Error(), "m.chispa") {
 		t.Fatalf("contra -modelo: %v", err)
 	}
 	// con L1 dentro sigue siendo un error de «modelos», como antes

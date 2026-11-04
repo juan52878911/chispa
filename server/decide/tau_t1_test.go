@@ -14,7 +14,7 @@ func TestTauL2EsquemaNuevoT1(t *testing.T) {
 		esq, _ := chispa3.CodificarEsquemas(2, nil)
 		f := v3Tiny(t, chispa3.Calib{TauEscalate: 0.5, TauL2EsquemaNuevo: calib, Tipos: map[string]chispa3.ParamsTipo{}}, chispa3.Seccion{Tipo: chispa3.L2, Datos: []byte("onnx-l2")}, chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: esq})
 		cfg.Capas = ConfigPorDefecto().Capas
-		if _, err := ArmarDesde(f, NuevoL0(8), &cfg, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}})); err != nil {
+		if _, err := ArmarDesde(f, NuevoL0(8), &cfg, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}})); err != nil {
 			t.Fatal(err)
 		}
 		return cfg.TauL2EsquemaNuevo

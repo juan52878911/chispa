@@ -112,7 +112,7 @@ func TestR6LambdaCalibSoporte(t *testing.T) {
 		c := calibTiny()
 		c.L1LambdaCalib = cal
 		cfg.CacheEsquemas, cfg.CacheRespuestas = 16, 16
-		mt, err := ArmarDesde(v3Tiny(t, c, chispa3.Seccion{Tipo: chispa3.SOPL1, Datos: sopl}), NuevoL0(8), &cfg, false, nil)
+		mt, err := ArmarDesde(v3Tiny(t, c, chispa3.Seccion{Tipo: chispa3.SOPL1, Datos: sopl}), NuevoL0(8), &cfg, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

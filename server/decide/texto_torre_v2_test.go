@@ -83,7 +83,7 @@ func TestTorreAlVueloSegunTextoTorre(t *testing.T) {
 	}{{"", "v1", v1}, {"v1", "v1", v1}, {"v2_sin_id", "v2_sin_id", v2}} {
 		enc := &codificadorPorTexto{clave: "· quejas ·"}
 		cfg := Config{CacheEsquemas: 64}
-		mt, err := ArmarDesde(conTextoTorre(t, c.version), NuevoL0(8), &cfg, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(enc))
+		mt, err := ArmarDesde(conTextoTorre(t, c.version), NuevoL0(8), &cfg, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(enc))
 		if err != nil || len(mt.Avisos) != 0 {
 			t.Fatalf("%q: %v %v", c.version, err, mt.Avisos)
 		}
@@ -119,7 +119,7 @@ func TestArmarDesdeTextoTorreDesconocido(t *testing.T) {
 		d, _ := f.Bytes(tp)
 		secs = append(secs, chispa3.Seccion{Tipo: tp, Datos: d})
 	}
-	_, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
+	_, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
 	if err == nil || !strings.Contains(err.Error(), "texto_torre") || !strings.Contains(err.Error(), "v9") {
 		t.Fatalf("error %v", err)
 	}
@@ -140,7 +140,7 @@ func TestArmarDesdeTextoTorreSaleDeTORR(t *testing.T) {
 			t.Fatal(err)
 		}
 		secs = append(secs, chispa3.Seccion{Tipo: chispa3.TORR, Datos: tr})
-		return ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{CacheEsquemas: 64}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(&codificadorPorTexto{clave: "x"}))
+		return ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{CacheEsquemas: 64}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(&codificadorPorTexto{clave: "x"}))
 	}
 	mt, err := armar(`{"version":1}`, chispa3.TextoTorreV2SinID)
 	if err != nil {

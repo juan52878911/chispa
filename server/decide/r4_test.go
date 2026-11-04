@@ -30,7 +30,7 @@ func TestR4CerrarSesionesDelMontaje(t *testing.T) {
 	var cierres atomic.Int64
 	ses := sesionCerrable{sesionFalsa{[][]float32{{3, 0}}}, &cierres}
 	enc := &torreCerrable{cierres: &cierres}
-	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &Config{Capas: ConfigPorDefecto().Capas}, false, tokFalso{}, ConSesionS(ses), ConCodificadorTorre(enc))
+	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &Config{Capas: ConfigPorDefecto().Capas}, tokFalso{}, ConSesionS(ses), ConCodificadorTorre(enc))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -95,7 +95,7 @@ func TestEsquemaNuevoLoDecideL1(t *testing.T) {
 	ses := &sesionCuenta{}
 	l2 := NuevoL2Con(ses, esq, calibTiny(), tokFalso{})
 	f := v3Tiny(t, calibTiny())
-	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 16, CacheRespuestas: 16}, false, nil)
+	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 16, CacheRespuestas: 16}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
