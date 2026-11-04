@@ -422,10 +422,11 @@ def evaluar_tau(modelo, enc, filas, informe, lote=64):
 
 
 def resumen(inf):
-    lin = ["| tarea | cabeza | n | ECE antes | ECE después | τ | cobertura | AUROC |", "|" + "---|" * 8]
+    lin = ["| tarea | cabeza | n | ECE antes | ECE después | τ | cobertura | AUROC | AURC | no vista |", "|" + "---|" * 10]
     for t, r in inf["tareas"].items():
-        lin.append("| %s | %s | %d | %.3f | %.3f | %.3f | %.3f | %.3f |" % (
-            t, r["cabeza"], r["n"], r["ece_antes"], r["ece_despues"], r["tau"], r["cobertura"], r["auroc_escalate"]))
+        lin.append("| %s | %s | %d | %.3f | %.3f | %.3f | %.3f | %.3f | %.4f | %s |" % (
+            t, r["cabeza"], r["n"], r["ece_antes"], r["ece_despues"], r["tau"], r["cobertura"], r["auroc_escalate"],
+            r.get("rc", {}).get("aurc", float("nan")), "sí" if r.get("no_vista") else "no"))
     return "\n".join(lin)
 
 
