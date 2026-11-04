@@ -5,9 +5,11 @@ de las opciones), pero con vLLM para que quepan decenas de miles de filas en una
 mejores: una letra fuera de ellas recibe el logprob mínimo devuelto menos 5 (masa ≈ 0). Se etiquetan solo filas train con ≤ 26
 opciones que `entrenar.tope_por_tarea` va a escoger (mismo orden de carga y semilla), una muestra de `--max-filas`; el resto
 entrena solo con la etiqueta dura. Reescribe en su sitio los ficheros del manifiesto añadiendo `blanda` (el sellado viene después,
-en `entrenar --sellar`). Las PQRS y lo que no admita el manifiesto no pasan nunca por aquí.
+en `entrenar --sellar`). Las PQRS y lo que no admita el manifiesto no pasan nunca por aquí. `--guardar F` deja las etiquetas en F
+({id, blanda} por línea) para subirlas; `--aplicar F` las reescribe sin vLLM (otra g5 con el mismo manifiesto no repite la destilación).
 
-    python -m model.alt.destilar --datos RAIZ --modelo Qwen/Qwen3-4B-Instruct-2507 --max-filas 150000 --minutos 55 --resumen R.json"""
+    python -m model.alt.destilar --datos RAIZ --modelo Qwen/Qwen3-4B-Instruct-2507 --max-filas 150000 --minutos 55 --resumen R.json [--guardar F]
+    python -m model.alt.destilar --datos RAIZ --aplicar F --resumen R.json"""
 import argparse
 import gzip
 import json
@@ -115,6 +117,27 @@ def reescribir(manifiesto, raiz, blandas):
     return n
 
 
+def guardar(blandas, ruta):
+    with open(ruta, "wb") as fb, gzip.GzipFile(fileobj=fb, mode="wb", mtime=0) as gz:
+        for i, b in blandas.items():
+            gz.write((json.dumps({"id": i, "blanda": b}, ensure_ascii=False) + "\n").encode("utf-8"))
+
+
+def leer(ruta):
+    with gzip.open(ruta, "rt", encoding="utf-8") as f:
+        return {r["id"]: r["blanda"] for r in map(json.loads, f)}
+
+
+def aplicar(m, raiz, ruta, resumen):
+    """Reescribe con etiquetas ya destiladas. Falla (1) si menos del 99 % encuentra su fila train: los datos no son los de entonces."""
+    blandas = leer(ruta)
+    escritas = reescribir(m, raiz, blandas)
+    res = {"reutilizadas": True, "en_fichero": len(blandas), "escritas": escritas}
+    Path(resumen).write_text(json.dumps(res, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(json.dumps(res, ensure_ascii=False))
+    return 0 if blandas and escritas >= 0.99 * len(blandas) else 1
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--datos", required=True, help="raíz con los ficheros del manifiesto")
@@ -125,12 +148,18 @@ def main(argv=None):
     ap.add_argument("--semilla", type=int, default=0)
     ap.add_argument("--minutos", type=float, default=55)
     ap.add_argument("--resumen", required=True)
+    ap.add_argument("--guardar", help="fichero .jsonl.gz donde dejar las etiquetas")
+    ap.add_argument("--aplicar", help="fichero .jsonl.gz con etiquetas ya destiladas: no se usa vLLM")
     a = ap.parse_args(argv)
     m = cargar(a.manifiesto) if a.manifiesto else cargar()
+    if a.aplicar:
+        return aplicar(m, a.datos, a.aplicar, a.resumen)
     filas = elegir(m, a.datos, a.max_filas, a.tope_tarea, a.semilla)
     print("a etiquetar: %d filas" % len(filas), flush=True)
     blandas, seg, largas = etiquetar(filas, a.modelo, a.minutos, log=lambda s: print(s, flush=True))
     escritas = reescribir(m, a.datos, blandas)
+    if a.guardar and blandas:
+        guardar(blandas, a.guardar)
     por_id = {f["id"]: f for f in filas}
     acuerdo = [max(b, key=b.get) == por_id[i]["etiqueta"] for i, b in blandas.items() if isinstance(por_id[i].get("etiqueta"), str)]
     pct = round(100 * largas / len(filas), 2) if filas else 0.0

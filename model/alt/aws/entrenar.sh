@@ -1,23 +1,13 @@
 #!/bin/bash
 CHISPA_S3=__CHISPA_S3__
-# Hito 4, alternativa (b). OK de Juan al gasto el 2026-11-03 («Has el entrenamiento en la g5»): tope 3 USD spot, e5-small y mmBERT-small.
-# Los datos se bajan y convierten en la propia g5 (HF + meta de tsjev en S3, como model/l2/aws/ajuste.sh); al terminar sube y espera
-# $CHISPA_S3/terminar hasta CHISPA_ESPERA_MIN (20) para que el orquestador traiga y verifique antes de apagar.
-# user-data (≤ 16 KB) de una g5.xlarge SPOT (AMI DLAMI GPU PyTorch, Amazon Linux 2023, root, internet, rol con s3:Get/PutObject sin ListBucket).
-# El orquestador sustituye __CHISPA_S3__ y sube $CHISPA_S3/codigo.tgz (`bash model/alt/aws/empaquetar.sh <sha> > codigo.tgz`: model/alt, model/{datos,meta,evaluacion} y model/l2/datos.py;
-# además datos.tgz (carpeta datos/ con los ficheros del manifiesto, tsjev/ con los trozos convertidos y bateria/ con las filas test), jevbench.tgz) y los datos en $CHISPA_S3/
-# (los ficheros del manifiesto: toxicidad_*, goemociones_es, spam_tanaos, soporte_ti, ciberacoso y el tsjev convertido, que este script filtra).
-# Lanzamiento (lo hace el orquestador, no este script):
-#   aws ec2 run-instances --instance-type g5.xlarge --instance-market-options 'MarketType=spot,SpotOptions={SpotInstanceType=one-time,InstanceInterruptionBehavior=terminate}' \
-#     --instance-initiated-shutdown-behavior terminate --user-data file://entrenar.sh ...
-# Con `terminate`, el `shutdown -h` de abajo TERMINA la instancia: no queda disco ni máquina parada cobrando.
-# Pasos, cada uno deja OK/FALLO en estado.tsv: 1 entorno · 2 código y datos · 3 tsjev filtrado y manifiesto validado · 4 entrenar (e5-small y,
-# si CHISPA_MMBERT=1, mmBERT-small después) · 5 evaluar JevBench + batería + latencia (CPU 4 hilos, en la misma máquina: la g5.xlarge tiene 4 vCPU;
-# la referencia del i7 se repite aparte con el mismo checkpoint) · 6 subir checkpoint `mejor/` (con su manifiesto-entrenamiento.json), resultados y log.
-# Coste estimado (sin medir; hay que contrastarlo con la primera época): g5.xlarge spot ≈ 0,40–0,50 USD/h (bajo demanda 1,01). Con
-# `--tope-tarea 1000` el train es ≲ 300 000 filas, 2 épocas, ≈ 90–120 min por codificador → ≈ 1–1,5 USD el primero. Techo duro: SHUTDOWN_MIN = 180 min
-# → ≤ 3 USD spot (≤ 3,05 a precio bajo demanda). Con mmBERT-small añade ≈ 1,5 USD y sube el techo a 300 min.
-# CHISPA_LOCAL=1: solo comprueba los pasos 1-3 en esta máquina (sin pip, descargas ni shutdown); las pruebas en seco del entrenamiento son los tests de model/alt.
+# Hito 4, alternativa (b): e5-small (y mmBERT-small con CHISPA_MMBERT=1) en una g5.xlarge, solo con datos que admite el manifiesto.
+# user-data (≤ 16 KB; AMI DLAMI GPU PyTorch AL2023, root, rol con s3:Get/PutObject sin ListBucket). El orquestador sustituye __CHISPA_S3__ y
+# sube $CHISPA_S3/codigo.tgz (`bash model/alt/aws/empaquetar.sh <sha>`); los datos se bajan de HF y del meta de tsjev en la propia g5.
+# Se lanza con --instance-initiated-shutdown-behavior terminate: el `shutdown -h` termina la instancia y no queda nada cobrando.
+# Pasos (OK/FALLO en estado.tsv; al primer FALLO sube log y apaga sin esperar): 1 entorno · 2 código y datos · 3 manifiesto ·
+# 3a sondeo de memoria con el peor trozo · 3b destilación (o etiquetas ya destiladas de S3) · 4 entrenar · 5 evaluar · subir y esperar
+# $CHISPA_S3/terminar hasta CHISPA_ESPERA_MIN (20) para que el orquestador traiga y verifique.
+# Techo: SHUTDOWN_MIN = 180 (300 con mmBERT) + CHISPA_MIN_DESTILAR + 5 con destilación. CHISPA_LOCAL=1: solo pasos 1-3 aquí, sin pip ni shutdown.
 LOCAL=${CHISPA_LOCAL:-0}
 MMBERT=${CHISPA_MMBERT:-0}
 META_S3=${CHISPA_META_S3:-s3://chispa-pruebas-879381269751/meta-20261027/meta}
@@ -153,20 +143,36 @@ if [ "$LOCAL" != 1 ]; then
 fi
 estado manifiesto "OK $(cat "$OUT/tsjev-filtrado.txt" 2>/dev/null)"
 
+# --- 3a. sondeo: un paso de entrenamiento con el peor trozo posible (max_tok y el máximo de opciones). Si no cabe, se sabe ahora y no tras destilar.
+if [ "$LOCAL" != 1 ]; then
+  "$PY" -m model.alt.entrenar --sondeo "$OUT/sondeo.json" --datos "$RAIZ" --salida "$CK/sondeo" --max-tok 256 --bf16 --tope-tarea 1000 > "$OUT/sondeo.log" 2>&1 \
+    && estado sondeo "OK $(cut -c1-200 "$OUT/sondeo.json")" || { tail -5 "$OUT/sondeo.log"; fallo "sondeo de memoria"; estado sondeo "FALLO (ver sondeo.json/sondeo.log)"; cierre; }
+fi
+
 # --- 3b. destilación (opcional): Qwen3-4B-Instruct-2507 (Apache-2.0) en un venv aparte con vLLM, solo filas del manifiesto.
 # Si falla, es un FALLO y se cierra (sube log y apaga sin esperar): no se entrena solo con la etiqueta dura sin que nadie lo decida.
 # Si se queda sin tiempo a mitad, destilar escribe lo etiquetado hasta ahí y se sigue.
 if [ "$DESTILAR" = 1 ] && [ "$LOCAL" != 1 ]; then
   echo "== 3b. destilación $(date -u +%T)"
   T3=$(date +%s)
-  if "$PY" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir vllm pyyaml numpy > "$OUT/vllm-pip.log" 2>&1 \
+  # Las etiquetas se guardan en S3 por clave (manifiesto, código del prompt y tope): con la misma clave se reaplican sin vLLM.
+  CLAVE=$(cat model/alt/manifiesto-entrenamiento.json model/alt/destilar.py model/maestro/blandas.py <(echo "$MAX_BLANDAS") | sha256sum | cut -c1-16)
+  BL_S3=${CHISPA_S3%/*}/blandas/$CLAVE
+  if s3cp "$BL_S3/blandas.jsonl.gz" "$BASE/blandas.jsonl.gz" 2>/dev/null; then
+    "$PY" -m model.alt.destilar --datos "$RAIZ" --aplicar "$BASE/blandas.jsonl.gz" --resumen "$OUT/reutilizadas.json" > "$OUT/destilar.log" 2>&1 \
+      || { tail -3 "$OUT/destilar.log"; fallo "aplicar blandas de S3"; estado destilar "FALLO aplicar $CLAVE"; cierre; }
+    s3cp "$BL_S3/destilacion.json" "$OUT/destilacion.json" || true
+    estado destilar "OK reutilizadas $CLAVE $(cat "$OUT/reutilizadas.json")"
+  elif "$PY" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir vllm pyyaml numpy > "$OUT/vllm-pip.log" 2>&1 \
      && HF_HUB_OFFLINE=0 /opt/vllm/bin/python -c 'from huggingface_hub import snapshot_download as s; s("Qwen/Qwen3-4B-Instruct-2507", allow_patterns=["*.json", "*.safetensors", "*.txt", "LICENSE*", "merges.txt", "vocab.json"])'; then
     resto=$(( MIN_DESTILAR - ($(date +%s) - T3) / 60 - 5 ))
     if [ "$resto" -ge 5 ]; then
       timeout -s TERM $(( resto + 8 ))m /opt/vllm/bin/python -m model.alt.destilar --datos "$RAIZ" --minutos "$resto" --max-filas "$MAX_BLANDAS" \
-        --resumen "$OUT/destilacion.json" > "$OUT/destilar.log" 2>&1
+        --resumen "$OUT/destilacion.json" --guardar "$BASE/blandas.jsonl.gz" > "$OUT/destilar.log" 2>&1
       [ -s "$OUT/destilacion.json" ] && estado destilar "OK $(tr -d '\n' < "$OUT/destilacion.json" | cut -c1-240)" \
         || { tail -5 "$OUT/destilar.log"; fallo "destilar"; estado destilar "FALLO sin blandas (ver destilar.log)"; cierre; }
+      s3cp "$BASE/blandas.jsonl.gz" "$BL_S3/blandas.jsonl.gz" && s3cp "$OUT/destilacion.json" "$BL_S3/destilacion.json" \
+        && estado blandas-s3 "OK $BL_S3" || estado blandas-s3 "AVISO no se pudieron subir"
       grep -q '"aviso_saltadas": true' "$OUT/destilacion.json" 2>/dev/null && estado destilar-saltadas "AVISO más del 5 % de prompts saltados por largos"
       grep -q '"completa": false' "$OUT/destilacion.json" 2>/dev/null && estado destilar-completa "AVISO etiquetado incompleto (tope de minutos)"
     else fallo "destilar sin tiempo"; estado destilar "FALLO sin tiempo tras instalar ($resto min)"; cierre; fi
