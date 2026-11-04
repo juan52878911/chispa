@@ -7,7 +7,8 @@ CHISPA_S3=__CHISPA_S3__
 # Orden: M1 sin tocar (k=0) · E1 (largos, solo inferencia) · knn_e5 · variantes por prioridad (puntos 2 y 3, luego 5 y E3) × semillas,
 # CHISPA_PASOS cada una. Tras cada ejecución sube su carpeta a $CHISPA_S3/partes/ (lo que no llegue queda sin medir) y antes de cada
 # una comprueba que queda tiempo para otra como la más lenta medida. Si falla la primera ejecución entrenada, se cierra.
-# CHISPA_LOCAL=1: sin pip, descargas ni shutdown; datos en CHISPA_DATOS (m1.pt, tsjev/, jevbench/), CPU y 2 pasos: prueba de arranque.
+# CHISPA_LOCAL=1: sin pip, descargas ni shutdown; datos en CHISPA_DATOS (m1.pt, tsjev/, jevbench/), CPU y 2 pasos (prueba de arranque),
+# o el lote entero en CPU con CHISPA_PASOS_LOCAL y CHISPA_SEMILLAS_LOCAL (con la caché de e5, ≈ 0,6 s/paso tras llenarla).
 LOCAL=${CHISPA_LOCAL:-0}
 PASOS=${CHISPA_PASOS:-300}
 SEMILLAS=${CHISPA_SEMILLAS:-"0 1 2"}
@@ -50,7 +51,8 @@ trap 'exit 143' TERM INT HUP
 # --- 1. entorno, código y datos
 if [ "$LOCAL" = 1 ]; then
   case $CHISPA_S3 in __*) CHISPA_S3=$BASE/s3;; esac
-  PY=${CHISPA_PY:-python3}; DEV=cpu; DATOS=${CHISPA_DATOS:?falta CHISPA_DATOS}; PASOS=2; SEMILLAS=0
+  PY=${CHISPA_PY:-python3}; DEV=cpu; DATOS=${CHISPA_DATOS:?falta CHISPA_DATOS}
+  PASOS=${CHISPA_PASOS_LOCAL:-2}; SEMILLAS=${CHISPA_SEMILLAS_LOCAL:-0}   # por defecto, prueba de arranque; con ellos, el lote en CPU
   AQUI=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd); REPO=$(cd "$AQUI/../../../.." && pwd)
 else
   PY=""
