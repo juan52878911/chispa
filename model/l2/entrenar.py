@@ -41,7 +41,8 @@ import torch
 from . import aumento as A
 from . import datos as D
 from .evaluar import macro_f1_medio, predecir
-from .modelo import CABEZAS_SCORE, MAX_TOK, TEXTOS_TORRE, Codificador, ModeloL2, SoporteEval, prototipos
+from .modelo import (CABEZAS_NOUL, CABEZAS_SCORE, K_RANURAS, LAMBDA_B, LAMBDA_NCE, MAX_TOK, SIMILITUDES, TEXTOS_TORRE, Codificador, ModeloL2,
+                     SoporteEval, prototipos)
 
 CKPT_CADA_S = 600
 
@@ -223,6 +224,14 @@ def main(argv=None):
                     help="cabeza de score: coral1 (la de siempre, un escalar), o sobre el vector de las K similitudes (una por texto de torre de nivel): coral, acumulados (W por umbral) o grueso_fino (3 bloques × nivel). "
                          "Sin ella: la del checkpoint de --desde (coral1 si no la trae). Un checkpoint coral1 se convierte a coral y acumulados sin cambiar "
                          "la función; grueso_fino arranca con su init")
+    ap.add_argument("--cabeza-noul", choices=CABEZAS_NOUL, default=None,
+                    help="cabeza de noul: una (la de siempre: solo la torre de «true», bit a bit igual), dos_dif (σ(a·(s_true − s_false) + b)) o "
+                         "dos_softmax (softmax de las dos torres con T propia). Sin ella: la del checkpoint de --desde (una si no la trae)")
+    ap.add_argument("--k-ranuras", type=int, default=K_RANURAS, help="ablación: número de ranuras de lectura (16 de siempre; 1 = una sola consulta)")
+    ap.add_argument("--sim", choices=tuple(SIMILITUDES), default="maxsim",
+                    help="ablación: maxsim (el del runtime) o coseno simple entre la media de las ranuras y la torre (no exportable)")
+    ap.add_argument("--lambda-nce", type=float, default=LAMBDA_NCE, help="peso de InfoNCE (0 = ablación sin InfoNCE)")
+    ap.add_argument("--lambda-brier", type=float, default=LAMBDA_B, help="peso de Brier (0 = ablación sin Brier)")
     ap.add_argument("--ruido-cond", type=float, default=0.0, metavar="P",
                     help="E3: solo en entrenamiento, cada token del mensaje y de los textos de opción pasa con prob. P a <mask> (la mitad) o a un "
                          "token al azar (la otra mitad); no toca especiales ni los prefijos «query: »/«passage: ». 0 = sin ruido; la inferencia no cambia")
@@ -269,7 +278,11 @@ def main(argv=None):
     cabeza = a.cabeza_score
     if cabeza is None:   # la del checkpoint de partida (los anteriores no la traen: coral)
         cabeza = torch.load(a.inicial, map_location="cpu", weights_only=False).get("cabeza_score", "coral1") if a.inicial else "coral1"
-    modelo = ModeloL2(texto_torre=a.texto_torre or "v1", cabeza_score=cabeza).to(a.device)
+    noul = a.cabeza_noul
+    if noul is None:     # la del checkpoint de partida (los anteriores no la traen: una)
+        noul = torch.load(a.inicial, map_location="cpu", weights_only=False).get("cabeza_noul", "una") if a.inicial else "una"
+    modelo = ModeloL2(k=a.k_ranuras, texto_torre=a.texto_torre or "v1", cabeza_score=cabeza, cabeza_noul=noul, sim=a.sim,
+                      lambda_nce=a.lambda_nce, lambda_brier=a.lambda_brier).to(a.device)
     enc.configurar_ruido(a.ruido_cond, a.semilla)
     for k in claves:
         modelo.asegurar_cabeza(k, a.device)
@@ -307,6 +320,8 @@ def main(argv=None):
         for k in ck.get("cabezas", []):
             modelo.asegurar_cabeza(k, a.device)
         opt = nuevo_opt()
+        if ck.get("cabeza_noul", "una") != modelo.cabeza_noul:
+            raise SystemExit("ultimo.pt tiene la cabeza noul %s y se pidió %s" % (ck.get("cabeza_noul", "una"), modelo.cabeza_noul))
         if ck.get("cabeza_score", "coral1") != modelo.cabeza_score:
             raise SystemExit("ultimo.pt tiene la cabeza score %s y se pidió %s" % (ck.get("cabeza_score", "coral1"), modelo.cabeza_score))
         modelo.load_state_dict(ck["modelo"])
@@ -322,7 +337,8 @@ def main(argv=None):
     def estado():
         return {"modelo": modelo.state_dict(), "opt": opt.state_dict(), "paso": paso, "total": total, "mejor": mejor,
                 "calibrado": calibrado, "cabezas": sorted(modelo.coral.keys()), "args": vars(a),
-                "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score}
+                "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score,
+                "cabeza_noul": modelo.cabeza_noul, "sim": modelo.sim_modo, "k_ranuras": modelo.ranuras.q.shape[0]}
 
     def checkpoint(sube=True):
         guardar(ultimo, estado())
@@ -348,7 +364,8 @@ def main(argv=None):
         if f1 > mejor["f1"]:
             mejor.update(f1=f1, paso=paso)
             guardar(sal / "mejor.pt", {"modelo": modelo.state_dict(), "cabezas": sorted(modelo.coral.keys()), "paso": paso, "f1": f1,
-                                       "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score})
+                                       "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score,
+                "cabeza_noul": modelo.cabeza_noul, "sim": modelo.sim_modo, "k_ranuras": modelo.ranuras.q.shape[0]})
         modelo.train()
 
     eval_cada = a.eval_cada or max(total // 4, 1)
@@ -397,7 +414,8 @@ def main(argv=None):
     evaluar_dev()
     if not (sal / "mejor.pt").exists():
         guardar(sal / "mejor.pt", {"modelo": modelo.state_dict(), "cabezas": sorted(modelo.coral.keys()), "paso": paso, "f1": None,
-                                   "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score})
+                                   "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score,
+                "cabeza_noul": modelo.cabeza_noul, "sim": modelo.sim_modo, "k_ranuras": modelo.ranuras.q.shape[0]})
     checkpoint()
     kappa_dev = elegir_kappa(modelo, enc, dev, filas, a) if a.elegir_kappa and a.episodios and not parar else None
     with open(sal / "entrenamiento.json", "w") as f:

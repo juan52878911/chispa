@@ -7,13 +7,17 @@ Trabaja sobre las similitudes crudas s (MaxSim) de las filas de dev y ajusta, co
   noul    p(true) = σ(a·s + b)                          → a, b (Platt, LBFGS); θ = umbral de p(true) que maximiza F1 macro
   scoreK  P(y>j) = σ((a·s − b_j))  con b_1 = b y b_j = b_{j-1} + d_j (CORAL con una T de rejilla: a = w/T, b_j = θ_j/T)
 τ de escalate (por tarea): el menor umbral de confianza (máx p) con precisión ≥ 0,95 entre las filas con conf ≥ τ,
-es decir la máxima cobertura. `tipos` es el ajuste agrupado por cabeza (lo que va a la sección CALIB de `.chispa` v3, que
+es decir la máxima cobertura. Con `tau_fuera_pliegue` (por defecto en la línea de órdenes; `--tau-mismas-filas` lo apaga) las filas se
+parten por hash de (tarea, texto): T, Platt y θ se ajustan con un lado y τ, ECE y las curvas riesgo–cobertura se miden en el otro,
+que no vio el ajuste (`calibrar_capas.particion_hash`). Sin eso τ se elige con las mismas filas que ajustaron la cabeza y sale
+optimista (0,85 en validación frente a 0,777 en test). `tipos` es el ajuste agrupado por cabeza (lo que va a la sección CALIB de `.chispa` v3, que
 solo guarda un τ: el de todas las filas juntas) y `tareas` el de cada tarea.
 """
 import argparse
 import json
 import math
 import sys
+import warnings
 from collections import defaultdict
 from pathlib import Path
 
@@ -23,8 +27,9 @@ import torch.nn.functional as F
 
 from model.evaluacion import metricas as M
 
+from . import calibrar_capas as CC
 from . import datos as D
-from .modelo import clave_cabeza, indice_etiqueta, maxsim, texto_consulta, texto_opcion
+from .modelo import clave_cabeza, indice_etiqueta, texto_opcion, textos_torre_fila
 
 PRECISION = 0.95
 MIN_FILAS = 20  # por debajo, o con una sola clase, no se ajusta: se conserva la cabeza del modelo (sin_ajuste)
@@ -42,7 +47,8 @@ def simil(modelo, enc, filas, lote=64):
         S = modelo.ranuras(H.to(dev), m.to(dev))
         textos, pos, ixs = [], {}, []
         for r in fs:
-            ts = [texto_opcion(r, o, modelo.texto_torre) for o in r["opciones"]] if r["tipo"] in ("choice", "multi") else [texto_consulta(r, modelo.texto_torre)]
+            ts = [texto_opcion(r, o, modelo.texto_torre) for o in r["opciones"]] if r["tipo"] in ("choice", "multi") else \
+                textos_torre_fila(r, modelo.texto_torre, "coral1", modelo.cabeza_noul)   # noul con dos torres: [s_true, s_false]
             ix = []
             for t in ts:
                 if t not in pos:
@@ -50,7 +56,7 @@ def simil(modelo, enc, filas, lote=64):
                     textos.append(t)
                 ix.append(pos[t])
             ixs.append(ix)
-        sim = maxsim(S, modelo.torre(enc.pasaje(textos).to(dev)))
+        sim = modelo.sim(S, modelo.torre(enc.pasaje(textos).to(dev)))
         out += [sim[j, torch.tensor(ix, device=dev)].cpu() for j, ix in enumerate(ixs)]
     return out
 
@@ -61,6 +67,8 @@ def cabeza_inicial(modelo, clave):
         return {"T": float(modelo.log_t["choice"].detach().exp().clamp(min=5e-3))}
     if clave == "noul":
         a, b = (float(x) for x in modelo.ab["noul"].detach())
+        if modelo.cabeza_noul == "dos_softmax":     # softmax([s_t, s_f] / T) = σ((s_t − s_f) / T): a = 1/T, b = 0
+            return {"a": 1.0 / float(modelo.log_t["noul"].detach().exp().clamp(min=5e-3)), "b": 0.0}
         return {"a": a, "b": b}
     if getattr(modelo, "cabeza_score", "coral") != "coral1":
         raise ValueError("la calibración y la exportación al runtime solo admiten la cabeza score `coral1` (CALIB lleva un único w y "
@@ -71,12 +79,17 @@ def cabeza_inicial(modelo, clave):
 
 
 # ---------------------------------------------------------------- probabilidades con parámetros dados
+def x_noul(s):
+    """Entrada escalar de la cabeza noul: s_true con una torre (`una`), s_true − s_false con dos (`dos_dif`, `dos_softmax`)."""
+    return s[0] - s[1] if len(s) > 1 else s[0]
+
+
 def probs_de(clave, s, p):
     """s (n,) → distribución sobre las opciones, con los parámetros `p` de `ajustar`."""
     if clave == "choice":
         return F.softmax(s / p["T"], -1)
     if clave == "noul":
-        pt = torch.sigmoid(p["a"] * s[0] + p["b"])
+        pt = torch.sigmoid(p["a"] * x_noul(s) + p["b"])
         return torch.stack([1 - pt, pt])
     sup = torch.sigmoid((p["a"] * s[0] - torch.tensor(p["b"])) / p.get("T", 1.0))
     uno = torch.ones(1)
@@ -111,7 +124,7 @@ def ajustar(clave, ss, ys, inicial):
     if clave == "noul":
         if len(set(ys)) < 2:
             return inicial, False
-        x = torch.stack([s[0] for s in ss])
+        x = torch.stack([x_noul(s) for s in ss])
         y = torch.tensor(ys).float()
         ab = torch.tensor([inicial["a"], inicial["b"]], requires_grad=True)
         opt = torch.optim.LBFGS([ab], lr=0.5, max_iter=200, line_search_fn="strong_wolfe")
@@ -137,7 +150,7 @@ def ajustar(clave, ss, ys, inicial):
 
 def umbral_noul(ss, ys, p):
     """θ: umbral de p(true) que maximiza el F1 macro (rejilla de 99 puntos)."""
-    pt = torch.sigmoid(p["a"] * torch.stack([s[0] for s in ss]) + p["b"]).numpy()
+    pt = torch.sigmoid(p["a"] * torch.stack([x_noul(s) for s in ss]) + p["b"]).numpy()
     y = np.array(ys)
     mejor = (-1.0, 0.5)
     for th in np.linspace(0.01, 0.99, 99):
@@ -206,25 +219,36 @@ def _tipo_tarea(filas):
 
 
 # ---------------------------------------------------------------- calibración completa
-def calibrar(modelo, enc, filas, lote=64):
+def calibrar(modelo, enc, filas, lote=64, tau_fuera_pliegue=False, frac_tau=0.5, tareas_no_vistas=()):
     """Devuelve el informe completo (ver `main`). `filas`: dev con `texto`, `tipo`, `tarea`, `opciones`, `etiqueta`.
-    Las filas multi no tienen cabeza propia: van aparte a `multi_l2` (ver `calibrar_multi_l2`)."""
+    Las filas multi no tienen cabeza propia: van aparte a `multi_l2` (ver `calibrar_multi_l2`).
+    `tau_fuera_pliegue` (False aquí por compatibilidad con quien llama sin él; la línea de órdenes lo activa) elige τ con filas
+    que no ajustaron T/Platt."""
     multi = [r for r in filas if r["tipo"] == "multi"]
-    inf = _calibrar(modelo, enc, [r for r in filas if r["tipo"] != "multi"], lote)
+    inf = _calibrar(modelo, enc, [r for r in filas if r["tipo"] != "multi"], lote, tau_fuera_pliegue, frac_tau, tareas_no_vistas)
     inf["multi_l2"] = calibrar_multi_l2(modelo, enc, multi, lote)
+    inf["cabeza_noul"], inf["sim"] = modelo.cabeza_noul, modelo.sim_modo
     return inf
 
 
-def _calibrar(modelo, enc, filas, lote=64):
+def _calibrar(modelo, enc, filas, lote=64, tau_fuera_pliegue=False, frac_tau=0.5, tareas_no_vistas=()):
+    """`tau_fuera_pliegue`: T, Platt y θ salen de las filas de «ajuste» y τ/ECE/curvas de las de «τ» (partición por hash);
+    False reproduce el procedimiento antiguo (mismas filas para todo)."""
     for r in filas:
         modelo.asegurar_cabeza(clave_cabeza(r))
     ss = simil(modelo, enc, filas, lote)
     ys = [indice_etiqueta(r) for r in filas]
     claves = [clave_cabeza(r) for r in filas]
-    por_clave, por_tarea = defaultdict(list), defaultdict(list)
-    for i, r in enumerate(filas):
+    if tau_fuera_pliegue:
+        i_aj, i_tau = CC.particion_hash(filas, frac_tau)
+    else:
+        i_aj = i_tau = list(range(len(filas)))
+    por_clave, por_tarea, por_tarea_tau = defaultdict(list), defaultdict(list), defaultdict(list)
+    for i in i_aj:
         por_clave[claves[i]].append(i)
-        por_tarea[(r["tarea"], claves[i])].append(i)
+        por_tarea[(filas[i]["tarea"], claves[i])].append(i)
+    for i in i_tau:
+        por_tarea_tau[(filas[i]["tarea"], claves[i])].append(i)
 
     def ajuste(idx, clave):
         p0 = cabeza_inicial(modelo, clave)
@@ -245,25 +269,39 @@ def _calibrar(modelo, enc, filas, lote=64):
         p, d, aj = ajuste(idx, clave)
         antes, despues = medir(idx, clave, p, p0, d["theta"])
         tipos[clave] = {**d, "n": len(idx), "ajustado": aj, "ece_antes": M.ece(*antes), "ece_despues": M.ece(*despues)}
-    for (tarea, clave), idx in sorted(por_tarea.items()):
+    conf_t, ok_t = {}, {}
+    nuevas_set = set(tareas_no_vistas)
+    for (tarea, clave), idx_aj in sorted(por_tarea.items()):
+        idx = por_tarea_tau.get((tarea, clave), []) if tau_fuera_pliegue else idx_aj
         p0 = cabeza_inicial(modelo, clave)
-        p, d, aj = ajuste(idx, clave)
+        p, d, aj = ajuste(idx_aj, clave)
         antes, despues = medir(idx, clave, p, p0, d["theta"])
         tau, cob, prec = tau_escalate(*despues)
         params[(tarea, clave)] = p
-        tareas[tarea] = {"cabeza": clave, **d, "n": len(idx), "ajustado": aj, "ece_antes": M.ece(*antes),
+        conf_t[tarea], ok_t[tarea] = despues
+        tareas[tarea] = {"cabeza": clave, **d, "n": len(idx_aj), "n_tau": len(idx), "ajustado": aj, "ece_antes": M.ece(*antes),
                          "ece_despues": M.ece(*despues), "tau": tau, "cobertura": cob, "precision_cubierta": prec,
-                         "exactitud": float(np.mean(despues[1])), "auroc_escalate": auroc(*despues)}
-    # τ único de la sección CALIB: filas de todas las tareas, con los parámetros POR CABEZA que se escriben en CALIB (`tipos`)
+                         "exactitud": float(np.mean(despues[1])) if len(idx) else float("nan"), "auroc_escalate": auroc(*despues),
+                         "no_vista": tarea in nuevas_set, "rc": CC.resumen_rc(*despues)}
+    # τ único de la sección CALIB: filas de todas las tareas, con los parámetros POR CABEZA que se escriben en CALIB (`tipos`).
+    # Con tau_fuera_pliegue son solo las filas de «τ», que ningún ajuste vio.
     conf, ok = [], []
-    for (tarea, clave), idx in por_tarea.items():
-        p = tipos[clave]
+    for (tarea, clave), idx in (por_tarea_tau if tau_fuera_pliegue else por_tarea).items():
+        p = tipos.get(clave)
+        if p is None:
+            continue
         c, o = _conf_ok([probs_de(clave, ss[i], p) for i in idx], [ys[i] for i in idx], clave, p["theta"])
         conf += c
         ok += o
     tau, cob, prec = tau_escalate(conf, ok)
-    return {"tipos": tipos, "tareas": tareas, "tau_escalate": tau,
-            "global": {"n": len(filas), "cobertura": cob, "precision_cubierta": prec, "auroc_escalate": auroc(conf, ok)}}
+    rc = {"global": CC.resumen_rc(conf, ok)}
+    for nombre, ts in (("no_vistas", [t for t in conf_t if t in nuevas_set]), ("vistas", [t for t in conf_t if t not in nuevas_set])):
+        if ts and (nombre == "no_vistas" or nuevas_set):
+            rc[nombre] = CC.resumen_rc(sum((list(conf_t[t]) for t in ts), []), sum((list(ok_t[t]) for t in ts), []))
+    return {"tipos": tipos, "tareas": tareas, "tau_escalate": tau, "tau_fuera_pliegue": bool(tau_fuera_pliegue),
+            "global": {"n": len(filas), "n_ajuste": len(i_aj), "n_tau": len(i_tau), "cobertura": cob, "precision_cubierta": prec,
+                       "auroc_escalate": auroc(conf, ok), "aurc": rc["global"]["aurc"]},
+            "riesgo_cobertura": rc}
 
 
 # ---------------------------------------------------------------- multi: CALIB «multi_l2» por esquema
@@ -318,6 +356,9 @@ def cabeza_params(clave, d):
 def a_calib_chispa(informe):
     """Sección CALIB de `.chispa` v3 (`format/chispa3`, claves cerradas): {tipos{cabeza:{T,a,b,theta}}, tau_escalate}.
     Las cabezas `scoreK` llevan a = w/T y b = b_1; los incrementos b_j − b_{j-1} van en entradas `scoreK#j` (campo a)."""
+    if informe.get("cabeza_noul", "una") != "una" or informe.get("sim", "maxsim") != "maxsim":
+        raise ValueError("el runtime solo implementa MaxSim y la cabeza noul `una`: no se escribe CALIB de un modelo con %s/%s" % (
+            informe.get("sim"), informe.get("cabeza_noul")))
     tipos = {}
     for clave, d in informe["tipos"].items():
         base = {"T": float(d.get("T", 1.0)), "a": float(d.get("a", 0.0)), "b": 0.0, "theta": float(d["theta"])}
@@ -338,10 +379,46 @@ def cargar_modelo(ckpt, device="cpu"):
     return cm(str(ruta / "mejor.pt") if ruta.is_dir() else str(ruta), device)
 
 
-def filas_dev(rutas):
+def filas_dev(rutas, estricto=False):
+    """Filas con split=dev. Si no hay ninguna cae a «todas las filas» (que pueden incluir train: la calibración saldría
+    optimista) y lo dice a gritos por stderr y con un warning; con `estricto` falla en su lugar."""
     filas = D.leer(rutas)
     dev = [r for r in filas if r.get("split") == "dev"]
-    return dev or filas
+    if dev:
+        return dev
+    msg = ("NINGUNA fila con split=dev en %s: se usan TODAS las filas (%d), que pueden ser de train o de test. "
+           "La calibración y τ saldrán optimistas; pasa un dev real." % (", ".join(map(str, rutas)), len(filas)))
+    if estricto:
+        raise SystemExit("calibrar: " + msg)
+    print("!" * 20, "ADVERTENCIA", msg, "!" * 20, file=sys.stderr)
+    warnings.warn(msg, RuntimeWarning, stacklevel=2)
+    return filas
+
+
+@torch.no_grad()
+def evaluar_tau(modelo, enc, filas, informe, lote=64):
+    """Aplica a `filas` (p. ej. test) los parámetros y el τ de cada tarea de `informe` (ajustado antes) y mide lo que pasa:
+    {tarea: {n, tau, cobertura, precision_cubierta, exactitud, aurc, tau_test}}; `tau_test` es el τ que daría 0,95 en esas mismas filas. Es la comparación honesta de «τ de validación → test»."""
+    modelo.eval()
+    for r in filas:
+        modelo.asegurar_cabeza(clave_cabeza(r))
+    ss = simil(modelo, enc, filas, lote)
+    por = defaultdict(list)
+    for i, r in enumerate(filas):
+        if r["tarea"] in informe["tareas"] and r["tipo"] != "multi":
+            por[r["tarea"]].append(i)
+    out = {}
+    for tarea, idx in por.items():
+        t = informe["tareas"][tarea]
+        clave = t["cabeza"]
+        conf, ok = _conf_ok([probs_de(clave, ss[i], cabeza_params(clave, t)) for i in idx], [indice_etiqueta(filas[i]) for i in idx],
+                            clave, t["theta"])
+        conf, ok = np.asarray(conf), np.asarray(ok, float)
+        aceptadas = conf >= t["tau"]
+        out[tarea] = {"n": len(idx), "tau": t["tau"], "cobertura": float(aceptadas.mean()),
+                      "precision_cubierta": float(ok[aceptadas].mean()) if aceptadas.any() else float("nan"),
+                      "exactitud": float(ok.mean()), "aurc": CC.aurc(conf, ok), "tau_test": tau_escalate(conf, ok)[0]}
+    return out
 
 
 def resumen(inf):
@@ -359,17 +436,27 @@ def main(argv=None):
     ap.add_argument("--salida", required=True)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--max-filas", type=int, default=0)
+    ap.add_argument("--tau-mismas-filas", action="store_true",
+                    help="procedimiento antiguo: τ con las mismas filas que ajustan T/Platt (optimista). Por defecto τ sale de filas aparte")
+    ap.add_argument("--frac-tau", type=float, default=0.5, help="fracción de filas (por hash de tarea y texto) que eligen τ y miden ECE")
+    ap.add_argument("--no-vistas", default="", help="tareas que el modelo no vio en el entrenamiento, separadas por comas (AURC aparte)")
+    ap.add_argument("--exigir-dev", action="store_true", help="falla si los jsonl no traen filas con split=dev, en vez de usar todas")
     a = ap.parse_args(argv)
     from .modelo import Codificador
     modelo, _ = cargar_modelo(a.ckpt, a.device)
-    filas = filas_dev(a.dev)
+    filas = filas_dev(a.dev, a.exigir_dev)
     if a.max_filas:
         filas = filas[:a.max_filas]
-    inf = calibrar(modelo, Codificador(device=a.device), filas)
+    inf = calibrar(modelo, Codificador(device=a.device), filas, tau_fuera_pliegue=not a.tau_mismas_filas, frac_tau=a.frac_tau,
+                   tareas_no_vistas=[t for t in a.no_vistas.split(",") if t])
     inf["chispa"] = a_calib_chispa(inf)
     Path(a.salida).write_text(json.dumps(inf, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(resumen(inf))
-    print("τ global %.3f, cobertura %.3f" % (inf["tau_escalate"], inf["global"]["cobertura"]))
+    print("τ global %.3f, cobertura %.3f, AURC %.4f (τ %s)" % (
+        inf["tau_escalate"], inf["global"]["cobertura"], inf["global"]["aurc"], "fuera de pliegue" if inf["tau_fuera_pliegue"] else "mismas filas"))
+    nv = inf["riesgo_cobertura"].get("no_vistas")
+    if nv:
+        print("AURC tareas no vistas %.4f (n=%d)" % (nv["aurc"], nv["n"]))
     return 0
 
 
