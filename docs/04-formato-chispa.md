@@ -67,6 +67,45 @@ Las de `multi` (ver [03-api.md](03-api.md#multi-varias-etiquetas-a-la-vez)):
 - `multi` y `multi#<id>` (sin `@`): ficheros anteriores; solo se leen si el fichero no tiene ninguna clave con `@`.
 - `#<id>` en general: sufijo de parámetros por opción.
 
+## Origen del τ
+- **CALIB manda siempre.** El τ de L1 es `tau_escalate`. El de L2 es `tau_escalate_l2` si existe, si no `tau_escalate`; con `CONJ`, `tau_l2c`. Da igual que el servidor arranque con `-config` o sin él (`decide.ArmarDesde`).
+- **La config solo puede subirlo.** Solo cuenta si su JSON trae `capas`. Un τ de `capas` mayor que el de CALIB lo sube y sale en el log («τ de L1: la config lo sube de … a …»). Uno menor se ignora con aviso. Lo mismo vale para `tau_l2_esquema_nuevo`.
+- **Antes había un fallo.** Con `-config` (incluso `{}`) mandaban los τ fijos de `ConfigPorDefecto` (0,80/0,80/0,70/0,60) sin avisar. La misma batería escalaba entre el 83 y el 100 % sin config y un 37 % con `{}`. Test: `TestTauUnicoConYSinConfig` (`server/cmd/chispa-server`).
+- **Sin CALIB nada cambia.** Siguen valiendo los τ de la config, o los de por defecto. L0 y L3 no tienen τ en CALIB y siguen en la config.
+
+## CALIB sin `tau_escalate`
+Se rechaza al cargar con `chispa3.ErrCalibSinTau` («CALIB sin tau_escalate … reexporte el modelo»). Antes se leía como τ = 0 y L1 aceptaba cualquier respuesta. Un `"tau_escalate": 0` explícito sigue siendo válido. `formato.calib` de Python se niega a escribir una CALIB sin él.
+
+## Calibración por capa (`calibracion`)
+Clave opcional de CALIB. Lleva una calibración de la confianza top-1 por capa (`L0`, `L1`, `L2`, `L3`). La cascada la aplica antes de comparar con el τ de la capa. Las `probs` de la respuesta salen sin tocar.
+
+```json
+"calibracion": {
+  "L0": {"metodo": "platt", "a": 1.3, "b": -0.2},
+  "L1": {"metodo": "isotonica", "x": [0.2, 0.6, 1.0], "y": [0.0, 0.5, 0.9]}
+}
+```
+
+- **`platt`**: c' = σ(a·logit(c) + b), con c recortada a [1e-6, 1−1e-6]. Exige `a > 0` (no puede invertir el orden) y `b` finito.
+- **`isotonica`**: interpolación lineal de (x, y). `x` es estrictamente creciente en [0,1] e `y` no decreciente en [0,1], las dos de la misma longitud ≥ 2. Fuera de [x₀, xₙ] vale y₀ o yₙ.
+- Una capa sin opinión (c = 0) sigue en 0. Una capa desconocida, un método desconocido o unos parámetros fuera de rango dan `ErrContenido` al cargar.
+- **Hoy no la produce ningún exportador**: los valores los generará `model/`. El lector no inventa ninguno.
+- **Qué capas cuentan como calibradas**: las que tienen entrada en `calibracion`, y L2 si CALIB trae `tipos_l2`. Con los ficheros de hoy, L0, L1 y L3 no lo están. Contestan igual por encima de su τ, pero la respuesta lleva `"calibrada": false` (ver [03-api.md](03-api.md)).
+- **Un runtime anterior rechaza el fichero** con `unknown field "calibracion"`, igual que con `tipos_l2`. No distribuyas un fichero con `calibracion` a apps móviles ya publicadas.
+
+## Señales en la respuesta
+Campos opcionales nuevos en cada resultado de `/v1/decide` y en los SDK de Go, JS y Python. Un servidor anterior no los manda.
+
+| Campo | Cuándo sale | Qué es |
+|---|---|---|
+| `calibrada` | Contesta una capa y el servidor sabe qué capas están calibradas | `true` o `false` (ver arriba). No sale al escalar |
+| `truncado` | Alguna capa que corrió vio solo una parte del texto | `true`: pasaba de `max_tokens` de L1 o `max_len` de L2 y la estrategia no es `trozos` (`cabeza_cola` también pierde el centro) |
+| `tokens_originales` | Con `truncado` | Tokens del texto entero (el mayor entre las capas que truncaron) |
+| `unk_pct` | Alguna capa tokenizó el texto (L1, o L2 con el tokenizador de e5) | Fracción de tokens `<unk>`, en [0,1] (la mayor entre esas capas) |
+
+- **Antes**, el truncado solo aparecía en `/metrics` (`chispa_texto_largo_total`) y no había contador de `<unk>`.
+- **Coste**: L1 saca la señal de su propia tokenización. Solo un texto truncado cuesta una pasada más, para contar sus tokens enteros. L2 tokeniza una vez más, frente al ONNX que domina su coste. Los bancos de Go no cambian de forma medible (ver [07-rendimiento-y-limites.md](07-rendimiento-y-limites.md)).
+
 ## Compatibilidad
 - **v2 se carga.** Un `.chispa` v2 de kindling se abre como un v3 con solo `L0`.
 - **v1 no se carga.** kindling v0.17.0 no la conoce; da `ErrVersion`.
@@ -105,3 +144,64 @@ Todo en UTF-8, sin prefijos de longitud; `kind` es `choice`, `score`, `noul` o `
 - **Lector**: acepta v1 y v2 (`Esquemas.Version()`, `Conj.Version()`). El runtime (servidor `decide`, `chispamovil`) elige la función de clave con la versión de cada sección (`BuscarEsquema`); una sección v2 no responde a claves v1 ni al revés, así que no se mezclan. Con v2, la misma pregunta con otra descripción (u otro `kind`) es otro esquema: sus torres se calculan al vuelo. La caché de torres al vuelo se indexa por `HashEsquema(pregunta, [id, descripción])` (una torre por opción, no depende del fichero) y la de resultados por `ClaveEsquema` (ya incluye `kind` y descripciones).
 - **SOPL1** no cambia: sigue con `ClaveConj` (v1).
 - **Vectores de prueba**: `format/chispa3/vectores-clave-v2.json` (choice con descripciones, noul, score, opciones desordenadas, otra descripción), comprobados en Go (`clave2_test.go`) y Python (`tests/test_claves_v2.py`). Escritor Python: `formato.hash_esquema2`, `formato.esquemas(…, version=2)`, `formato.conj(…, version=2)`.
+
+## Inventario de variantes de sección
+
+Qué versiones y claves de sección existen, quién las escribe hoy y quién las lee. Es un inventario: **no se ha borrado ni cambiado nada** (ni código, ni fixtures, ni dorados). Las rutas son relativas a la raíz del repositorio.
+
+Cómo leerlo:
+- **Escribe hoy** = un camino de producción (`chispa train`, el exportador de L2, `mkmodelo`) que emite esa variante. Si solo la emite un test, un generador sintético o un fixture, cuenta como «solo compatibilidad».
+- **Leen**: el lector de Go (`format/chispa3`) acepta todas las versiones; el servidor (`server/decide`) y `chispamovil` (`sdk/movil/chispamovil`) consumen lo que decodifica. Android e iOS no parsean secciones: hablan con `chispamovil` por la interfaz `Motor` (`sdk/android/chispa/src/main/kotlin/com/chispa/sdk/Capas.kt:13-38`). Python solo tiene lectores en `sdk/python/chispa/formato.py` que usan los tests de paridad (`leer_sopl1`, `leer_torr`, `leer_l0multi`); ningún camino de producción de Python lee estas secciones.
+- Escritores de referencia: Python `sdk/python/chispa/formato.py` (`meta` :94, `calib` :108, `esquemas` :183, `conj` :215, `l0multi` :282, `torr` :344, `sopl1` :409); entrenador de Go `sdk/python/chispa/entrenador_go/entrenar.go`; exportador de L2 `model/l2/exportar.py` con `model/l2/empaquetar_go/main.go`; unión `server/deploy/mkmodelo/main.go`.
+
+| Variante | Versión / clave | La escribe hoy | La leen | ¿Solo compatibilidad? | Tests y fixtures que dependen |
+|---|---|---|---|---|---|
+| SOPL1 | v1 (sin normas) | **Sí.** `chispa train --l1 --ejemplos` sin `--conjunta` (`train.py:152-179`; `:463-467` pasa `normas=None`) y `multi.py:183` | Go `sopl1.go:174-177`; servidor `modelo.go:138,143`; `chispamovil.go:263`. L1 usa solo k, escala y media; L2c cae a la media normalizada (`sopl1.go:434`) | No | `format/chispa3/testdata/soporte.chispa` (`sopl1_test.go`, `test_sopl1.py`); `l1_soporte_test.go`, `lambda_calib_test.go`, `test_train_sopl1.py` |
+| SOPL1 | v2 (+ normas por ranura) | **No.** `formato.sopl1` la emitiría con `normas` sin `n_l2`, pero `--conjunta` pasa siempre el n (`conjunta.py:164`, `train.py:176-178`). Ningún escritor de Go la emite. Vivió del 2026-10-28 al 29 (`fc4dac3` → `82ab091`) | Igual que la v1 | **Sí**, ficheros de `--conjunta` generados entre esos dos commits | `soporte-v2.chispa` (`sopl1_test.go:307`, `test_sopl1.py`); `Normas:` sin `NL2:` en `sopl1_test.go`, `l2c_soporte_test.go`, `soporte_test.go` |
+| SOPL1 | v3 (+ `n_l2`) | **Sí.** `chispa train --conjunta --shrinkage-lambda …` | Igual; L2c usa `n_l2` (`sopl1.go:434`, `NL2De` :457) | No | `soporte-v3.chispa` (`sopl1_test.go:407`, `test_sopl1.py`); `l2c_soporte_test.go:152`, `soporte_test.go:235` |
+| TORR | v1 (texto de torre v1) | **Sí.** `chispa train --torre` con texto v1 (`torre.py:173-190`, `formato.py:353`); también `model/bench/movil/reexportar_fp16.py:134` y `model/bench/torre/paridad_servidor.py` | Go `torr.go:74-84`; servidor `modelo.go:95,203`; `chispamovil.go:226,296` | No | `testdata/torre.chispa` (`torr_test.go`, `test_torr.py`, `server/e2e/correr.sh`); `server/torre/testdata/torre_train.chispa` (también ESQUEMAS v1); `server/decide/l2_torre_test.go` |
+| TORR | v2 (+ campo `texto`, `v2_sin_id`) | **Sí.** `chispa train --torre` con texto `v2_sin_id` (`formato.py:354`) | Igual que v1 | No | Sin fichero en el repositorio: se construye en memoria. `torr_test.go`, `texto_torre_v2_test.go` (servidor y móvil), `test_torr.py`, `test_texto_torre_zv.py`, `TextoTorreV2Tests.swift`, `TextoTorreV2Test.kt` |
+| META.`texto_torre` | ausente (= v1) | **Sí.** Nunca se escribe `"v1"`: se omite (`formato.py:104`, `exportar.py:680`, `entrenar.go:370`) | `secciones.go:106` (`MetaTexto`); servidor `modelo.go:95`; `chispamovil.go:228` | No | `meta_texto_torre_test.go`, `version_texto_torre_zv_test.go` |
+| META.`texto_torre` | `"v2_sin_id"` | **Sí.** Exportador (según el checkpoint), Go y `fijar_texto_torre` (`torre.py:221`) | Igual | No | Los de TORR v2 y `meta_tolerante_zv_test.go` |
+| META.`texto_torre` + TORR | combinación incoherente (META v2 con TORR v1) | **No.** `chispa train` falla si no coinciden (`torre.py:208-217`) | Degrada a «sin torre al vuelo» (`torr.go:117-128`, `modelo.go:95-107`) | **Sí**, ficheros de R18 y del `chispa train` anterior a ZV | `meta_tolerante_zv_test.go` (servidor y móvil), `torre_motivo_test.go` (móvil), `TorreMotivoTests.swift` |
+| CALIB | `tipos` + `tau_escalate` | **Sí.** Siempre; en ficheros solo-L2 (exportador, `empaquetar_go/main.go:80`) son los de L2 | `secciones.go:162-176`; L1 siempre; L2 como respaldo si falta `tipos_l2` (`ParaL2` :180) | No: el exportador de L2 solo escribe estas claves | Todos los fixtures con CALIB |
+| CALIB | `tipos_l2`, `tau_escalate_l2` | **Sí.** `chispa train --l2/--ckpt` (`entrenar.go:362-364`, `train.py:301-315`) | `secciones.go:171-188`; servidor `modelo.go:121,208-218`; `chispamovil.go:364,583` | No | `calib_l2_casos.json` (cruzado Go/Python), `tipos_l2_test.go` (servidor y móvil), `test_train.py` |
+| CALIB | `tau_l2c` | **Sí.** `--conjunta` (`entrenar.go:192,365`) | servidor `aplicarTauL2c` (`modelo.go:254`); `chispamovil.go:427` | No | `l2c_test.go`, `test_conjunta_v2.py` |
+| CALIB | `tau_l2_esquema_nuevo` | **Sí.** `chispa train --tau-l2-esquema-nuevo` (`train.py:183-190`) | servidor `modelo.go:255-260`; `chispamovil.go:434-440` | No (si falta, 0,846 por defecto) | `tau_l2_esquema_nuevo` en `server/decide/*_test.go`, `TauEsquemaNuevoTests.swift` |
+| CALIB | `l1_lambda_calib` | **Sí** con encogimiento (`entrenar.go:354`, `train.py:195`); ausente = calibrado sin encogimiento | servidor `modelo.go:128-173`; `chispamovil.go:250` | La **ausencia** es compatibilidad (genera aviso) | `lambda_calib_test.go`, `l1_soporte_test.go` |
+| CALIB | `multi` / `multi#<id>` / `multi_l2` (sin `@`) | **No.** `multi.py` escribe solo `multi@<hex>` (`multi.py:33,106,115`). Únicas fuentes: `calibDorada` (`dorados_test.go:128-137`) y fixtures | servidor `multi.go:21-22,60-72`; `chispamovil.go:836-916` | **Sí** | `testdata/dorados/{l0l1,l0tf,l2}.chispa`, `calibDorada`; pruebas de multi sin esquema |
+| CALIB | `multi@<hex>` / `multi_l2@<hex>` | **Sí.** `multi.py` y `model/l2/calibrar.py:266` | mismas rutas | No | `test_multi.py`, `test_multi_zb.py`, `r11_qb_test.go`, `r11_test.go` |
+| L0MULTI | v1 (única) | **Sí.** `mkmodelo -unir` si son dos o más L0 (`mkmodelo/main.go:164-172`). Python `formato.l0multi` no tiene llamadas fuera de tests | Go `l0multi.go:104-108,152,212`; servidor `modelo.go:88` → `l0.go:78`; `chispamovil.go:270` | No (tipo nuevo, 2026-11-03, `f325a3e`) | `testdata/l0multi.chispa`; `l0multi_test.go` (formato, servidor, móvil), `caida_unido_test.go`, `mkmodelo/main_test.go`, `test_l0multi.py` |
+| L0 / L0TF | `L0` (L0 lineal heredado) | **Sí.** Entrenador de Go salvo en few-shot (`sin_l0`, `train.py:605`; `entrenar.go:117`) | `l0.go:78` y `chispamovil.go:270`; L0TF manda sobre L0 | No | `dorados/l0l1.chispa`, `server/testdata/caida/*.chispa`, `injection.chispa` |
+| L0 / L0TF | `L0TF` | **Sí.** `--conjunta` (`entrenar.go:203`; Python `l0tf.py:89`) | Igual | No | `dorados/l0tf.chispa`, `conj-v2.chispa`, `l0tf_test.go` |
+| L0 | contenedor `.chispa` v2 (sin cabecera v3) | **No** (ficheros previos a v3) | `legado.go:11-27` | **Sí** (documentado en «Compatibilidad») | `server/testdata/{injection,intencion,urgencia}.chispa`, `testdata/{injection,urgencia}.chispa` |
+| CONJ | v1 (clave `ClaveConj`, 32 bytes) | **Casi no.** Solo si `--conjunta` recibe un `--l2` con ESQUEMAS v1 (`train.py:650-652`) | Go `conj.go:175-182`; servidor `modelo.go:184-194` (avisa si CONJ y ESQUEMAS difieren) | **Sí** en la práctica | `CodificarConj(` en `conj_test.go`, `clave2_test.go`, `conj_cabeza_test.go`, `l2c_test.go`, `l2c_soporte_test.go`. Sin fichero |
+| CONJ | v2 (`HashEsquema2`, 16 bytes) | **Sí.** Sigue la versión de ESQUEMAS | Igual | No | `conj-v2.chispa`, `claves-v2*.chispa`, `conj_v2_test.go` (servidor y móvil), `test_conjunta_v2.py` |
+| ESQUEMAS | v1 (`HashEsquema`, 32 bytes) | **No** en producción. El exportador solo emite v2 (`empaquetar_go/main.go:67`). Sí: generador e2e sintético (`server/e2e/gensint/main.go:165`), dorados (`dorados_test.go:335`) y tests | Go `secciones.go:363,404`; `BuscarEsquema` elige clave por versión (`clave2.go:44-60`; servidor `l2.go:829`, `l2c.go:55`; `chispamovil.go:1207`) | **Sí** | `CodificarEsquemas(` en 33 ficheros de test (23 en `server/decide`, 7 en `chispamovil`, 3 en `format/chispa3`); `dorados/l2.chispa`; `server/torre/testdata/torre_train.chispa` |
+| ESQUEMAS | v2 (`HashEsquema2`, 16 bytes) | **Sí.** `model/l2/exportar.py:11` | Igual | No | `esquemas-v2.chispa`, `claves-v2*.chispa`, `conj-v2.chispa`, `test_esquemas_v2.py`, `test_claves_v2.py` |
+| `huella_math` | no es una sección ni un campo de META: es una clave de `server/decide/testdata/dorados/entorno.json` | **Sí**, la escribe `go test ./decide -run Dorados -regenerar` (`dorados_test.go:356,398-405`) | solo `tolDoradoServidor` (`dorados_test.go:449-456`); ni el móvil ni Python la leen | No aplica: no es formato | `dorados_test.go`; ver [07](07-rendimiento-y-limites.md) |
+
+Notas del inventario:
+- `META.version` solo se valida (`>= 1`, `secciones.go:67`). La versión de claves la decide la versión de ESQUEMAS y de CONJ (`clave2.go:44-60`), no `META.version`. El párrafo «Claves v1 y v2» de «Compatibilidad» dice lo contrario y está desactualizado; el exportador escribe `META.version` 1 junto con ESQUEMAS v2.
+- SOPL1 se indexa siempre con `ClaveConj` (hash v1), también junto a ESQUEMAS y CONJ v2. Esa clave no es una variante a retirar.
+- La clave `calibracion` de CALIB es nueva (ver [Calibración por capa](#calibración-por-capa-calibracion)): hoy no la escribe ningún exportador. Las líneas citadas de `format/chispa3/secciones.go` pueden haberse desplazado con ella.
+- No pude determinar qué ficheros ya están en manos de terceros: `models/` y el registro de modelos no se abrieron (ni están en este árbol de trabajo) y el repositorio no lleva una lista de distribución. Toda la propuesta de abajo queda condicionada a eso.
+- Todas las versiones de sección nacieron entre 2026-10-28 y 2026-11-03 (SOPL1 v2 `fc4dac3`, SOPL1 v3 `82ab091`, CONJ/ESQUEMAS v2 `f6004d3`, `tipos_l2` `76ec56b`, `texto_torre` `9d1b2b4`, TORR v2 `de4cd74`, L0MULTI `f325a3e`). ESQUEMAS v1 y CONJ v1 son anteriores y los que más ficheros pueden tener fuera.
+
+### Propuesta de limpieza (pendiente del OK de Juan)
+
+**No se ha borrado nada.** Esto es solo una propuesta. Ningún cambio debe hacerse sin el OK de Juan y sin saber qué ficheros `.chispa` están distribuidos.
+
+Principio: se puede quitar el **escritor** de una variante sin riesgo cuando nadie la emite; quitar el **lector** rompe cualquier fichero viejo que siga en uso (un runtime nuevo lo rechazaría con un error de carga). Por eso se propone quitar primero escritores y tests, y los lectores al final y uno a uno.
+
+No tocar (las produce el exportador o `chispa train` hoy): SOPL1 v1 y v3, TORR v1 y v2, META.`texto_torre` ausente y `v2_sin_id`, CALIB `tipos`, `tipos_l2`, `tau_escalate`, `tau_escalate_l2`, `tau_l2c`, `tau_l2_esquema_nuevo`, `l1_lambda_calib`, `multi@…`, L0MULTI v1, L0, L0TF, CONJ v2 y ESQUEMAS v2. `tipos` debe seguir siendo el respaldo de L2 porque el exportador de L2 produce ficheros solo con `tipos`.
+
+Orden propuesto:
+
+1. **SOPL1 v2.** Nadie la emite desde el 2026-10-29 y el lector de la v3 ya cubre su caso. Quitar el camino «normas sin `n_l2`» de `formato.sopl1` y de `Codificar` en Go, regenerar o borrar `soporte-v2.chispa`, y reescribir en los tests de `l2c_soporte_test.go` y `soporte_test.go` las entradas con `Normas:` sin `NL2:`. Tests a regenerar: `sopl1_test.go:307` y `test_sopl1.py`. Riesgo: **bajo**, solo ficheros de `--conjunta` hechos en el día entre `fc4dac3` y `82ab091`. Si hay alguno, reentrenar con `chispa train --conjunta`.
+2. **CALIB `multi` sin `@`.** Quitar el respaldo de `multi`, `multi#<id>` y `multi_l2` sin esquema (`multi.go:60-72`, `chispamovil.go:836-916`). Hay que regenerar los tres dorados (`go test ./decide -run Dorados -regenerar`, solo en amd64: `dorados_test.go:22`; los comparten el servidor, `chispamovil` y `test_dorados.py`) y actualizar `calibDorada` para que use `multi@…`. Riesgo: **medio**. Un fichero viejo con `multi` sin `@` seguiría abriéndose pero calibraría multi con `noul`, sin error (ya es el comportamiento documentado para los servidores anteriores).
+3. **Degradación por META.`texto_torre` distinto de TORR.** Pasaría de «cargar sin torre al vuelo, con aviso» a error de carga. Tests: `meta_tolerante_zv_test.go` (servidor y móvil), `torre_motivo_test.go` (móvil), `TorreMotivoTests.swift`, `TextoTorreV2*`. Riesgo: **medio**, hay ficheros de R18 y del `chispa train` previo a ZV. Hacerlo solo si se confirma que ya no circulan; si no, dejarlo.
+4. **CONJ v1 y ESQUEMAS v1** (juntos: se leen por versión y no se mezclan). Dejar solo `HashEsquema2`. Hay que reescribir los tests que usan `CodificarEsquemas(` (33 ficheros) y `CodificarConj(` (5), regenerar `dorados/l2.chispa` y `server/torre/testdata/torre_train.chispa`, y pasar `server/e2e/gensint` a v2. `ClaveEsquema`, `HashEsquema` y la clave de caché de `runtime/torre/torre.go:113` se miran aparte. Riesgo: **alto**. Es el cambio que deja sin torres a cualquier modelo ya distribuido con claves v1 (L2 no opina en sus esquemas salvo que traiga `TORR`) y obliga a reentrenar o reexportar esos modelos. Hacerlo después de una versión de aviso: el runtime registra un aviso al abrir una sección v1 antes de retirarla.
+5. **Documentación.** Corregir el párrafo «Claves v1 y v2» de «Compatibilidad» (`META.version` no decide nada) cuando se retire alguna de las anteriores.
+
+Alternativa de bajo riesgo si Juan prefiere no quitar lectores: añadir al cargador un aviso (no un error) por cada sección en versión retirable, y dejar pasar un ciclo de despliegue antes de borrar.

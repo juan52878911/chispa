@@ -48,6 +48,7 @@ Ejemplo real: [`choice.resp.json`](../server/decide/testdata/choice.resp.json). 
 - `layer`: la capa que contestó (`L0`…`L3`). Si `escalate` es true, vale `"escalar"`: ninguna capa llegó a su τ.
 - `escalate`: ninguna capa llegó a su τ. `answer` y `probs` son entonces la mejor pista, o `""` y `{}` si nadie opinó.
 - `escalate_reason`: **solo si `escalate` es true** (campo aditivo; ausente en lo demás), el porqué de la escalada: `"sin_opinion"` (ninguna capa opinó, sin error: el modelo no puede decidir ese esquema; `answer` `""` y `probs` `{}`), `"score_ids_no_validos"` (sin opinión porque los ids de un `score` no son 1..K) o `"baja_confianza"` (alguna capa opinó pero ninguna llegó a su τ; `probs` es la mejor pista). `"sin_presupuesto_torres"` (ninguna capa opinó y L2 agotó el presupuesto de torres nuevas, el de la petición —`max_torres_nuevas`— o el global por segundo; `answer` `""` y `probs` `{}`; las torres que sí cupieron quedan en la caché, así que repetir la petición avanza; cuenta además en `chispa_capa_no_opina_total{capa="L2",causa="presupuesto_torres"}`). **Prioridad:** si L2 se quedó sin presupuesto de torres y además otra capa falló por error o plazo (p. ej. L3), el motivo es `"incompleta"`, no `"sin_presupuesto_torres"` (este solo sale cuando el presupuesto es la única causa). `"incompleta"` (ninguna capa opinó y alguna falló o se quedó sin plazo/presupuesto de otra capa: no es «nadie opinó»; `answer` `""` y `probs` `{}`; solo lo devuelve el servidor: el motor del móvil no tiene timeouts de L3 ni presupuesto compartido, aunque sus tipos aceptan el valor). La causa de cada «no opina» va en `/metrics` (`chispa_capa_no_opina_total{capa,causa}`):
+- Campos opcionales (aditivos; un servidor anterior no los manda): `calibrada` (sale cuando contesta una capa; `false` = la confianza de esa capa no está calibrada y el τ se cortó sobre la cruda; no sale al escalar), `truncado` y `tokens_originales` (alguna capa vio solo una parte del texto, y cuántos tokens tenía entero) y `unk_pct` (fracción de tokens `<unk>` del texto, en [0,1]). Detalle en [04](04-formato-chispa.md#señales-en-la-respuesta).
 
 | `causa` | Significa |
 |---|---|
@@ -200,6 +201,7 @@ normalizadas (suma 1) por opción, para `choice`, `noul` (`false`/`true`) y `sco
 | `api_key_env` | Nombre de la variable de entorno con la clave (`Authorization: Bearer`). La clave no va en la config; si el nombre está y la variable vacía, el arranque falla. Ollama no la necesita |
 | `timeout` | Plazo de cada llamada: `"10s"` o segundos. 0/ausente = 10 s. Al vencer, L3 no opina y la pregunta sigue escalada (`chispa_l3_llamadas_total{resultado="timeout"}`, `chispa_capa_errores_total{capa="L3"}`) |
 | `max_por_peticion` | Llamadas al LLM que una petición HTTP puede hacer entre todas sus preguntas. 0/ausente = 8. Pasado el tope, las preguntas restantes quedan escaladas sin llamar |
+| `top_k` | En `choice` con más opciones, L3 solo ve las `top_k` mejores según la última capa anterior que opinó (L2, si no L1 o L0); las demás salen con p = 0. Sin capa que opinara, o en otros tipos, ve todas. 0/ausente = 8; si no, ≥ 2. Con 60 opciones L3 llegaba a p99 ≈ 120 s y solo opinaba en el 2,9 % de los casos |
 | `tau` | τ de L3; si falta, el de la capa `"L3"` de `capas` (0,60 por defecto). `capas` debe seguir incluyendo `"L3"` |
 
 Qué se manda al LLM: un mensaje de sistema fijo y uno de usuario con un JSON `{"pregunta","tipo","opciones":[{"id","descripcion"}],"texto"}` (temperatura 0, `response_format: json_object`, `stream: false`).
@@ -267,6 +269,12 @@ Tras una petición válida y una rota, el test de métricas
  "modelos": ["testdata/intencion.chispa"], "cache_esquemas": 1024, "cache_respuestas": 4096}
 ```
 El servidor valida la config al arrancar: una clave desconocida o mal escrita (también dentro de `limites`) es un error que nombra la clave, no se ignora.
+
+**τ de L1 y L2:** si el `.chispa` trae CALIB, manda su τ, con o sin `-config`. Los τ de `capas` solo cuentan para **subirlo** (el log lo dice); uno menor se ignora con aviso ([04](04-formato-chispa.md#origen-del-τ)). Sin `capas` en el JSON (también con `{}`) el τ es el de CALIB. Sin CALIB valen los de `capas`.
+
+`torre_fichero` (opcional): ruta de otro `.chispa` del que se toma solo la sección `TORR` para las torres al vuelo, p. ej. la torre int8 del perfil `movil-int8` frente a la fp32 del perfil `servidor`. Debe ser compatible con la `TORR` del `-modelo` (misma dimensión, `max_len`, prefijo y texto de torre); si no, el arranque falla. Las torres de `ESQUEMAS` siguen siendo las del `-modelo`.
+
+Sin sección `L1` en el `.chispa`, la cascada se salta la capa y `/healthz` la da como `false`.
 
 `api_keys` (opcional): lista de claves de API de `/v1/decide`. Cada una es `{"id","hash_sha256","rps","rafaga"}` y, opcional, `"torres_por_segundo"` (tope propio de torres al vuelo de esa clave, 0 o ≥ 1; ausente = solo el global; se cobra además del global y, agotado, solo esa clave escala con `sin_presupuesto_torres`):
 
