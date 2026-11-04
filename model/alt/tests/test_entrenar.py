@@ -181,12 +181,23 @@ if __name__ == "__main__":
 
 
 class Tope(unittest.TestCase):
-    def test_trozos_por_secuencias_sin_partir_filas(self):
+    def test_trozos_por_tokens_sin_partir_filas(self):
         from model.alt.modelo import trozos
-        fs = [{"opciones": ["a"] * k} for k in (150, 3, 3, 400, 2)]
-        tr = trozos(fs, 154)
+        fs = [{"opciones": ["a"] * k, "l": l} for k, l in ((150, 1), (3, 1), (3, 100), (400, 1), (2, 1))]
+        tr = trozos(fs, 154, lambda f: f["l"])
+        # 150+3 caben a largo 1; la de largo 100 sola (6 × 100 > 154 con la anterior); 400 sola aunque pase del tope
         self.assertEqual([[len(f["opciones"]) for f in t] for t in tr], [[150, 3], [3], [400], [2]])
+        self.assertEqual([len(t) for t in trozos(fs[1:3], 300, lambda f: f["l"])], [1, 1])   # (3+3) × 100 > 300
         self.assertEqual(sum(len(t) for t in tr), len(fs))
+
+    def test_sondeo_peor_trozo_rellena_a_max_tok(self):
+        with tempfile.TemporaryDirectory() as d:
+            m = modelo(d)
+            res = EN.sondeo(m, 5, max_tokens=4 * m.max_tok)
+            self.assertTrue(res["ok"])
+            self.assertEqual([(t["filas"], t["secuencias"]) for t in res["trozos"]], [(1, 5), (2, 4)])
+            self.assertEqual([t["tokens"] for t in res["trozos"]], [5 * m.max_tok, 4 * m.max_tok])
+            self.assertIsNone(res["pico_gib"])   # en CPU no hay pico
 
     def test_tope_por_tarea_determinista(self):
         fs = [dict(f, tarea="t%d" % (i % 2)) for i, f in enumerate(filas(20))]
