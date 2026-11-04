@@ -88,6 +88,14 @@ type Cascada struct {
 	tauNuevo *float64
 	// marcaCalib: ConCalibracion se llamó y cada Resultado contestado lleva «calibrada».
 	marcaCalib bool
+	// omitidas son capas que el modelo no trae y la cascada se salta (L1 sin sección L1): Capacidades las da como inactivas.
+	omitidas []string
+}
+
+// ConOmitidas apunta capas que no están en la cascada porque el modelo no las trae (ver SinL1Ausente).
+func (c *Cascada) ConOmitidas(nombres ...string) *Cascada {
+	c.omitidas = append(c.omitidas, nombres...)
+	return c
 }
 
 // ConCalibracion aplica la calibración por capa de CALIB (cal, por nombre de capa) y marca en cada respuesta si la capa que contestó

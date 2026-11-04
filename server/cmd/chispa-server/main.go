@@ -556,12 +556,17 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 		}
 		return nil, err
 	}
-	casc, err := decide.NuevaCascadaConTauNuevo(cfg.CapasEfectivas(), []decide.Decisor{l0, capaL1, capaL2, capaL3}, met, cfg.TauL2EsquemaNuevo)
+	// Sin sección L1 la cascada se salta la capa (L1 es opcional mientras se mide si sobra).
+	capas, decisores, sinL1 := decide.SinL1Ausente(cfg.CapasEfectivas(), []decide.Decisor{l0, capaL1, capaL2, capaL3})
+	casc, err := decide.NuevaCascadaConTauNuevo(capas, decisores, met, cfg.TauL2EsquemaNuevo)
 	if err != nil {
 		if cerrar != nil {
 			cerrar()
 		}
 		return nil, err
+	}
+	if sinL1 {
+		casc.ConOmitidas("L1")
 	}
 	casc.ConCalibracion(calibracion, calibradas)
 	log.Print(resumenCapas(l0.NumModelos(), casc.Capacidades()))
