@@ -498,6 +498,8 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 	}
 	capaL1, capaL2 := decide.NuevoL1(), decide.NuevoL2()
 	var cerrar func() error
+	var calibracion map[string]chispa3.CalibCapa
+	var calibradas map[string]bool
 	if modelo != "" {
 		f, err := chispa3.AbrirCon(modelo, chispa3.Limites{MaxFichero: cfg.MaxFicheroBytes()})
 		if errors.Is(err, chispa3.ErrTamano) {
@@ -537,6 +539,7 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 			log.Print(a)
 		}
 		capaL1, capaL2 = mt.L1, mt.L2
+		calibracion, calibradas = mt.Calibracion, mt.Calibradas
 		if mt.Cerrar != nil {
 			// Las sesiones ORT (L2 y torre) se cierran antes que el .chispa que las alimentó.
 			cerrarSesiones := mt.Cerrar
@@ -560,6 +563,7 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 		}
 		return nil, err
 	}
+	casc.ConCalibracion(calibracion, calibradas)
 	log.Print(resumenCapas(l0.NumModelos(), casc.Capacidades()))
 	return &decide.Armado{Cascada: casc, CacheRespuestas: cfg.CacheRespuestas, BytesNonces: cfg.CacheRespuestasMB << 20, Limites: cfg.Limites, APIKeys: cfg.APIKeys, APIKeysAbierto: cfg.APIKeysAbierto, AdminToken: cfg.AdminToken, AdminTokenSHA256: cfg.AdminTokenSHA256, L0: l0, Cerrar: cerrar}, nil
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"chispa/format/chispa3"
 )
 
 // Resultado es la decisión final de una pregunta.
@@ -18,8 +20,11 @@ type Resultado struct {
 	Layer    string   `json:"layer"`
 	Escalate bool     `json:"escalate"`
 	// EscalateReason: por qué escaló (solo con escalate); ver MotivoSinOpinion, MotivoBajaConfianza, MotivoScoreIdsNoValidos y MotivoIncompleta.
-	EscalateReason string  `json:"escalate_reason,omitempty"`
-	Ms             float64 `json:"ms"`
+	EscalateReason string `json:"escalate_reason,omitempty"`
+	// Calibrada: la capa que contestó tiene calibración (CALIB.calibracion, o tipos_l2 en L2). Solo sale si la cascada sabe qué capas
+	// lo están (Cascada.ConCalibracion) y una capa contestó; false = su confianza no está calibrada y el τ se cortó sobre la cruda.
+	Calibrada *bool   `json:"calibrada,omitempty"`
+	Ms        float64 `json:"ms"`
 	Nonce          string  `json:"nonce,omitempty"`
 	// Incompleto: una capa falló o el ctx se canceló; no debe guardarse bajo un nonce.
 	Incompleto bool `json:"-"`
@@ -62,6 +67,9 @@ type capa struct {
 	tau float64
 	// tauNuevo, si no es nil, sustituye a tau cuando la respuesta de la capa trae EsquemaNuevo.
 	tauNuevo *float64
+	// cal, si no es nil, calibra la confianza top-1 antes de compararla con τ (CALIB.calibracion de la capa).
+	cal       *chispa3.CalibCapa
+	calibrada bool
 }
 
 // Cascada pasa por las capas en orden mientras la confianza top-1 sea < τ.
@@ -72,6 +80,22 @@ type Cascada struct {
 	vistas map[string]VistaCalib
 	// tauNuevo es el τ de esquema nuevo de la config; el gauge lo fija Recargar al hacer el cambio (nuevoVivo), no el armado.
 	tauNuevo *float64
+	// marcaCalib: ConCalibracion se llamó y cada Resultado contestado lleva «calibrada».
+	marcaCalib bool
+}
+
+// ConCalibracion aplica la calibración por capa de CALIB (cal, por nombre de capa) y marca en cada respuesta si la capa que contestó
+// está calibrada (calibradas). Sin llamarla, la cascada corta sobre la confianza cruda y no pone «calibrada». Antes de servir.
+func (c *Cascada) ConCalibracion(cal map[string]chispa3.CalibCapa, calibradas map[string]bool) *Cascada {
+	c.marcaCalib = true
+	for i := range c.capas {
+		n := c.capas[i].d.Nombre()
+		if k, ok := cal[n]; ok {
+			c.capas[i].cal = &k
+		}
+		c.capas[i].calibrada = calibradas[n]
+	}
+	return c
 }
 
 // NuevaCascada empareja decisores y umbrales por posición y nombre.
@@ -248,11 +272,19 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 				tau = *l.tauNuevo
 			}
 		}
-		if r.Conf > 0 && r.Conf >= tau {
+		conf := r.Conf
+		if l.cal != nil {
+			conf = l.cal.Aplicar(conf)
+		}
+		if conf > 0 && conf >= tau {
 			if r.EsquemaNuevo {
 				c.met.EsquemaNuevoDecididas.Add(1)
 			}
 			res.Answer, res.Answers, res.Probs, res.Layer = r.Answer, r.Answers, r.Probs, l.d.Nombre()
+			if c.marcaCalib {
+				cb := l.calibrada
+				res.Calibrada = &cb
+			}
 			c.met.Decidida(res.Layer, false)
 			res.Ms = ms(time.Since(t0))
 			return res
