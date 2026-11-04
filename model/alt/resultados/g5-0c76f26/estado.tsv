@@ -1,0 +1,9 @@
+entorno	OK dispositivo cuda
+codigo	OK
+hf	OK
+jevbench	OK 231 casos
+tsjev	OK 13 ficheros
+datos	OK 10 fuentes convertidas
+manifiesto	OK tsjev filtrado: 516586 filas escritas, 56436 descartadas
+destilar	OK { "elegidas": 168467, "etiquetadas": 168362, "saltadas_largas": 105, "pct_saltadas": 0.06, "aviso_saltadas": false, "completa": true, "modelo": "Qwen/Qwen3-4B-Instruct-2507", "licencia_modelo": "apache-2.0", "escritas": 168362, "segundos": 
+entrenar-e5-small	FALLO
