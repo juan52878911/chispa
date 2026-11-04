@@ -64,7 +64,9 @@ else
   DEV=cuda; DATOS=$BASE/datos; mkdir -p "$DATOS/tsjev"
   s3cp "$CHISPA_S3/codigo.tgz" "$BASE/codigo.tgz" && tar -xzf "$BASE/codigo.tgz" -C "$REPO" || { fallo "codigo.tgz"; estado codigo FALLO; exit 1; }
   s3cp "$M1_S3" "$DATOS/m1.pt" || { fallo "M1"; estado datos "FALLO M1"; exit 1; }
-  aws s3 cp --only-show-errors --recursive "$TSJEV_S3/" "$DATOS/tsjev/" --exclude "test*" || { fallo "tsjev"; estado datos "FALLO tsjev"; exit 1; }
+  for f in dev-00000 $(seq -f 'train-%05g' 0 11); do   # por nombre: el rol no tiene ListBucket y --recursive lo necesita
+    s3cp "$TSJEV_S3/$f.jsonl.gz" "$DATOS/tsjev/$f.jsonl.gz" || { fallo "tsjev $f"; estado datos "FALLO tsjev"; exit 1; }
+  done
   git clone -q https://github.com/fstandhartinger/jevbench "$DATOS/jevbench" || { fallo "JevBench"; estado datos "FALLO JevBench"; exit 1; }
   HF_HOME=$HOME/hf "$PY" -c 'from huggingface_hub import snapshot_download as s; s("intfloat/multilingual-e5-small", allow_patterns=["*.json","*.safetensors","*.txt","*.model","tokenizer*"])' \
     || { fallo "e5"; estado datos "FALLO e5"; exit 1; }
