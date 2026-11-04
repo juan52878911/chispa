@@ -70,6 +70,10 @@ type Montaje struct {
 	AvisosCalib []string
 	// Cerrar libera las sesiones (L2 y torre) que abrió ArmarDesde; nil si no hay nada que cerrar. Idempotente.
 	Cerrar func() error
+	// Calibracion es CALIB.calibracion (por capa) y Calibradas las capas con calibración: las de Calibracion y L2 si CALIB trae
+	// tipos_l2. Se pasan a Cascada.ConCalibracion. Hoy el exportador solo calibra L2; L0, L1 y L3 salen con «calibrada»: false.
+	Calibracion map[string]chispa3.CalibCapa
+	Calibradas  map[string]bool
 }
 
 // ArmarDesde añade a l0 el modelo de la sección L0TF, o el de L0 si no hay, y los de L0MULTI (uno por pregunta few-shot), y monta L1 y L2 con las secciones presentes;
@@ -116,6 +120,13 @@ func ArmarDesde(f *chispa3.Fichero, l0 *L0, cfg *Config, tok Tokenizador, opts .
 			return mt, fmt.Errorf("sección CALIB: %w", err)
 		}
 		fijarTauDeCalib(cfg, "L1", "tau_escalate", calib.TauEscalate, &mt.Avisos)
+		mt.Calibracion, mt.Calibradas = calib.Calibracion, map[string]bool{}
+		for n := range calib.Calibracion {
+			mt.Calibradas[n] = true
+		}
+		if calib.TiposL2 != nil {
+			mt.Calibradas["L2"] = true
+		}
 	}
 	var sopl *chispa3.Sopl1
 	lambdaL1 := cfg.LambdaL1()
