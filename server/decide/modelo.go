@@ -241,7 +241,19 @@ func ArmarDesde(f *chispa3.Fichero, l0 *L0, cfg *Config, tok Tokenizador, opts .
 					mt.Avisos = append(mt.Avisos, aviso) // lo escribe el llamador (main.go lo hace con todos los avisos)
 					cacheT, pedida = min, cfg.cacheTorresEfectiva()
 				}
-				if err := montarTorres(f, base, tok, op.torres, cacheT, cfg.MaxTorresNuevas, cfg.TorresPorSegundo); err != nil {
+				fuente := f
+				if cfg.TorreFichero != "" && op.torres == nil {
+					alt, err := abrirTorreAlterna(cfg, f, textoTorre)
+					if err != nil {
+						cierraTodo(cerrables...)() // la sesión de L2 ya está abierta
+						return mt, err
+					}
+					fuente = alt
+					cerrables = append(cerrables, alt)
+					mt.Avisos = append(mt.Avisos, "torres al vuelo con la TORR de torre_fichero "+cfg.TorreFichero+
+						" (p. ej. int8); las torres de ESQUEMAS siguen siendo las del -modelo")
+				}
+				if err := montarTorres(fuente, base, tok, op.torres, cacheT, cfg.MaxTorresNuevas, cfg.TorresPorSegundo); err != nil {
 					mt.Avisos = append(mt.Avisos, "sin torres al vuelo: "+err.Error())
 				} else {
 					base.ConCacheTorresEfectiva(cacheT, pedida)
@@ -331,6 +343,38 @@ func montarTorres(f *chispa3.Fichero, l2 *L2, tok Tokenizador, enc CodificadorTo
 	}
 	l2.ConTorres(enc, cache).ConMaxTorresNuevas(maxNuevas).ConTorresPorSegundo(torresPorSeg)
 	return nil
+}
+
+// abrirTorreAlterna abre torre_fichero, un .chispa del que solo se usa la sección TORR (p. ej. la torre int8 del perfil movil-int8
+// para las torres al vuelo del servidor). Su TORR debe ser compatible con la del -modelo: misma dimensión, max_len, prefijo y
+// versión del texto de torre; si no, es un error de carga (no se degrada en silencio).
+func abrirTorreAlterna(cfg *Config, f *chispa3.Fichero, textoTorre string) (*chispa3.Fichero, error) {
+	alt, err := chispa3.AbrirCon(cfg.TorreFichero, chispa3.Limites{MaxFichero: cfg.MaxFicheroBytes()})
+	if err != nil {
+		return nil, fmt.Errorf("torre_fichero: %w", err)
+	}
+	falla := func(format string, a ...any) (*chispa3.Fichero, error) {
+		alt.Close()
+		return nil, fmt.Errorf("torre_fichero %s: "+format, append([]any{cfg.TorreFichero}, a...)...)
+	}
+	if !alt.Tiene(chispa3.TORR) {
+		return falla("no trae sección TORR")
+	}
+	ta, err := alt.Torre()
+	if err != nil {
+		return falla("sección TORR: %v", err)
+	}
+	tm, err := f.Torre()
+	if err != nil {
+		return falla("TORR del -modelo: %v", err)
+	}
+	if ta.Dim != tm.Dim || ta.MaxLen != tm.MaxLen || ta.Prefijo != tm.Prefijo {
+		return falla("TORR incompatible con la del -modelo (dim %d/%d, max_len %d/%d, prefijo %q/%q)", ta.Dim, tm.Dim, ta.MaxLen, tm.MaxLen, ta.Prefijo, tm.Prefijo)
+	}
+	if v, err := alt.TextoTorreEfectivo(); err != nil || v != textoTorre {
+		return falla("texto de torre %q, el -modelo usa %q (%v)", v, textoTorre, err)
+	}
+	return alt, nil
 }
 
 // fijarTauDeCalib pone en la capa nombre el τ de CALIB (clave es su nombre en CALIB). La config solo puede subirlo: con
