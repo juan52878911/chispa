@@ -45,7 +45,7 @@ const (
 	// L3TopKPorDefecto: con 60 opciones L3 tenía p99 ≈ 120 s y solo opinaba en el 2,9 % de los casos (bench l3 de model/); la
 	// salida y la entrada del LLM crecen con las opciones.
 	L3TopKPorDefecto = 8
-	maxRespuestaL3             = 1 << 20 // bytes leídos de la respuesta del LLM
+	maxRespuestaL3   = 1 << 20 // bytes leídos de la respuesta del LLM
 )
 
 // Duracion es un time.Duration que en JSON admite "10s" o un número de segundos.

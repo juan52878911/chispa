@@ -31,7 +31,7 @@ type Resultado struct {
 	// UnkPct: fracción de tokens <unk> del texto (la mayor entre las capas que tokenizaron); no sale si ninguna tokenizó.
 	UnkPct *float64 `json:"unk_pct,omitempty"`
 	Ms     float64  `json:"ms"`
-	Nonce          string  `json:"nonce,omitempty"`
+	Nonce  string   `json:"nonce,omitempty"`
 	// Incompleto: una capa falló o el ctx se canceló; no debe guardarse bajo un nonce.
 	Incompleto bool `json:"-"`
 }
