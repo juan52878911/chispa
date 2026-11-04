@@ -10,7 +10,8 @@ type SenalTexto struct {
 	Truncado    bool
 }
 
-// ConSenales lo implementan las capas que tokenizan el texto (L1 y L2). ok=false si la capa no tokeniza (stub, sin tokenizador).
+// ConSenales lo implementan las capas que dan la señal aparte de su respuesta (L2, cuyo coste lo domina el ONNX); L1 la deja
+// en Respuesta.Senal al tokenizar. ok=false si la capa no tokeniza (stub, sin tokenizador).
 type ConSenales interface {
 	Senales(texto string) (s SenalTexto, ok bool)
 }
@@ -26,15 +27,6 @@ func (e TokenizadorE5) Senales(texto string) SenalTexto {
 	return SenalTexto{Tokens: n, Unk: unk, Truncado: trunc}
 }
 
-// Senales de L1: con «trozos» el texto se lee entero (no se trunca); con «cabeza» o «cabeza_cola» sí se pierde una parte.
-func (l *L1) Senales(texto string) (SenalTexto, bool) {
-	if l == nil || l.m == nil {
-		return SenalTexto{}, false
-	}
-	n, unk, trunc := l.m.Senales(texto)
-	return SenalTexto{Tokens: n, Unk: unk, Truncado: trunc && !leeEntero(l.largo)}, true
-}
-
 // Senales de L2: las del tokenizador de la consulta, si sabe contar.
 func (l *L2) Senales(texto string) (SenalTexto, bool) {
 	if l == nil || l.tok == nil {
@@ -44,7 +36,7 @@ func (l *L2) Senales(texto string) (SenalTexto, bool) {
 	if !ok {
 		return SenalTexto{}, false
 	}
-	s := ts.Senales(texto)
+	s := ts.Senales(NormalizarMayusculas(texto)) // lo mismo que tokeniza L2
 	s.Truncado = s.Truncado && !leeEntero(l.largo)
 	return s, true
 }

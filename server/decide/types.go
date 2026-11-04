@@ -44,6 +44,9 @@ type Respuesta struct {
 	EsquemaNuevo bool
 	// Incompleto: la capa no opinó por una causa pasajera (p. ej. presupuesto de L3 agotado); la cascada no cachea esa escalada.
 	Incompleto bool
+	// Senal: lo que la capa vio del texto al tokenizarlo (tokens, <unk>, truncado); nil = no lo dice. Interno: la cascada lo
+	// resume en truncado, tokens_originales y unk_pct.
+	Senal *SenalTexto
 	// SinPresupuestoTorres: Incompleto por agotar el presupuesto de torres nuevas (de la petición o por segundo). Interno.
 	SinPresupuestoTorres bool
 }
