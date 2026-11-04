@@ -193,6 +193,7 @@ class Tope(unittest.TestCase):
     def test_sondeo_peor_trozo_rellena_a_max_tok(self):
         with tempfile.TemporaryDirectory() as d:
             m = modelo(d)
+            m.max_tok = 32   # el diminuto solo tiene 128 posiciones
             res = EN.sondeo(m, 5, max_tokens=4 * m.max_tok)
             self.assertTrue(res["ok"])
             self.assertEqual([(t["filas"], t["secuencias"]) for t in res["trozos"]], [(1, 5), (2, 4)])

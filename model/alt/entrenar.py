@@ -165,6 +165,13 @@ def sondeo(modelo, max_opciones, max_tokens=MAX_TOKENS, peso_blanda=0.5, bf16=Fa
     return res
 
 
+def construir(a, dis):
+    modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
+    if a.recomputar:   # sin él, 150 opciones × 256 tokens (≈ 38 000) no caben en los 22 GiB de la A10G
+        modelo.enc.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+    return modelo
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--datos", required=True, help="raíz con los ficheros del manifiesto")
@@ -186,6 +193,7 @@ def main(argv=None):
     ap.add_argument("--max-tokens", type=int, default=MAX_TOKENS, help="tokens con relleno por pasada; el lote se acumula en trozos")
     ap.add_argument("--max-dev", type=int, default=2000)
     ap.add_argument("--dispositivo", default="auto")
+    ap.add_argument("--recomputar", action="store_true", help="gradient checkpointing: ≈ 10× menos memoria de activaciones (medido en CPU), más lento")
     ap.add_argument("--sondeo", metavar="RESUMEN", help="solo un paso con el peor trozo posible; escribe el pico de memoria en RESUMEN")
     a = ap.parse_args(argv)
     if a.sondeo:
@@ -203,7 +211,7 @@ def main(argv=None):
     train = tope_por_tarea(train, a.tope_tarea, a.semilla)
     dev = random.Random(a.semilla).sample(dev, min(a.max_dev, len(dev)))
     dis = ("cuda" if torch.cuda.is_available() else "cpu") if a.dispositivo == "auto" else a.dispositivo
-    modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
+    modelo = construir(a, dis)
     print("train %d filas, dev %d, dispositivo %s" % (len(train), len(dev), dis))
     entrenar(modelo, m, train, dev, a.salida, a.epocas, a.lote, a.lr, a.pasos, a.peso_blanda, a.semilla,
              minutos=a.minutos, bf16=a.bf16, max_tokens=a.max_tokens)
@@ -221,8 +229,8 @@ def main_sondeo(a):
     k = max(len(r["opciones"]) for r in tope_por_tarea(train, a.tope_tarea, a.semilla))
     fijar_semilla(a.semilla)
     dis = ("cuda" if torch.cuda.is_available() else "cpu") if a.dispositivo == "auto" else a.dispositivo
-    modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
-    res = dict(sondeo(modelo, k, a.max_tokens, a.peso_blanda, a.bf16, a.lr), codificador=a.codificador)
+    modelo = construir(a, dis)
+    res = dict(sondeo(modelo, k, a.max_tokens, a.peso_blanda, a.bf16, a.lr), codificador=a.codificador, recomputar=a.recomputar)
     Path(a.sondeo).write_text(json.dumps(res, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(res, ensure_ascii=False))
     return 0 if res["ok"] else 3
