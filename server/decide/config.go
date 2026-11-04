@@ -80,6 +80,9 @@ type Config struct {
 	// CapasExplicitas: el JSON de la config trae «capas». Solo entonces sus τ de L1 y L2 cuentan frente a los de CALIB, y solo para
 	// subirlos (ArmarDesde); sin «capas» (también con «{}») el τ es el de CALIB, igual que sin -config. Lo fija CargarConfig.
 	CapasExplicitas bool `json:"-"`
+	// TorreFichero: otro .chispa del que se toma solo la sección TORR para las torres al vuelo (p. ej. el del perfil movil-int8,
+	// con la torre int8, frente a la fp32 del perfil servidor). Debe ser compatible con la TORR del -modelo; ausente = la del -modelo.
+	TorreFichero string `json:"torre_fichero,omitempty"`
 }
 
 // TauL2EsquemaNuevoPorDefecto: τ de L2 para esquemas nuevos cuando ni la config ni CALIB lo dicen. Punto prudente medido sobre
