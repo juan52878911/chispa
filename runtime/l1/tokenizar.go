@@ -169,3 +169,21 @@ func (m *Modelo) viterbi(s string, ids []int32) []int32 {
 }
 
 var _ = utf8.RuneError
+
+// Senales cuenta los tokens del texto sin el tope de tokens ni el recorte de texto del modelo (acotado al recorte máximo) y
+// cuántos son el <unk>; truncado dice si TokenizarTruncado lo recortaría. Para las señales de la respuesta (truncado, unk_pct).
+func (m *Modelo) Senales(texto string) (tokens, unk int, truncado bool) {
+	ids := m.TokenizarSinTope(texto, 0)
+	_, truncado = m.TokenizarTruncado(texto)
+	return len(ids), m.ContarUnk(ids), truncado
+}
+
+// ContarUnk cuenta cuántos ids son el <unk> del modelo.
+func (m *Modelo) ContarUnk(ids []int32) (n int) {
+	for _, id := range ids {
+		if int(id) == m.p.UnkID {
+			n++
+		}
+	}
+	return n
+}

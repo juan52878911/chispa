@@ -94,6 +94,10 @@ class Resultado:
     ms: float = 0.0
     nonce: Optional[str] = None
     answers: Optional[List[str]] = None  # solo en multi: las opciones activas (p ≥ θ), en el orden de la pregunta; [] si ninguna
+    calibrada: Optional[bool] = None  # la capa que contestó tiene calibración (False = confianza cruda); None al escalar o servidor antiguo
+    truncado: bool = False  # alguna capa vio solo una parte del texto
+    tokens_originales: Optional[int] = None  # con truncado: tokens del texto entero
+    unk_pct: Optional[float] = None  # fracción de tokens <unk> del texto; None si ninguna capa tokenizó o servidor antiguo
     escalate_reason: str = ""  # solo si escalate: "sin_opinion" (ninguna capa opinó), "score_ids_no_validos", "baja_confianza" o "incompleta" (fallo o sin plazo/presupuesto); "" si no se sabe (servidor anterior)
 
     @classmethod
@@ -101,7 +105,9 @@ class Resultado:
         return cls(id=d["id"], kind=d["kind"], answer=d.get("answer", ""), probs=dict(d.get("probs") or {}),
                    layer=d.get("layer", ""), escalate=bool(d.get("escalate", False)), ms=float(d.get("ms", 0.0)),
                    nonce=d.get("nonce"), answers=list(d["answers"]) if d.get("answers") is not None else None,
-                   escalate_reason=d.get("escalate_reason") or "")
+                   escalate_reason=d.get("escalate_reason") or "", calibrada=d.get("calibrada"),
+                   truncado=bool(d.get("truncado", False)), tokens_originales=d.get("tokens_originales"),
+                   unk_pct=float(d["unk_pct"]) if d.get("unk_pct") is not None else None)
 
     @property
     def verdadero(self) -> Optional[bool]:

@@ -324,7 +324,11 @@ func TestContratoJSONConL1(t *testing.T) {
 			t.Errorf("falta el campo %q: %v", k, r)
 		}
 	}
-	if r["layer"] != "L1" || r["answer"] != "facturacion" || r["escalate"] != false || r["nonce"] != "n1" || len(r) != 8 {
+	// unk_pct es un campo opcional nuevo (L1 tokenizó el texto); los demás siguen siendo los mismos ocho.
+	if u, ok := r["unk_pct"].(float64); !ok || u < 0 || u > 1 {
+		t.Errorf("unk_pct: %v", r["unk_pct"])
+	}
+	if r["layer"] != "L1" || r["answer"] != "facturacion" || r["escalate"] != false || r["nonce"] != "n1" || len(r) != 9 {
 		t.Fatalf("%v", r)
 	}
 	if w = post(h, `{"questions":[{"id":"1","question":"q","kind":"nope"}]}`); w.Code != 400 {
