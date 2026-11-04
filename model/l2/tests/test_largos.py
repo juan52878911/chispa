@@ -78,6 +78,24 @@ class Ventanas(unittest.TestCase):
         with self.assertRaises(ValueError):
             L.ventanas(PREF, cuerpo(100), self.MAX, "nada")
 
+    def test_cabeza128_cola512(self):
+        e = L.CABEZA128_COLA512
+        self.assertNotIn(e, L.ESTRATEGIAS)                      # el informe de siempre no cambia
+        total = 512 - 2 - len(PREF)                              # 508 tokens de cuerpo
+        # corto (cabe en max_tok): igual que todas las demás
+        c = cuerpo(36)
+        self.assertEqual(L.ventanas(PREF, c, self.MAX, e), [PREF + c])
+        # largo pero cabe en 512: el cuerpo entero
+        c = cuerpo(300)
+        self.assertEqual(L.ventanas(PREF, c, self.MAX, e), [PREF + c])
+        # largo de verdad: 128 de cabeza + el resto de cola hasta 512 con prefijo y especiales
+        c = cuerpo(2000)
+        (w,) = L.ventanas(PREF, c, self.MAX, e)
+        self.assertEqual(len(w) + 2, 512)
+        self.assertEqual(w[:2], PREF)
+        self.assertEqual(w[2:130], c[:128])
+        self.assertEqual(w[130:], c[-(total - 128):])
+
 
 class Agregacion(unittest.TestCase):
     def test_max_media_primera(self):
