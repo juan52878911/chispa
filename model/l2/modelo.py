@@ -6,6 +6,7 @@ sim(h) = max_k softplus(h · s_k) (MaxSim). Diseño del orquestador: plan/fase-2
 T2.1b (few-shot): con `protos` (prototipos por clase a partir de ejemplos de soporte) la puntuación pasa a ser
 sim_opción(c) + β · simproto(c); sin `protos` (o con β = 0) es exactamente la de la ronda 1. Ver `prototipos`.
 """
+import contextlib
 import hashlib
 import math
 import os
@@ -82,6 +83,29 @@ def clave_cabeza(fila):
     return "score%d" % len(fila["opciones"]) if fila["tipo"] == "score" else fila["tipo"]
 
 
+def ruidificar_ids(ids, mascara, protegidos, p, vocab, mask_id, especiales, gen):
+    """E3, ruido de condicionamiento: cada token elegible de `ids` (B,T) se sustituye con probabilidad `p` por <mask> (la mitad de las
+    veces) o por un token al azar del vocabulario (la otra mitad). No se toca nada fuera de `mascara`, ningún id de `especiales`
+    (<s>, </s>, <pad>, <unk>, <mask>) ni las posiciones de `protegidos` (B,T) bool, que son los prefijos «query: »/«passage: ».
+    El azar sale de `gen` (torch.Generator), no del estado global. Con p = 0 devuelve `ids` tal cual."""
+    if p <= 0:
+        return ids
+    esp = torch.tensor(sorted(especiales), dtype=ids.dtype)           # el azar se saca en CPU, de `gen`, y luego pasa al dispositivo
+    elegible = mascara.bool() & ~protegidos & ~torch.isin(ids, esp.to(ids.device))
+    u = torch.rand(ids.shape, generator=gen)
+    mitad = torch.rand(ids.shape, generator=gen) < 0.5
+    azar = torch.randint(0, vocab, ids.shape, generator=gen, dtype=ids.dtype)
+    for _ in range(20):    # un token al azar no puede ser especial
+        malo = torch.isin(azar, esp)
+        if not malo.any():
+            break
+        azar = torch.where(malo, torch.randint(0, vocab, ids.shape, generator=gen, dtype=ids.dtype), azar)
+    azar = torch.where(torch.isin(azar, esp), torch.full_like(azar, mask_id), azar)
+    cambia = (u < p).to(ids.device) & elegible
+    nuevo = torch.where(mitad.to(ids.device), torch.full_like(ids, mask_id), azar.to(ids.device))
+    return torch.where(cambia, nuevo, ids)
+
+
 class Codificador:
     """e5: estados de token del mensaje y vector de pasaje (media normalizada) con caché por hash del texto.
 
@@ -93,6 +117,7 @@ class Codificador:
     """
 
     n_desc = 0  # valor por defecto para subclases que no llaman a __init__
+    ruido_p, _ruido_on = 0.0, False  # E3: ver `con_ruido`; sin ruido por defecto (también en las subclases de pruebas)
 
     def __init__(self, ruta=None, device="cpu", max_tok=MAX_TOK, cache_max=400_000, cache_mensajes=False, descongelar=0):
         from transformers import AutoModel, AutoTokenizer
@@ -113,6 +138,32 @@ class Codificador:
         self.cache_max = cache_max
         self.msgs = {} if (cache_mensajes and not descongelar) else None  # estados de token por mensaje: solo pruebas en seco
         self.aciertos = self.fallos = 0
+
+    def configurar_ruido(self, p, semilla=0):
+        """E3: probabilidad `p` de ruido por token, con su propio generador (el orden de los datos y el resto del azar no cambian)."""
+        self.ruido_p = float(p)
+        self._gen_ruido = torch.Generator().manual_seed(int(semilla))
+
+    @contextlib.contextmanager
+    def con_ruido(self):
+        """Dentro del bloque, mensajes y textos de opción se ensucian (solo entrenamiento). Fuera, e inferencia, nada cambia."""
+        self._ruido_on = self.ruido_p > 0
+        try:
+            yield
+        finally:
+            self._ruido_on = False
+
+    def _ensuciar(self, b, textos):
+        n_pref = {pref: len(self.tok(pref, add_special_tokens=False)["input_ids"]) for pref in ("query: ", "passage: ")}
+        prot = torch.zeros_like(b["input_ids"], dtype=torch.bool)
+        for i, t in enumerate(textos):
+            for pref, n in n_pref.items():
+                if t.startswith(pref):
+                    prot[i, 1:1 + n] = True    # tras <s>
+                    break
+        b["input_ids"] = ruidificar_ids(b["input_ids"], b["attention_mask"], prot.to(b["input_ids"].device), self.ruido_p,
+                                        len(self.tok), self.tok.mask_token_id, self.tok.all_special_ids, self._gen_ruido)
+        return b
 
     def parametros_entrenables(self):
         return [p for p in self.enc.parameters() if p.requires_grad]
@@ -138,6 +189,8 @@ class Codificador:
 
     def _pase(self, textos):
         b = self.tok(textos, padding=True, truncation=True, max_length=self.max_tok, return_tensors="pt").to(self.device)
+        if self._ruido_on:
+            b = self._ensuciar(b, textos)
         with torch.autocast(self.device.split(":")[0], dtype=torch.bfloat16, enabled=self.device != "cpu"):
             h = self.enc(**b).last_hidden_state
         return h.float(), b["attention_mask"].bool()
@@ -146,7 +199,7 @@ class Codificador:
         """Estados de la última capa H (B,T,384) y máscara (B,T) de «query: » + texto."""
         textos = [normalizar_mayusculas(t) for t in textos]
         with torch.set_grad_enabled(self._con_grad()):
-            if self.msgs is None:
+            if self.msgs is None or self._ruido_on:
                 return self._pase(["query: " + t for t in textos])
             falta = [t for t in dict.fromkeys(textos) if t not in self.msgs]
             if falta:
@@ -180,6 +233,9 @@ class Codificador:
         if self._con_grad():
             self.fallos += len(textos)
             return self._vectores(textos)
+        if self._ruido_on:  # textos ensuciados: ni se leen ni se escriben en la caché de vectores limpios
+            with torch.no_grad():
+                return self._vectores(textos).to(self.device)
         with torch.no_grad():
             claves = [self.hash(t) for t in textos]
             nuevos = {}
@@ -342,12 +398,146 @@ class Coral(nn.Module):
         return (p * torch.arange(1, p.shape[1] + 1, device=p.device, dtype=p.dtype)).sum(-1)
 
 
+# `coral1` = la cabeza de siempre (un escalar: la similitud con el texto de torre del nivel máximo). Las otras tres reciben el vector
+# x ∈ R^K de las K similitudes, una por texto de torre de nivel (en orden de nivel, el último es el del escalar de `coral1`).
+CABEZAS_SCORE = ("coral1", "coral", "acumulados", "grueso_fino")
+
+
+def textos_torre_fila(fila, version="v1", cabeza_score="coral1"):
+    """Textos de torre de una fila: choice, uno por opción; noul, el de «true»; score, el del nivel máximo (`coral1`) o uno por nivel, en
+    orden de nivel (las cabezas de vector). Los textos se repiten con los de otras filas y comparten caché."""
+    if fila["tipo"] == "choice":
+        return [texto_opcion(fila, o, version) for o in fila["opciones"]]
+    if fila["tipo"] == "score" and cabeza_score != "coral1":
+        return [texto_opcion(fila, n, version) for n in niveles_score(fila["opciones"])]
+    return [texto_consulta(fila, version)]
+
+
+def _ultimo(k, valor=1.0):
+    v = torch.zeros(k)
+    v[-1] = valor
+    return v
+
+
+class CoralV(nn.Module):
+    """CORAL sobre el vector x (B,K): z = v·x, P(y>j) = σ(w·z − θ_j), con los umbrales ordenados de `Coral`. Con v = (0,…,0,1) (el init)
+    es exactamente `Coral` sobre el escalar del nivel máximo, así que un checkpoint `coral1` se convierte sin cambiar la función."""
+
+    def __init__(self, niveles):
+        super().__init__()
+        self.niveles = niveles
+        self.v = nn.Parameter(_ultimo(niveles))
+        self.w = nn.Parameter(torch.tensor(4.0))
+        self.theta1 = nn.Parameter(torch.tensor(2.0))
+        self.delta = nn.Parameter(torch.zeros(niveles - 2))
+
+    def umbrales(self):
+        return torch.cat([self.theta1.view(1), self.theta1 + torch.cumsum(F.softplus(self.delta), 0)])
+
+    def acumuladas(self, x):
+        return torch.sigmoid(self.w * (x * self.v).sum(-1, keepdim=True) - self.umbrales())
+
+    def forward(self, x):
+        sup = self.acumuladas(x)
+        uno = torch.ones_like(sup[:, :1])
+        return (torch.cat([uno, sup], 1) - torch.cat([sup, 0 * uno], 1)).clamp(min=0)
+
+
+class AcumuladosV(nn.Module):
+    """Logits acumulados con pesos propios por umbral sobre todo el vector: P(y > j) = σ(W_j·x − θ_j), W (K−1,K). La monotonía se fuerza
+    con un mínimo acumulado sobre j (P(y>j) = min_{m≤j} σ(W_m·x − θ_m)), de modo que la distribución nunca sale negativa. Init: W_j = 4·e_K
+    y θ_j como `Coral`: parte de la misma función que `coral1`."""
+
+    def __init__(self, niveles):
+        super().__init__()
+        self.niveles = niveles
+        self.W = nn.Parameter(4.0 * torch.stack([_ultimo(niveles)] * (niveles - 1)))
+        self.theta = nn.Parameter(2.0 + F.softplus(torch.zeros(1)) * torch.arange(niveles - 1, dtype=torch.float))
+
+    def umbrales(self):
+        return self.theta
+
+    def acumuladas(self, x):
+        return torch.cummin(torch.sigmoid(x @ self.W.T - self.theta), dim=1).values
+
+    def forward(self, x):
+        sup = self.acumuladas(x)
+        uno = torch.ones_like(sup[:, :1])
+        return (torch.cat([uno, sup], 1) - torch.cat([sup, 0 * uno], 1)).clamp(min=0)
+
+
+def bloques_gruesos(niveles, n=3):
+    """Tamaños de los (hasta) `n` bloques contiguos de niveles de la cabeza gruesa: reparto lo más parejo posible, los primeros
+    bloques se quedan el resto (K=4 → 2,1,1; K=5 → 2,2,1; K=3 → 1,1,1). Con K < n hay K bloques de un nivel."""
+    n = min(n, niveles)
+    return [niveles // n + (i < niveles % n) for i in range(n)]
+
+
+class GruesoFinoV(nn.Module):
+    """P(nivel) = P(bloque)·P(nivel | bloque) sobre el vector x (B,K).
+    Gruesa: softmax de 3 logits A_b·x + c_b (bajo/medio/alto = 3 bloques contiguos de niveles). Fina: un softmax por bloque con
+    U_i·x + v_i entre sus niveles (un bloque de un solo nivel no tiene cabeza fina). Init: solo la columna del nivel máximo, con
+    pendientes crecientes con el bloque/nivel (como CORAL con w = 4); el resto de niveles entra con peso 0 y lo aprende el ajuste.
+    Pérdida: -log P(nivel) = CE(gruesa) + CE(fina | bloque), es decir la CE de las dos cabezas ya es la del producto: `ModeloL2`
+    usa -log de la distribución devuelta y no necesita un término aparte. La etiqueta evaluada es la misma regla que CORAL: la
+    mediana de esa distribución (`metricas.etiqueta_coral`)."""
+
+    def __init__(self, niveles):
+        super().__init__()
+        self.niveles = niveles
+        self.tam = bloques_gruesos(niveles)
+        nb = len(self.tam)
+        self.A = nn.Parameter(torch.zeros(nb, niveles))
+        self.c = nn.Parameter(torch.zeros(nb))
+        self.U = nn.Parameter(torch.zeros(niveles, niveles))
+        self.v = nn.Parameter(torch.zeros(niveles))
+        with torch.no_grad():
+            if nb > 1:
+                self.A[:, -1] = torch.linspace(-4.0, 4.0, nb)
+            ini = 0
+            for m in self.tam:
+                if m > 1:
+                    self.U[ini:ini + m, -1] = torch.linspace(-2.0, 2.0, m)
+                ini += m
+
+    def forward(self, x):
+        """x (B,K) → distribución (B,K) en el orden de los niveles."""
+        pb = F.softmax(x @ self.A.T + self.c, -1)   # (B,nb)
+        z = x @ self.U.T + self.v                   # (B,K)
+        out, ini = [], 0
+        for b, m in enumerate(self.tam):
+            out.append(pb[:, b:b + 1] * F.softmax(z[:, ini:ini + m], -1))
+            ini += m
+        return torch.cat(out, 1)
+
+    def acumuladas(self, x):
+        return (1 - torch.cumsum(self.forward(x), 1))[:, :-1]
+
+
+def convertir_coral1(estado, pref, niveles, destino):
+    """Pesos de la cabeza `destino` (coral | acumulados) equivalentes a los de un `Coral` (coral1) del checkpoint, o {} si no hay
+    equivalente (grueso_fino)."""
+    c = Coral(niveles)
+    c.load_state_dict({k: estado[pref + "." + k] for k in ("w", "theta1", "delta")})
+    if destino == "coral":
+        return {pref + ".v": _ultimo(niveles)}
+    if destino == "acumulados":
+        return {pref + ".W": c.w.detach() * torch.stack([_ultimo(niveles)] * (niveles - 1)), pref + ".theta": c.umbrales().detach().clone()}
+    return {}
+
+
+CLASES_CABEZA = {"coral1": Coral, "coral": CoralV, "acumulados": AcumuladosV, "grueso_fino": GruesoFinoV}
+
+
 class ModeloL2(nn.Module):
     """Parte entrenable de L2 (el codificador e5 va aparte, congelado)."""
 
-    def __init__(self, k=K_RANURAS, d=D, texto_torre="v1"):
+    def __init__(self, k=K_RANURAS, d=D, texto_torre="v1", cabeza_score="coral1"):
         super().__init__()
+        if cabeza_score not in CABEZAS_SCORE:
+            raise ValueError("cabeza_score %r desconocida (hay %s)" % (cabeza_score, ", ".join(CABEZAS_SCORE)))
         self.texto_torre = texto_torre  # versión del texto de torre (configuración del modelo; va en el checkpoint)
+        self.cabeza_score = cabeza_score  # tipo de cabeza de score (configuración del modelo; va en el checkpoint; los antiguos son coral)
         self.ranuras = Ranuras(k, DIM_E5, d)
         self.torre = Torre(DIM_E5, d)
         self.log_t = nn.ParameterDict({"choice": nn.Parameter(torch.tensor(math.log(0.02)))})
@@ -361,11 +551,33 @@ class ModeloL2(nn.Module):
         for k, v in self.state_dict().items():
             if k.startswith("beta.") and k not in estado:
                 estado[k] = v
+        if self.cabeza_score != "coral1":
+            estado = self._de_coral(estado)
         return super().load_state_dict(estado, strict)
+
+    def _de_coral(self, estado):
+        """Un checkpoint `coral1` cargado en un modelo con otra cabeza: `coral` y `acumulados` se convierten exactos (misma función);
+        `grueso_fino` no tiene equivalente y arranca con su init. Un estado que ya trae la cabeza nueva no cambia."""
+        for k in [k for k in estado if k.startswith("coral.") and k.endswith(".theta1")]:
+            pref = k[:-len(".theta1")]
+            if pref + ".v" in estado:
+                if self.cabeza_score != "coral":
+                    raise ValueError("el checkpoint tiene una cabeza coral de vector y se pide %s: no hay conversión" % self.cabeza_score)
+                continue    # ya es de vector
+            n = int(pref.split(".")[1][5:])
+            conv = convertir_coral1(estado, pref, n, self.cabeza_score)
+            if self.cabeza_score != "coral":     # coral de vector conserva w, theta1 y delta; las otras no los tienen
+                for g in ("w", "theta1", "delta"):
+                    estado.pop(pref + "." + g)
+            estado.update(conv)    # después de quitar las de coral1: `w` se llama igual en varias cabezas
+            for k2, v in self.state_dict().items():
+                if k2.startswith(pref + ".") and k2 not in estado:
+                    estado[k2] = v
+        return estado
 
     def asegurar_cabeza(self, clave, device=None):
         if clave.startswith("score") and clave not in self.coral:
-            self.coral[clave] = Coral(int(clave[5:])).to(device or self.ranuras.q.device)
+            self.coral[clave] = CLASES_CABEZA[self.cabeza_score](int(clave[5:])).to(device or self.ranuras.q.device)
 
     def parametros_cabezas(self):
         return [*self.log_t.parameters(), *self.ab.parameters(), *self.coral.parameters(), *self.beta.parameters()]
@@ -400,7 +612,7 @@ class ModeloL2(nn.Module):
         S = self.ranuras(H.to(dev), m.to(dev))
         textos, pos, fila_txt = [], {}, []
         for r in filas:
-            ts = [texto_opcion(r, o, self.texto_torre) for o in r["opciones"]] if r["tipo"] == "choice" else [texto_consulta(r, self.texto_torre)]
+            ts = textos_torre_fila(r, self.texto_torre, self.cabeza_score)
             ix = []
             for t in ts:
                 if t not in pos:
@@ -437,7 +649,10 @@ class ModeloL2(nn.Module):
                 # CORAL se indexa por el nivel (orden por int), no por la posición declarada; se devuelve en el orden de `opciones`
                 if sp is not None:  # el soporte llega en el orden declarado; el linspace de `_ajuste` va por nivel
                     sp = sp[torch.tensor([ops.index(n) for n in niv], device=sp.device)]
-                pn = self.coral["score%d" % len(ops)](s[:1] + self._ajuste(sp, "score"))[0]
+                if self.cabeza_score == "coral1":
+                    pn = self.coral["score%d" % len(ops)](s[:1] + self._ajuste(sp, "score"))[0]
+                else:   # el vector de las K similitudes, una por nivel (en orden de nivel); el soporte entra por nivel, con el mismo β
+                    pn = self.coral["score%d" % len(ops)]((s if sp is None else s + self.beta["score"] * sp).unsqueeze(0))[0]
                 ce = -torch.log(pn[niv.index(r["etiqueta"])].clamp(min=1e-7))
                 p = pn[torch.tensor([niv.index(o) for o in ops], device=pn.device)]
             probs.append(p)
