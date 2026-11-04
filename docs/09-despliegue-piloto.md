@@ -51,7 +51,7 @@ Rotar: añade la clave nueva con otro `id`, recarga (§9), mueve al consumidor y
 
 ## 4. Configuración completa de ejemplo
 `config.json`. **Claves desconocidas hacen fallar el arranque** (`DisallowUnknownFields`), así que una errata no pasa en silencio.
-Lo que no escribas queda en el valor por defecto de `ConfigPorDefecto()`. Sin comentarios: JSON estricto.
+Lo que no escribas queda en el valor por defecto de `ConfigPorDefecto()`. Sin comentarios: JSON estricto. Si el `.chispa` trae CALIB, los τ de L1 y L2 de `capas` solo cuentan si son mayores que los de CALIB (ver [03](03-api.md#configuración--config)): quita `capas` para usar los calibrados.
 
 ```json
 {
