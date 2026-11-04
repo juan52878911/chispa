@@ -1,0 +1,182 @@
+{
+ "clinc150": {
+  "global": {
+   "n": 5500,
+   "exactitud": 0.3185454545454545,
+   "macro_f1": 0.34359721537855287,
+   "ece": 0.0660751923117832,
+   "brier": 0.8290830824325993,
+   "cobertura_p95": {
+    "cobertura": 0.03890909090909091,
+    "umbral": 0.7620723264876768
+   },
+   "cobertura_p99": {
+    "cobertura": 0.013818181818181818,
+    "umbral": 0.8740329135607043
+   },
+   "auroc_escalate": 0.7539857777777778
+  },
+  "por_tarea": {
+   "intencion": {
+    "n": 5500,
+    "exactitud": 0.3185454545454545,
+    "macro_f1": 0.34359721537855287,
+    "ece": 0.0660751923117832,
+    "brier": 0.8290830824325993,
+    "cobertura_p95": {
+     "cobertura": 0.03890909090909091,
+     "umbral": 0.7620723264876768
+    },
+    "cobertura_p99": {
+     "cobertura": 0.013818181818181818,
+     "umbral": 0.8740329135607043
+    },
+    "auroc_escalate": 0.7539857777777778
+   }
+  }
+ },
+ "hatecheck": {
+  "global": {
+   "n": 361,
+   "exactitud": 0.5595567867036011,
+   "macro_f1": 0.5391304347826087,
+   "ece": 0.21416059365599907,
+   "brier": 0.5654159923507961,
+   "cobertura_p95": {
+    "cobertura": 0.060941828254847646,
+    "umbral": 0.9543086329621697
+   },
+   "cobertura_p99": {
+    "cobertura": 0.0221606648199446,
+    "umbral": 0.9692534165793268
+   },
+   "auroc_escalate": null
+  },
+  "por_tarea": {
+   "toxicidad": {
+    "n": 361,
+    "exactitud": 0.5595567867036011,
+    "macro_f1": 0.5391304347826087,
+    "ece": 0.21416059365599907,
+    "brier": 0.5654159923507961,
+    "cobertura_p95": {
+     "cobertura": 0.060941828254847646,
+     "umbral": 0.9543086329621697
+    },
+    "cobertura_p99": {
+     "cobertura": 0.0221606648199446,
+     "umbral": 0.9692534165793268
+    },
+    "auroc_escalate": null
+   }
+  }
+ },
+ "inyecciones": {
+  "global": {
+   "n": 116,
+   "exactitud": 0.7068965517241379,
+   "macro_f1": 0.6979166666666667,
+   "ece": 0.10475483644298691,
+   "brier": 0.35546424213549216,
+   "cobertura_p95": {
+    "cobertura": 0.05172413793103448,
+    "umbral": 0.930048469902192
+   },
+   "cobertura_p99": {
+    "cobertura": 0.05172413793103448,
+    "umbral": 0.930048469902192
+   },
+   "auroc_escalate": null
+  },
+  "por_tarea": {
+   "inyeccion": {
+    "n": 116,
+    "exactitud": 0.7068965517241379,
+    "macro_f1": 0.6979166666666667,
+    "ece": 0.10475483644298691,
+    "brier": 0.35546424213549216,
+    "cobertura_p95": {
+     "cobertura": 0.05172413793103448,
+     "umbral": 0.930048469902192
+    },
+    "cobertura_p99": {
+     "cobertura": 0.05172413793103448,
+     "umbral": 0.930048469902192
+    },
+    "auroc_escalate": null
+   }
+  }
+ },
+ "massive": {
+  "global": {
+   "n": 2974,
+   "exactitud": 0.4583053127101547,
+   "macro_f1": 0.46648723256630925,
+   "ece": 0.15858491628134766,
+   "brier": 0.7199154208828739,
+   "cobertura_p95": {
+    "cobertura": 0.023537323470073975,
+    "umbral": 0.7947441829294708
+   },
+   "cobertura_p99": {
+    "cobertura": 0.01546738399462004,
+    "umbral": 0.8344397387229328
+   },
+   "auroc_escalate": null
+  },
+  "por_tarea": {
+   "intencion": {
+    "n": 2974,
+    "exactitud": 0.4583053127101547,
+    "macro_f1": 0.46648723256630925,
+    "ece": 0.15858491628134766,
+    "brier": 0.7199154208828739,
+    "cobertura_p95": {
+     "cobertura": 0.023537323470073975,
+     "umbral": 0.7947441829294708
+    },
+    "cobertura_p99": {
+     "cobertura": 0.01546738399462004,
+     "umbral": 0.8344397387229328
+    },
+    "auroc_escalate": null
+   }
+  }
+ },
+ "spam": {
+  "global": {
+   "n": 1450,
+   "exactitud": 0.9220689655172414,
+   "macro_f1": 0.9208629584068073,
+   "ece": 0.04569903963309124,
+   "brier": 0.12958650773474895,
+   "cobertura_p95": {
+    "cobertura": 0.896551724137931,
+    "umbral": 0.8730041436604614
+   },
+   "cobertura_p99": {
+    "cobertura": 0.5275862068965518,
+    "umbral": 0.993363404185263
+   },
+   "auroc_escalate": null
+  },
+  "por_tarea": {
+   "spam": {
+    "n": 1450,
+    "exactitud": 0.9220689655172414,
+    "macro_f1": 0.9208629584068073,
+    "ece": 0.04569903963309124,
+    "brier": 0.12958650773474895,
+    "cobertura_p95": {
+     "cobertura": 0.896551724137931,
+     "umbral": 0.8730041436604614
+    },
+    "cobertura_p99": {
+     "cobertura": 0.5275862068965518,
+     "umbral": 0.993363404185263
+    },
+    "auroc_escalate": null
+   }
+  }
+ }
+}
