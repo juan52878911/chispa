@@ -308,6 +308,30 @@ class Ruido(unittest.TestCase):
         self.assertTrue(torch.equal(torch.rand(1), x))
 
 
+class CacheDiscoCodificador(unittest.TestCase):
+    """La caché en disco devuelve lo mismo (en fp16) en la ejecución que la llena y en las que la leen, sin volver a pasar por e5."""
+
+    def test_segunda_ejecucion_lee_lo_mismo_sin_e5(self):
+        import tempfile
+        try:
+            Codificador(max_tok=48)
+        except Exception as e:      # sin e5 en la máquina
+            raise unittest.SkipTest("sin e5: %s" % e)
+        textos, ops = ["un mensaje de prueba", "otro mensaje algo más largo"], ["passage: opción uno", "passage: opción dos"]
+        with tempfile.TemporaryDirectory() as d:
+            a = Codificador(max_tok=48, cache_disco=d)
+            H1, m1 = a.tokens(textos)
+            v1 = a.pasaje(ops)
+            b = Codificador(max_tok=48, cache_disco=d)
+            b._pase = lambda *_: (_ for _ in ()).throw(AssertionError("no debería pasar por e5"))
+            H2, m2 = b.tokens(textos)
+            v2 = b.pasaje(ops)
+            self.assertTrue(torch.equal(H1, H2) and torch.equal(m1, m2) and torch.equal(v1, v2))
+            self.assertEqual(H1.dtype, torch.float32)
+        with self.assertRaises(ValueError):
+            Codificador(max_tok=48, cache_disco="x", descongelar=1)
+
+
 class RuidoCodificador(unittest.TestCase):
     """Con el tokenizador de e5 real (como `test_largos.ConModelo`)."""
 

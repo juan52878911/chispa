@@ -51,6 +51,8 @@ def args_entrenar(a, salida, pasos=None):
     if a.variante == "ruido":
         arg += ["--ruido-cond", str(a.ruido_p)]
     arg += ABLACIONES.get(a.variante, [])
+    if getattr(a, "cache_disco", None):   # por semilla: todas las variantes leen los estados e5 que escribió la primera
+        arg += ["--cache-disco", str(Path(a.cache_disco) / ("semilla-%d" % a.semilla))]
     return arg
 
 
@@ -73,6 +75,7 @@ def main(argv=None):
     ap.add_argument("--lote", type=int, default=64)
     ap.add_argument("--dev-max", type=int, default=500, help="filas de dev (solo para el log; no elige el checkpoint)")
     ap.add_argument("--device", default="cpu")
+    ap.add_argument("--cache-disco", help="raíz de la caché en disco de e5 (una subcarpeta por semilla)")
     ap.add_argument("--solo-tiempo", action="store_true", help="entrena %d pasos, mide s/paso y extrapola a --pasos (no evalúa JevBench)" % PASOS_TIEMPO)
     a = ap.parse_args(argv)
     if not a.solo_tiempo and not a.jevbench:

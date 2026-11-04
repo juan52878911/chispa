@@ -11,6 +11,7 @@ import hashlib
 import math
 import os
 from collections import OrderedDict
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -111,6 +112,36 @@ def ruidificar_ids(ids, mascara, protegidos, p, vocab, mask_id, especiales, gen)
     return torch.where(cambia, nuevo, ids)
 
 
+class CacheDisco:
+    """Diccionario texto → tensor en disco (fp16, un .pt por sha1 del texto), para compartir los estados de e5 congelado entre
+    ejecuciones: todas las variantes de una semilla ven las mismas filas y leen lo que escribió la primera. Lo escrito se
+    devuelve ya redondeado a fp16, así que la ejecución que llena la caché ve lo mismo que las que la leen."""
+
+    def __init__(self, directorio):
+        self.dir = Path(directorio)
+        self.dir.mkdir(parents=True, exist_ok=True)
+
+    def _ruta(self, texto):
+        h = hashlib.sha1(texto.encode("utf-8")).hexdigest()
+        return self.dir / h[:2] / (h + ".pt")
+
+    def __contains__(self, texto):
+        return self._ruta(texto).exists()
+
+    def __getitem__(self, texto):
+        return torch.load(self._ruta(texto)).float()
+
+    def __setitem__(self, texto, x):
+        r = self._ruta(texto)
+        r.parent.mkdir(exist_ok=True)
+        tmp = r.with_suffix(".tmp%d" % os.getpid())
+        torch.save(x.detach().cpu().half().clone(), tmp)
+        tmp.replace(r)
+
+    def clear(self):
+        raise RuntimeError("CacheDisco solo vale con e5 congelado: no se invalida")
+
+
 class Codificador:
     """e5: estados de token del mensaje y vector de pasaje (media normalizada) con caché por hash del texto.
 
@@ -122,9 +153,10 @@ class Codificador:
     """
 
     n_desc = 0  # valor por defecto para subclases que no llaman a __init__
+    disco = None  # sin caché en disco (también en las subclases de pruebas)
     ruido_p, _ruido_on = 0.0, False  # E3: ver `con_ruido`; sin ruido por defecto (también en las subclases de pruebas)
 
-    def __init__(self, ruta=None, device="cpu", max_tok=MAX_TOK, cache_max=400_000, cache_mensajes=False, descongelar=0):
+    def __init__(self, ruta=None, device="cpu", max_tok=MAX_TOK, cache_max=400_000, cache_mensajes=False, descongelar=0, cache_disco=None):
         from transformers import AutoModel, AutoTokenizer
         ruta = ruta or os.environ.get("CHISPA_E5") or E5
         kw = {"local_files_only": os.environ.get("HF_HUB_OFFLINE") == "1" or os.path.exists(os.path.expanduser("~/hf/hub"))}
@@ -142,6 +174,11 @@ class Codificador:
         self.cache = OrderedDict()
         self.cache_max = cache_max
         self.msgs = {} if (cache_mensajes and not descongelar) else None  # estados de token por mensaje: solo pruebas en seco
+        self.disco = None
+        if cache_disco:   # estados de token de los mensajes y vectores de pasaje en disco (experimentos con e5 congelado)
+            if descongelar:
+                raise ValueError("--cache-disco exige e5 congelado")
+            self.msgs, self.disco = CacheDisco(Path(cache_disco) / "mensajes"), CacheDisco(Path(cache_disco) / "pasajes")
         self.aciertos = self.fallos = 0
 
     def configurar_ruido(self, p, semilla=0):
@@ -211,12 +248,13 @@ class Codificador:
                 H, m = self._pase(["query: " + t for t in falta])
                 for t, h, k in zip(falta, H, m):
                     self.msgs[t] = h[k].cpu()
-            T = max(self.msgs[t].shape[0] for t in textos)
+            got = {t: self.msgs[t] for t in dict.fromkeys(textos)}   # una lectura por texto (en disco, ya en fp16)
+            T = max(got[t].shape[0] for t in textos)
             H = torch.zeros(len(textos), T, DIM_E5)
             m = torch.zeros(len(textos), T, dtype=torch.bool)
             for i, t in enumerate(textos):
-                n = self.msgs[t].shape[0]
-                H[i, :n], m[i, :n] = self.msgs[t], True
+                n = got[t].shape[0]
+                H[i, :n], m[i, :n] = got[t], True
             return H.to(self.device), m.to(self.device)
 
     @staticmethod
@@ -248,12 +286,18 @@ class Codificador:
                 if c in self.cache:
                     self.aciertos += 1
                     self.cache.move_to_end(c)
+                elif self.disco is not None and t in self.disco:
+                    self.aciertos += 1
+                    self.cache[c] = self.disco[t]
                 elif c not in nuevos:
                     nuevos[c] = t
             if nuevos:
                 self.fallos += len(nuevos)
                 v = self._vectores(list(nuevos.values())).cpu()
                 for k, x in zip(nuevos, v):
+                    if self.disco is not None:
+                        self.disco[nuevos[k]] = x
+                        x = x.half().float()
                     self.cache[k] = x
                 while len(self.cache) > self.cache_max:
                     self.cache.popitem(last=False)
