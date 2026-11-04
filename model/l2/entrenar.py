@@ -41,7 +41,7 @@ import torch
 from . import aumento as A
 from . import datos as D
 from .evaluar import macro_f1_medio, predecir
-from .modelo import MAX_TOK, TEXTOS_TORRE, Codificador, ModeloL2, SoporteEval, prototipos
+from .modelo import CABEZAS_SCORE, MAX_TOK, TEXTOS_TORRE, Codificador, ModeloL2, SoporteEval, prototipos
 
 CKPT_CADA_S = 600
 
@@ -219,6 +219,13 @@ def main(argv=None):
                     help="al final, mide el dev con soporte de k=2 para cada κ y deja el mejor en entrenamiento.json (`kappa_dev`)")
     ap.add_argument("--texto-torre", choices=TEXTOS_TORRE, default=None,
                     help="versión del texto de torre (contrato-torre.md). Con --desde fija la del modelo resultante; sin él, la del checkpoint de partida (v1 si no la trae)")
+    ap.add_argument("--cabeza-score", choices=CABEZAS_SCORE, default=None,
+                    help="cabeza de score: coral1 (la de siempre, un escalar), o sobre el vector de las K similitudes (una por texto de torre de nivel): coral, acumulados (W por umbral) o grueso_fino (3 bloques × nivel). "
+                         "Sin ella: la del checkpoint de --desde (coral1 si no la trae). Un checkpoint coral1 se convierte a coral y acumulados sin cambiar "
+                         "la función; grueso_fino arranca con su init")
+    ap.add_argument("--ruido-cond", type=float, default=0.0, metavar="P",
+                    help="E3: solo en entrenamiento, cada token del mensaje y de los textos de opción pasa con prob. P a <mask> (la mitad) o a un "
+                         "token al azar (la otra mitad); no toca especiales ni los prefijos «query: »/«passage: ». 0 = sin ruido; la inferencia no cambia")
     ap.add_argument("--semilla", type=int, default=0)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = ap.parse_args(argv)
@@ -257,7 +264,13 @@ def main(argv=None):
         sop_dev = SoporteEval(por_conjunto, a.k_max, a.semilla, a.kappa)
 
     enc = Codificador(device=a.device, max_tok=a.max_tok, cache_mensajes=a.cache_mensajes, descongelar=a.descongelar)
-    modelo = ModeloL2(texto_torre=a.texto_torre or "v1").to(a.device)
+    if not 0 <= a.ruido_cond < 1:
+        ap.error("--ruido-cond debe estar en [0, 1)")
+    cabeza = a.cabeza_score
+    if cabeza is None:   # la del checkpoint de partida (los anteriores no la traen: coral)
+        cabeza = torch.load(a.inicial, map_location="cpu", weights_only=False).get("cabeza_score", "coral1") if a.inicial else "coral1"
+    modelo = ModeloL2(texto_torre=a.texto_torre or "v1", cabeza_score=cabeza).to(a.device)
+    enc.configurar_ruido(a.ruido_cond, a.semilla)
     for k in claves:
         modelo.asegurar_cabeza(k, a.device)
 
@@ -294,6 +307,8 @@ def main(argv=None):
         for k in ck.get("cabezas", []):
             modelo.asegurar_cabeza(k, a.device)
         opt = nuevo_opt()
+        if ck.get("cabeza_score", "coral1") != modelo.cabeza_score:
+            raise SystemExit("ultimo.pt tiene la cabeza score %s y se pidió %s" % (ck.get("cabeza_score", "coral1"), modelo.cabeza_score))
         modelo.load_state_dict(ck["modelo"])
         modelo.texto_torre = ck.get("texto_torre", "v1")
         enc.cargar_enc(ck.get("enc"))
@@ -307,7 +322,7 @@ def main(argv=None):
     def estado():
         return {"modelo": modelo.state_dict(), "opt": opt.state_dict(), "paso": paso, "total": total, "mejor": mejor,
                 "calibrado": calibrado, "cabezas": sorted(modelo.coral.keys()), "args": vars(a),
-                "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre}
+                "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score}
 
     def checkpoint(sube=True):
         guardar(ultimo, estado())
@@ -333,7 +348,7 @@ def main(argv=None):
         if f1 > mejor["f1"]:
             mejor.update(f1=f1, paso=paso)
             guardar(sal / "mejor.pt", {"modelo": modelo.state_dict(), "cabezas": sorted(modelo.coral.keys()), "paso": paso, "f1": f1,
-                                       "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre})
+                                       "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score})
         modelo.train()
 
     eval_cada = a.eval_cada or max(total // 4, 1)
@@ -348,7 +363,8 @@ def main(argv=None):
             lote_p, protos = ep["filas"], (None if ep["soporte"] is None else {ep["tarea"]: prototipos(modelo, enc, ep["soporte"])})
         else:
             lote_p, protos = mues.lote_paso(paso), None
-        _, ps = modelo(lote_aug(D.renombrar_lote(lote_p, a.renombrar, a.semilla, paso), paso), enc, protos=protos)
+        with enc.con_ruido():   # E3: solo aquí, en el paso de entrenamiento (los prototipos, el dev y la inferencia van limpios)
+            _, ps = modelo(lote_aug(D.renombrar_lote(lote_p, a.renombrar, a.semilla, paso), paso), enc, protos=protos)
         opt.zero_grad(set_to_none=True)
         ps["total"].backward()
         torch.nn.utils.clip_grad_norm_([*modelo.parameters(), *enc.parametros_entrenables()], 1.0)
@@ -381,7 +397,7 @@ def main(argv=None):
     evaluar_dev()
     if not (sal / "mejor.pt").exists():
         guardar(sal / "mejor.pt", {"modelo": modelo.state_dict(), "cabezas": sorted(modelo.coral.keys()), "paso": paso, "f1": None,
-                                   "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre})
+                                   "enc": enc.estado_enc(), "max_tok": enc.max_tok, "texto_torre": modelo.texto_torre, "cabeza_score": modelo.cabeza_score})
     checkpoint()
     kappa_dev = elegir_kappa(modelo, enc, dev, filas, a) if a.elegir_kappa and a.episodios and not parar else None
     with open(sal / "entrenamiento.json", "w") as f:

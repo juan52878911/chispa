@@ -62,6 +62,9 @@ def cabeza_inicial(modelo, clave):
     if clave == "noul":
         a, b = (float(x) for x in modelo.ab["noul"].detach())
         return {"a": a, "b": b}
+    if getattr(modelo, "cabeza_score", "coral") != "coral1":
+        raise ValueError("la calibración y la exportación al runtime solo admiten la cabeza score `coral1` (CALIB lleva un único w y "
+                         "umbrales ordenados); este modelo tiene `%s`" % modelo.cabeza_score)
     c = modelo.coral[clave]
     th = c.umbrales().detach()
     return {"a": float(c.w.detach()), "b": [float(x) for x in th]}

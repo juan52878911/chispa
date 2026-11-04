@@ -30,7 +30,7 @@ import torch.nn.functional as F
 
 from model.evaluacion import metricas as M
 
-from .modelo import MAX_TOK, maxsim, normalizar_mayusculas, texto_consulta, texto_opcion
+from .modelo import MAX_TOK, maxsim, normalizar_mayusculas, texto_consulta, texto_opcion, textos_torre_fila
 
 SOLAPE = 32
 ESTRATEGIAS = ("cabeza", "cola", "cabeza_cola", "trozos_max", "trozos_media")
@@ -149,11 +149,12 @@ def probs_de_s(modelo, fila, s):
         a, b = modelo.ab["noul"]
         pt = torch.sigmoid(a * s[0] + b)
         return torch.stack([1 - pt, pt])
-    return modelo.coral["score%d" % len(fila["opciones"])](s[:1])[0]
+    cab = modelo.coral["score%d" % len(fila["opciones"])]
+    return cab(s[:1])[0] if modelo.cabeza_score == "coral1" else cab(s.unsqueeze(0))[0]   # coral1: escalar; las demás, el vector de K niveles
 
 
-def textos_torre(fila, version="v1"):
-    return [texto_opcion(fila, o, version) for o in fila["opciones"]] if fila["tipo"] == "choice" else [texto_consulta(fila, version)]
+def textos_torre(fila, version="v1", cabeza_score="coral1"):
+    return textos_torre_fila(fila, version, cabeza_score)
 
 
 @torch.no_grad()
@@ -163,7 +164,7 @@ def predecir_estrategias(modelo, enc, fila, estrategias=ESTRATEGIAS, max_tok=Non
     dev = modelo.ranuras.q.device
     modelo.asegurar_cabeza("score%d" % len(fila["opciones"]) if fila["tipo"] == "score" else fila["tipo"], dev)
     pref, cuerpo = tokenizar(enc.tok, fila["texto"])
-    h = modelo.torre(enc.pasaje(textos_torre(fila, modelo.texto_torre)).to(dev))
+    h = modelo.torre(enc.pasaje(textos_torre(fila, modelo.texto_torre, modelo.cabeza_score)).to(dev))
     vent = {e: [tuple(con_especiales(enc.tok, w)) for w in ventanas(pref, cuerpo, max_tok, e)] for e in estrategias}
     unicas = list(dict.fromkeys(w for ws in vent.values() for w in ws))
     s_por = dict(zip(unicas, sim_ventanas(modelo, enc, [list(w) for w in unicas], h)))
