@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -33,11 +34,17 @@ type ConfigL3 struct {
 	Timeout        Duracion `json:"timeout,omitempty"`          // plazo de cada llamada ("10s" o segundos); 0 = L3TimeoutPorDefecto
 	MaxPorPeticion int      `json:"max_por_peticion,omitempty"` // llamadas al LLM que una petición HTTP puede hacer; 0 = L3MaxPorPeticionPorDefecto
 	Tau            *float64 `json:"tau,omitempty"`              // τ de L3; si falta manda el de la capa "L3" de `capas`
+	// TopK: en choice con más opciones, L3 solo ve las top_k mejores según la capa anterior que opinó (L2, si no L1 o L0); las
+	// demás salen con p = 0. 0 o ausente = L3TopKPorDefecto; si no, ≥ 2.
+	TopK int `json:"top_k,omitempty"`
 }
 
 const (
 	L3TimeoutPorDefecto        = 10 * time.Second
 	L3MaxPorPeticionPorDefecto = 8
+	// L3TopKPorDefecto: con 60 opciones L3 tenía p99 ≈ 120 s y solo opinaba en el 2,9 % de los casos (bench l3 de model/); la
+	// salida y la entrada del LLM crecen con las opciones.
+	L3TopKPorDefecto = 8
 	maxRespuestaL3             = 1 << 20 // bytes leídos de la respuesta del LLM
 )
 
@@ -91,6 +98,9 @@ func (c ConfigL3) validar() error {
 	}
 	if c.MaxPorPeticion < 0 {
 		return fmt.Errorf("config: l3.max_por_peticion no puede ser negativo")
+	}
+	if c.TopK < 0 || c.TopK == 1 {
+		return fmt.Errorf("config: l3.top_k debe ser 0 (el de por defecto, %d) o ≥ 2: %d", L3TopKPorDefecto, c.TopK)
 	}
 	if c.Timeout < 0 {
 		return fmt.Errorf("config: l3.timeout no puede ser negativo")
@@ -227,6 +237,50 @@ type peticionL3 struct {
 
 // errL3 no lleva texto del cliente ni cuerpo de la respuesta (el LLM podría repetirlo).
 var errL3Estado = errors.New("L3: el endpoint respondió con un estado no 2xx")
+
+// DecidirCon: en choice con más de top_k opciones, L3 decide solo entre las top_k de la última capa anterior que dio probabilidades
+// (L2, L1, L0) y las demás salen con p = 0. Sin ninguna, o en los otros tipos, ve todas las opciones como antes.
+func (l *L3LLM) DecidirCon(ctx context.Context, p Pregunta, previas Previas) (Respuesta, error) {
+	k := l.cfg.TopK
+	if k == 0 {
+		k = L3TopKPorDefecto
+	}
+	if p.Kind != KindChoice || len(p.Opciones) <= k {
+		return l.Decidir(ctx, p)
+	}
+	var guia map[string]float64
+	for _, n := range []string{"L2", "L1", "L0"} {
+		if r, ok := previas[n]; ok && r.Conf > 0 && len(r.Probs) == len(p.Opciones) {
+			guia = r.Probs
+			break
+		}
+	}
+	if guia == nil {
+		return l.Decidir(ctx, p)
+	}
+	idx := make([]int, len(p.Opciones))
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return guia[p.Opciones[idx[a]].ID] > guia[p.Opciones[idx[b]].ID] })
+	elegidas := idx[:k]
+	sort.Ints(elegidas) // L3 las ve en el orden de la pregunta
+	sub := p
+	sub.Opciones = make([]Opcion, k)
+	for i, j := range elegidas {
+		sub.Opciones[i] = p.Opciones[j]
+	}
+	r, err := l.Decidir(ctx, sub)
+	if err != nil || r.Probs == nil {
+		return r, err
+	}
+	probs := make(map[string]float64, len(p.Opciones))
+	for _, o := range p.Opciones {
+		probs[o.ID] = r.Probs[o.ID] // fuera de las top_k: 0
+	}
+	r.Probs = probs
+	return r, nil
+}
 
 func (l *L3LLM) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 	ordenadas := p.Opciones
