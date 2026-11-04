@@ -195,3 +195,21 @@ y `-run DoradosORT` regenera `ort.json`). Regenerar dos veces da los mismos byte
 ## Torres al vuelo: presupuesto y caché (diseño)
 
 El presupuesto de torres se cobra solo a quien calcula y en el momento de calcular: la ficha del cubo de la clave y la del global las toma el líder del singleflight justo antes de llamar a ORT y las devuelve si el ctx vence antes de que ORT corra (con ORT saturado el cubo se vacía al ritmo de los cálculos, no de los timeouts); el que espera nunca paga. Los esperadores no heredan el error del líder: si termina cancelado o sin el presupuesto de *su* clave, reintentan y uno pasa a líder cobrando a su propia clave, así que una clave agotada no deja sin L2 a las demás. Los cubos (global y por clave) son estado compartido por puntero: una recarga con la misma tasa reutiliza el mismo cubo, y solo con otra tasa crea uno nuevo que hereda las fichas; el de la clave usa el reloj inyectado del autenticador. El progreso de una pregunta mayor que `max_torres_nuevas` vive solo en la caché de torres, y el LRU la reparte en 16 fragmentos de capacidad fija, así que el mínimo efectivo es `16 · max_opciones` (cada fragmento admite una pregunta entera, con el tope de bytes subido a la par; `limites.max_opciones` ≤ 4096): esa condición, en un solo sitio (`Config.cacheTorresMinima`), hace imposible el estancamiento por colisión de fragmentos. No se eliminó el tope por petición (`max_torres_nuevas` menor que una pregunta sigue siendo un control anti-abuso válido); la caché grande es su contrapartida.
+
+## Arreglos de servidor de 2026-11-03: bancos antes y después
+Mediana de 5 rondas alternadas (`-benchtime 1s`, binarios de test ya compilados), base `2058ffa` frente a la rama `arreglos-fable-servidor`, en un Mac arm64. Sin ONNX Runtime ni modelos reales en esa máquina.
+
+| Benchmark | cpu | antes | después | Δ |
+|---|---|---|---|---|
+| `BenchmarkL0` | 1 | 1150 ns | 1132 ns | −1,6 % |
+| `BenchmarkL0` | 4 | 352 ns | 357 ns | +1,3 % |
+| `BenchmarkL1Lote16` | 1 | 68,9 µs | 66,7 µs | −3,3 % |
+| `BenchmarkL1Lote16` | 4 | 59,8 µs | 60,4 µs | +1,0 % |
+| `BenchmarkCascadaHTTP` | 1 | 7206 ns | 7407 ns | +2,8 % |
+| `BenchmarkCascadaHTTP` | 4 | 2885 ns | 2827 ns | −2,0 % |
+
+- Todo queda dentro del ruido (±3 %).
+- La primera versión de las señales retokenizaba el texto en L1 y doblaba `BenchmarkL1Lote16` (+96 %). Ahora L1 saca la señal de su propia tokenización.
+- **Sin medir:**
+  - L3 con `top_k`: hace falta un LLM real (bench `model/bench/l3`, de pago). La entrada y el `max_tokens` de L3 bajan de 60 opciones a 8: `max_tokens` pasa de 16 + 24·60 = 1456 a 208.
+  - La torre int8 con `torre_fichero`: hace falta ORT y un `.chispa` del perfil `movil-int8`. La referencia sigue siendo ≈ 13 ms por torre en fp32.
