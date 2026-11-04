@@ -1,0 +1,12 @@
+entorno	OK dispositivo cuda
+codigo	OK
+hf	OK
+jevbench	OK 231 casos
+tsjev	OK 13 ficheros
+datos	OK 10 fuentes convertidas
+manifiesto	OK tsjev filtrado: 516586 filas escritas, 56436 descartadas
+sondeo	OK {"max_opciones": 235, "max_tokens": 32768, "max_tok": 256, "trozos": [{"filas": 1, "secuencias": 235, "tokens": 60160, "error": null, "pico_gib": 2.81}, {"filas": 64, "secuencias": 128, "tokens": 3276
+destilar	OK { "elegidas": 168467, "etiquetadas": 168362, "saltadas_largas": 105, "pct_saltadas": 0.06, "aviso_saltadas": false, "completa": true, "modelo": "Qwen/Qwen3-4B-Instruct-2507", "licencia_modelo": "apache-2.0", "escritas": 168362, "segundos": 
+blandas-s3	OK s3://chispa-pruebas-cuenta-aws/blandas/e2deac55256e3314
+entrenar-e5-small	OK [{"epoca":1,"pasos":11161,"perdida":1.1844524389092532,"exactitud_dev":0.503},{"epoca":2,"pasos":22322,"perdida":1.0342049373690547,"exactitud_dev":0.509}]
+evaluar-e5-small	OK
