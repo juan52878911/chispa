@@ -227,3 +227,117 @@ Sobre 866 filas reales (150 por tarea, onnxruntime 1.20.1), el top-1 del int8 co
 | 16 | 44,7 ms | 69,7 ms |
 
 C5 (≤ 60 ms con hasta 8 opciones) **pasa**, pero no rescata a L2x, que pierde en exactitud.
+
+## 11. Paso 1: fusión kNN-e5 + L2 y escalado por acuerdo (2026-11-13, coste 0 USD)
+
+**Veredicto frente al criterio congelado: REFUTADO** (diseño 1, log-lineal; la variante lineal, la única permitida, también). La fusión sí sube la exactitud
+(agrupada 0.610 frente a 0,580 de kNN, ≥ 0,60), pero el AUROC del escalado en hatecheck-es es 0.616, por debajo de 0,65, y el agrupado 0.729 no llega a 0,78.
+Además hatecheck-es queda 3.4 puntos por debajo del mejor de kNN y L2 (el criterio de PASA tolera 1).
+
+Código: `model/alt/fusion_knn_l2.py` (test sin torch: `model/alt/tests/test_fusion_knn_l2.py`). Cifras: `fusion-knn-l2-loglineal.json` (diseño 1) y `fusion-knn-l2-lineal.json` (variante).
+
+### 11.1 Qué se hizo
+- Vectores de e5 (multilingual-e5-small congelado, media de tokens, «query: », 256 tokens) de todos los textos train y test, una sola vez; kNN reconstruido en numpy con 32 vecinos y temperatura 0,05, con k ejemplos por clase muestreados del split train (10 semillas por k).
+- **El soporte de la batería tiene como mucho 8 ejemplos por clase**, así que k = 8, k = 16 y «todo el soporte» son el mismo kNN (IC entre semillas = 0). Los k reales son 1, 2, 4 y 8.
+- Reproducción: con todo el soporte la exactitud agrupada es 0.580 (la guardada de P0, ≈ 0,578). Coinciden las 5 tareas salvo hatecheck-es (0,6985 frente a 0,6925; 94 de 2 000 top-1 difieren, probablemente desempates y redondeos de los vectores entre máquinas; causa no verificada).
+- L2 y cruzado (`ce-fp32-onnx`) son las predicciones guardadas de P0; los ids cubren todo el test de las 6 tareas (la carga falla si no).
+- Fusión log-lineal: p ∝ exp(w·log max(p_knn, 1e-3) + (1−w)·log max(p_l2, 1e-3)). w en rejilla 0..1 (paso 0,05), elegido por la exactitud media por tarea en las otras 5; k elegido igual (empate: el de más soporte). Salió «todo» en las seis tareas.
+- Escalado: regresión logística ridge (λ=1, rasgos estandarizados, cada tarea pesa igual) con acuerdo top-1 kNN/L2, prob. máxima, margen, entropía normalizada, similitud al vecino más cercano y similitud al centroide de la clase predicha. Se ajusta en las otras 5 tareas y se aplica a la que queda. AUROC agrupado = las 6 predicciones fuera de tarea juntas.
+
+### 11.2 Curva de k (exactitud con IC95 t entre 10 semillas; w y fusión por semilla, dejando una tarea fuera)
+
+| k por clase | kNN agrupada | fusión agrupada | kNN / fusión hatecheck-es | kNN / fusión inyecciones | kNN / fusión jailbreak | kNN / fusión massive-es | kNN / fusión massive-esc | kNN / fusión tuits-es |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 0.425 ± 0.015 | 0.544 ± 0.016 | 0.546 / 0.543 | 0.677 / 0.627 | 0.521 / 0.748 | 0.325 / 0.447 | 0.339 / 0.578 | 0.394 / 0.552 |
+| 2 | 0.472 ± 0.017 | 0.559 ± 0.015 | 0.562 / 0.561 | 0.713 / 0.658 | 0.571 / 0.759 | 0.395 / 0.471 | 0.441 / 0.590 | 0.398 / 0.551 |
+| 4 | 0.521 ± 0.009 | 0.583 ± 0.011 | 0.632 / 0.614 | 0.720 / 0.692 | 0.564 / 0.722 | 0.450 / 0.496 | 0.499 / 0.601 | 0.417 / 0.562 |
+| 8 | 0.580 ± 0.000 | 0.610 ± 0.000 | 0.699 / 0.664 | 0.767 / 0.793 | 0.565 / 0.642 | 0.500 / 0.531 | 0.570 / 0.629 | 0.482 / 0.569 |
+| 16 | 0.580 ± 0.000 | 0.610 ± 0.000 | 0.699 / 0.664 | 0.767 / 0.793 | 0.565 / 0.642 | 0.500 / 0.531 | 0.570 / 0.629 | 0.482 / 0.569 |
+| todo el soporte | 0.580 ± 0.000 | 0.610 ± 0.000 | 0.699 / 0.664 | 0.767 / 0.793 | 0.565 / 0.642 | 0.500 / 0.531 | 0.570 / 0.629 | 0.482 / 0.569 |
+
+Mejor k de kNN solo: 8 (= todo el soporte), 0.580 agrupada. La fusión también es mejor con todo el soporte.
+
+### 11.3 Por tarea, con todo el soporte (IC95 bootstrap sobre casos, 2 000 remuestreos, semilla 0; w = peso del kNN en la fusión)
+
+| tarea | n | kNN | L2 | cruzado | fusión | w | fusión − mejor(kNN, L2) |
+|---|---|---|---|---|---|---|---|
+| hatecheck-es | 2000 | 0.699 [0.678, 0.719] | 0.514 [0.492, 0.535] | 0.616 [0.594, 0.636] | 0.664 [0.643, 0.684] | 0.55 | -0.034 |
+| inyecciones | 116 | 0.767 [0.690, 0.845] | 0.491 [0.397, 0.578] | 0.707 [0.621, 0.793] | 0.793 [0.724, 0.862] | 0.55 | +0.026 |
+| jailbreak | 400 | 0.565 [0.517, 0.613] | 0.652 [0.608, 0.700] | 0.665 [0.618, 0.708] | 0.642 [0.598, 0.690] | 0.8 | -0.010 |
+| massive-es | 1503 | 0.500 [0.474, 0.526] | 0.411 [0.386, 0.436] | 0.454 [0.429, 0.478] | 0.531 [0.506, 0.556] | 0.55 | +0.031 |
+| massive-esc | 1438 | 0.570 [0.543, 0.595] | 0.563 [0.538, 0.588] | 0.622 [0.596, 0.647] | 0.629 [0.606, 0.653] | 0.55 | +0.060 |
+| tuits-es | 1194 | 0.482 [0.453, 0.511] | 0.554 [0.527, 0.580] | 0.554 [0.526, 0.583] | 0.569 [0.541, 0.596] | 0.55 | +0.015 |
+| agrupada | 6651 | 0.580 [0.569, 0.592] | 0.516 [0.504, 0.528] | 0.574 [0.562, 0.586] | 0.610 [0.600, 0.622] | - | - |
+
+### 11.4 AUROC del escalado frente a la probabilidad máxima de la fusión (dejando la tarea fuera)
+
+| | escalado | prob. máxima |
+|---|---|---|
+| agrupado | 0.729 | 0.693 |
+| hatecheck-es | 0.616 | 0.591 |
+| inyecciones | 0.711 | 0.746 |
+| jailbreak | 0.831 | 0.766 |
+| massive-es | 0.825 | 0.783 |
+| massive-esc | 0.836 | 0.809 |
+| tuits-es | 0.611 | 0.609 |
+
+El escalado mejora a la probabilidad máxima en 5 de 6 tareas (no en inyecciones), pero hatecheck-es (2 clases, kNN y L2 ruidosos) no se separa.
+
+### 11.5 McNemar pareado exacto bilateral (solo_fusion = casos que acierta la fusión y no el otro; diferencia con IC95 pareado)
+
+**fusión frente a kNN**
+
+| tarea | solo fusión | solo otro | p | diferencia [IC95] |
+|---|---|---|---|---|
+| hatecheck-es | 292 | 360 | 0.008642 | -0.034 [-0.059, -0.009] |
+| inyecciones | 17 | 14 | 0.7201 | +0.026 [-0.060, +0.121] |
+| jailbreak | 31 | 0 | 0 | +0.077 [+0.052, +0.105] |
+| massive-es | 194 | 148 | 0.01484 | +0.031 [+0.007, +0.055] |
+| massive-esc | 200 | 114 | 1e-06 | +0.060 [+0.036, +0.084] |
+| tuits-es | 264 | 160 | 1e-06 | +0.087 [+0.054, +0.120] |
+| agrupada | 998 | 796 | 2e-06 | +0.030 [+0.018, +0.043] |
+
+**fusión frente al cruzado**
+
+| tarea | solo fusión | solo otro | p | diferencia [IC95] |
+|---|---|---|---|---|
+| hatecheck-es | 356 | 258 | 8.8e-05 | +0.049 [+0.024, +0.072] |
+| inyecciones | 24 | 14 | 0.1433 | +0.086 [-0.017, +0.181] |
+| jailbreak | 72 | 81 | 0.5179 | -0.022 [-0.080, +0.038] |
+| massive-es | 314 | 198 | 0 | +0.077 [+0.049, +0.108] |
+| massive-esc | 182 | 171 | 0.5946 | +0.008 [-0.019, +0.032] |
+| tuits-es | 195 | 178 | 0.4074 | +0.014 [-0.018, +0.045] |
+| agrupada | 1143 | 900 | 0 | +0.036 [+0.024, +0.050] |
+
+### 11.6 Variante (iteración 2): mezcla lineal de probabilidades p = w·p_knn + (1−w)·p_l2
+
+Misma selección de w y k, mismo escalado. Agrupada 0.612; peor tarea frente al mejor de kNN/L2 -0.034 (hatecheck-es); AUROC del escalado 0.717 agrupado y 0.619 en hatecheck-es (prob. máxima: 0.664 y 0.595). También REFUTADO. Se cierra el tope de 2 iteraciones.
+
+### 11.7 Veredicto
+
+| condición | valor | umbral |
+|---|---|---|
+| exactitud agrupada de la fusión | 0.610 | ≥ 0,60 (cumple; y supera a kNN 0,580) |
+| peor tarea frente al mejor de kNN y L2 | -0.034 (hatecheck-es) | ≥ −0,010 (no cumple) |
+| AUROC del escalado, agrupado | 0.729 | ≥ 0,78 (no cumple) |
+| AUROC del escalado, hatecheck-es | 0.616 | ≥ 0,70 para PASA; < 0,65 es REFUTADO (se activa) |
+
+REFUTADO por la regla del AUROC en hatecheck-es. Lectura: kNN y L2 sí fallan en sitios distintos (la fusión gana +3,0 puntos agrupados y en 5 de 6 tareas
+no pierde frente al mejor), pero el acuerdo, el margen y la distancia al vecino no separan aciertos de fallos mucho mejor que la probabilidad máxima
+(AUROC agrupado +0.036), y en hatecheck-es no lo hacen en absoluto. La fusión le cuesta a hatecheck-es 3,4 puntos frente al kNN solo, que ahí ya es
+el mejor modelo (0,699); el peso w se ajusta con tareas muy distintas.
+
+### 11.8 Comandos exactos y rutas
+
+En el PC de pruebas están las predicciones de P0 (`res/pred/{l2,knn,ce-fp32-onnx}/<tarea>.jsonl`); se copiaron a `px-01-i7`. Todo lo grande queda fuera del repo, en
+`/mnt/pve/nfs-ascci/chispa-audio/fusion-knn-l2/` (`vec/<tarea>.npz` = vectores de e5 en float32; `pred/` = predicciones copiadas de P0; `repo/` = copia del código).
+```
+# px-01-i7 (venv /root/chispa-audio/venv), cada comando bajo: systemd-run --scope -q -p MemoryMax=3500M -p AllowedCPUs=0-5 nice
+HF_HUB_OFFLINE=1 HF_HUB_CACHE=/root/p3-prueba/hfcache PYTHONPATH=$D/repo python -m model.alt.fusion_knn_l2 vectores \
+    --bateria /mnt/pve/nfs-ascci/chispa-audio/p3-eval/full/bat --salida $D/vec        # ≈ 4 min
+PYTHONPATH=$D/repo python -m model.alt.fusion_knn_l2 medir --bateria .../full/bat --pred $D/pred --vec $D/vec \
+    --salida $D/fusion-loglineal.json --semillas 10 --fusion loglineal                # ≈ 25 s (la variante: --fusion lineal)
+python -m unittest model.alt.tests.test_fusion_knn_l2                                  # sin torch
+```
+Los JSON de este directorio solo llevan cifras (ningún texto de la batería).
+
