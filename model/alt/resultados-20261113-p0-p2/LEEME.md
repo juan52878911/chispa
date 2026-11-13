@@ -186,3 +186,44 @@ Segunda ronda, inst-17 con el prefijo llm-5eb239c: 672 s en total y los 231 caso
 - Inválidas en lectura estricta: 2 de 231 (0,9 %), frente al 61 % de la v1 libre. De los 67 casos comunes, había 41 inválidos y ahora queda 1.
 - Reintentos: 223 casos con 1 intento y 8 con 2. Latencia por caso en la A10G: p50 795 ms, p95 1 725 ms.
 - El techo es ≥ 0,60 en las dos lecturas, así que JevBench sigue siendo criterio de paso para los codificadores. El LLM queda unos 15 puntos por encima de L2 y del CE.
+
+## 10. Resultado de P3: L2x refutado (2026-11-13)
+
+**Entrenamiento:** en EC2, inst-23 con 0be529b, en una g5.xlarge bajo demanda porque la cuenta no tiene cuota de spot G. Tres épocas: exactitud en dev 0,606, 0,605 y 0,633. Costó ≈ 2,2 USD.
+En esa ronda fallaron la evaluación y el informe: el `bateria-no-vista.tgz` hecho en el Mac llevaba entradas AppleDouble `._*.jsonl`, que GNU tar extrae.
+
+**Arreglo** (9ce491c): `cargar_bateria` ignora los ficheros que empiezan por «.», `l2x.sh` borra `._*`, transformers queda fijado a 5.22.2 (la última en PyPI a la hora del entrenamiento) y hay un modo «solo evaluar».
+
+**Evaluación:** la del checkpoint de 0be529b se hizo en el i7 por CPU (torch 2.5.1, transformers 4.46.3, fp32, 6 hilos): 6 882 filas en 1 445 s. Informe completo en `informe-l2x.md` y `informe-l2x.json`.
+
+| Agrupada (6 651 filas) | Exactitud (IC95) | Macro-F1 |
+|---|---|---|
+| L2x | 0,529 [0,517, 0,541] | 0,495 |
+| L2 | 0,516 [0,504, 0,528] | 0,448 |
+| Cruzado del hito 4 | 0,574 [0,562, 0,586] | 0,596 |
+| kNN-e5 | 0,578 [0,566, 0,590] | 0,573 |
+
+Criterios:
+- **C1–C4 no pasan.**
+  - C1, macro-F1 frente a L2 + 12: 0,495 contra 0,568.
+  - C2, macro-F1 frente al cruzado − 1: 0,495 contra 0,586.
+  - C3, exactitud agrupada frente al cruzado − 1: 0,529 contra 0,564.
+  - C4, AUROC de la confianza: 0,68 contra 0,78.
+- **Refutado:** queda por debajo del cruzado en 5 de 6 tareas (hatecheck-es, inyecciones, jailbreak, massive-esc y tuits-es). Solo gana en massive-es, por +3,2 puntos con p = 0,015.
+- Frente a L2, la agrupada mejora +1,3 puntos [−0,1, +2,6] con p = 0,06, que no es significativo.
+- hatecheck-es (la tarea no vista de verdad): 0,537, frente a 0,514 de L2 y 0,616 del cruzado.
+- JevBench: 0,506, prácticamente igual que L2 y el cruzado y muy por debajo del techo del LLM (0,658).
+
+**ONNX int8:** la diferencia de 0,33 de `exportacion.json` sale de comparar logits crudos en una sola fila de juguete, así que no mide decisiones.
+Sobre 866 filas reales (150 por tarea, onnxruntime 1.20.1), el top-1 del int8 coincide con el de torch fp32 en el **85,3 %** (75 % en massive-es) y la diferencia máxima de probabilidad llega a 0,95. La exactitud media se mantiene (0,554 frente a 0,555), pero las decisiones cambian caso a caso. Este int8 dinámico no sirve tal cual: haría falta calibrar la cuantización o dejar en fp32 las capas de atención.
+
+**C5, latencia en el i7** (int8, 4 hilos, CPUs 0-3, con el i7 ya cargado a 7–8 de load average), p50 / p99:
+
+| Opciones | p50 | p99 |
+|---|---|---|
+| 2 | 21,8 ms | 32,9 ms |
+| 4 | 26,9 ms | 41,9 ms |
+| 8 | 32,6 ms | 55,5 ms |
+| 16 | 44,7 ms | 69,7 ms |
+
+C5 (≤ 60 ms con hasta 8 opciones) **pasa**, pero no rescata a L2x, que pierde en exactitud.
