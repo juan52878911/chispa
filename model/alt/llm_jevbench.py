@@ -6,7 +6,7 @@ Solo biblioteca estándar (corre en el anfitrión de kindling, que llama a las r
 
 Salida restringida (v2): con `--formato llama|vllm` se manda un esquema JSON con TODOS los ids de las opciones como propiedades obligatorias
 (cada una un número entre 0 y 1) y el servidor solo puede generar JSON que lo cumpla; sin `--formato` es la v1 (libre) del primer intento.
-Si la respuesta no es válida (suma fuera de 1±0,05, p. ej.) se reintenta `--reintentos` veces (por defecto 1) con temperatura 0,3.
+Si la respuesta no es válida (suma fuera de 1±0,05, p. ej.) se reintenta `--reintentos` veces (por defecto 1) con temperatura 0 y un mensaje que dice lo que sumó la respuesta anterior.
 Una línea por caso: {id, probs, valida, raw, intentos, ms, error} (`raw` es la salida del LLM, para medir también la lectura permisiva). Reanuda: salta los ids que ya están en la salida. Una respuesta inválida
 (JSON roto, ids ajenos, suma fuera de 1±0,05) cuenta como fallo en la exactitud, igual que en L3 (escala sin respuesta).
 Las respuestas de Jev en JevBench solo sirven para medir (MCA 2.3(b)): este script no escribe nada que sirva de entrenamiento.
@@ -61,6 +61,15 @@ def interpretar(contenido, f):
     if abs(s - 1) > 0.05:
         return None
     return {o: pr[o] / s for o in ops}
+
+
+def suma_probs(raw):
+    """Suma de las probabilidades de una respuesta JSON con «probs», o None si no se puede leer."""
+    try:
+        i, j = raw.find("{"), raw.rfind("}")
+        return sum(float(v) for v in json.loads(raw[i:j + 1])["probs"].values())
+    except (ValueError, KeyError, AttributeError, TypeError):
+        return None
 
 
 def esquema(f):
@@ -118,7 +127,10 @@ def main():
             while intentos <= (a.reintentos if a.formato else 0) and probs is None:
                 intentos += 1
                 try:
-                    raw = llamar(url, a.modelo, msgs, n, a.timeout, formato(a.formato, f) if a.formato else None, 0.0 if intentos == 1 else 0.3)
+                    m2 = msgs
+                    if intentos > 1 and raw and suma_probs(raw) is not None:   # reintento con retroalimentación: dice lo que sumó
+                        m2 = msgs + [{"role": "assistant", "content": raw}, {"role": "user", "content": "Tus probabilidades suman %.2f. Deben sumar exactamente 1. Responde de nuevo solo con el JSON corregido." % suma_probs(raw)}]
+                    raw = llamar(url, a.modelo, m2, n, a.timeout, formato(a.formato, f) if a.formato else None, 0.0)
                     probs, err = interpretar(raw, f), ""
                 except Exception as e:  # noqa: BLE001 - se anota y se sigue
                     err = str(e)[:120]
