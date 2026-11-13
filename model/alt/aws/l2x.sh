@@ -5,7 +5,7 @@ CHISPA_S3=__CHISPA_S3__
 # Todo se baja POR NOMBRE EXACTO (nunca `aws s3 cp --recursive`, que pide ListBucket). Claves que LEE (bajo META_S3 = s3://chispa-pruebas-cuenta-aws/meta-20261027/meta):
 #   $CHISPA_S3/codigo.tgz · $CHISPA_S3/bateria-no-vista.tgz · $META_S3/{tsjev/train-*,tsjev/dev-*} (nombres de model/meta/resultados/conversion-20261027.json)
 #   $META_S3/synzs/{train-00000..N-1,dev-00000}.jsonl.gz · s3://chispa-pruebas-cuenta-aws/blandas/e2deac55256e3314/{blandas.jsonl.gz,destilacion.json}
-# Claves que ESCRIBE: $CHISPA_S3/{log.txt,listo,resultados.tgz,ckpt/mejor-l2x.tgz,onnx/l2x_int8.onnx,onnx/exportacion.json}; espera $CHISPA_S3/terminar.
+# Claves que ESCRIBE: $CHISPA_S3/{log.txt,listo,resultados.tgz,ckpt/mejor-l2x.tgz,onnx/l2x_int8.onnx,onnx/exportacion.json}; espera $CHISPA_S3/verificado (≤ 30 min).
 # El código lleva sdk/python (el módulo `chispa`) y PYTHONPATH lo incluye; el paso 2 comprueba los imports ANTES de bajar datos.
 # CHISPA_LOCAL=1: sin pip, descargas ni shutdown; CPU, 2 pasos, datos de juguete de CHISPA_LOCAL_DATOS (bateria-no-vista/, jevbench.jsonl, demo.jsonl).
 LOCAL=${CHISPA_LOCAL:-0}
@@ -14,7 +14,7 @@ NSYN=${CHISPA_SYNZS_FICHEROS:-8}          # ficheros de train de synzs (~78 000 
 EPOCAS=${CHISPA_EPOCAS:-3}; TOPE=${CHISPA_TOPE_TAREA:-5000}; LOTE=${CHISPA_LOTE:-32}
 META_S3=${CHISPA_META_S3:-s3://chispa-pruebas-cuenta-aws/meta-20261027/meta}
 BL_S3=${CHISPA_BLANDAS_S3:-s3://chispa-pruebas-cuenta-aws/blandas/e2deac55256e3314}
-ESPERA_MIN=${CHISPA_ESPERA_MIN:-20}
+ESPERA_MIN=${CHISPA_ESPERA_MIN:-30}
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-l2x-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
 set -uo pipefail
 export HOME="${HOME:-/root}"; T0=$(date +%s)
@@ -36,7 +36,8 @@ subir_y_apagar() {
   s3cp "$BASE/log.txt" "$CHISPA_S3/log.txt" || echo "no se pudo subir log.txt"
   if [ "$LOCAL" != 1 ]; then
     echo listo > "$BASE/listo"; s3cp "$BASE/listo" "$CHISPA_S3/listo" || true
-    [ -z "$FALLO" ] && for _ in $(seq $((ESPERA_MIN * 2))); do aws s3 cp --only-show-errors "$CHISPA_S3/terminar" "$BASE/terminar" 2>/dev/null && break; sleep 30; done
+    # espera (GetObject de la clave exacta, sin ListBucket) a que el orquestador traiga y verifique los resultados y suba `verificado`; luego apaga
+    for _ in $(seq $((ESPERA_MIN * 2))); do aws s3 cp --only-show-errors "$CHISPA_S3/verificado" "$BASE/verificado" 2>/dev/null && break; sleep 30; done
     shutdown -h now
   fi
 }
@@ -70,7 +71,7 @@ cd "$REPO" || cierre
 # --- 3. datos
 echo "== 3. datos $(date -u +%T)"
 BAT=$DATOS/bateria; mkdir -p "$BAT"
-if [ "$LOCAL" = 1 ]; then cp "$CHISPA_LOCAL_DATOS"/bateria-no-vista/*.jsonl "$BAT/"; cp "$CHISPA_LOCAL_DATOS/demo.jsonl" "$RAIZ/datos/demo.jsonl"; JEVARG=$CHISPA_LOCAL_DATOS/jevbench.jsonl
+if [ "$LOCAL" = 1 ]; then cp "$CHISPA_LOCAL_DATOS"/bateria-no-vista/* "$BAT/"; cp "$CHISPA_LOCAL_DATOS/demo.jsonl" "$RAIZ/datos/demo.jsonl"; JEVARG=$CHISPA_LOCAL_DATOS/jevbench.jsonl
   cp "$CHISPA_LOCAL_DATOS/manifiesto-demo.json" "$BASE/manifiesto.json"
   MAN=$BASE/manifiesto.json; EXTRA="--pasos 2 --epocas 1 --lote 4 --max-tok 96 --max-tokens 4096 --tope-tarea 0 --max-dev 8"; estado datos "OK local"
 else
@@ -120,6 +121,9 @@ MINS=$(( $(quedan_min) - 40 - ESPERA_MIN )); [ "$MINS" -ge 5 ] || { fallo "sin t
 estado entrenar "OK $(tr -d '\n ' < "$CK/historial.json" | cut -c1-240)"
 "$PY" -m model.alt.p0_medir pred --modelo l2x --ckpt "$CK/mejor" --bateria "$BAT" --jevbench "$JEVARG" --salida "$OUT/pred" --dispositivo "$DISP" --hilos 4 > "$OUT/pred.log" 2>&1 \
   && estado evaluar "OK" || { tail -4 "$OUT/pred.log"; fallo "evaluar"; estado evaluar "FALLO"; }
+# informe de paso: la batería es la vara (agrupada y por tarea), hatecheck-es aparte, frente a L2 y al cruzado del hito 4; AUROC; latencia pendiente (se mide en el i7)
+"$PY" -m model.alt.p0_medir informe-l2x --pred "$OUT/pred/l2x" --bateria "$BAT" --jevbench "$JEVARG" --base "$BAT/baseline-top1.json" --salida "$OUT/informe" > "$OUT/informe.log" 2>&1 \
+  && estado informe "OK $(grep -c PASA "$OUT/informe/informe-l2x.md") criterios" || { tail -4 "$OUT/informe.log"; fallo "informe-l2x"; estado informe "FALLO"; }
 "$PY" -m model.alt.l2x_onnx exportar --ckpt "$CK/mejor" --salida "$BASE/onnx" > "$OUT/onnx.log" 2>&1 \
   && estado onnx "OK $(tr -d '\n ' < "$BASE/onnx/exportacion.json" | cut -c1-200)" || estado onnx "AVISO la exportación falló (se rehace en el PC de pruebas desde el checkpoint)"
 kill "$VIG" 2>/dev/null

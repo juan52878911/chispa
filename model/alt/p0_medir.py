@@ -23,6 +23,14 @@ def leer(ruta):
         return [json.loads(l) for l in fh if l.strip()]
 
 
+def leer_jev(ruta):
+    """Filas de JevBench: un .jsonl ya convertido o el clon (datasets/public), que se convierte con el cargador del arnés."""
+    if Path(ruta).is_dir():
+        from model.evaluacion.jevbench import cargar_jevbench
+        return cargar_jevbench(ruta)
+    return leer(ruta)
+
+
 def escribir(ruta, preds):
     Path(ruta).parent.mkdir(parents=True, exist_ok=True)
     with open(ruta, "w", encoding="utf-8") as fh:
@@ -177,7 +185,7 @@ def leer_llm(ruta, filas, permisivo):
 
 def informe(a):
     pred = Path(a.pred)
-    jev = leer(a.jevbench)
+    jev = leer_jev(a.jevbench)
     bat = cargar_bateria(a.bateria)
     filas = {c: ev for c, (_, ev) in bat.items()}
     filas["jevbench"] = jev
@@ -217,6 +225,134 @@ def informe(a):
     print(json.dumps(res, ensure_ascii=False, indent=1))
 
 
+# ---------------------------------------------------------------- P3: informe de L2x contra la batería
+def auroc(conf, ok):
+    """Área bajo la curva ROC de `conf` para separar aciertos (1) de fallos (0); empates con rango medio. None si falta una clase."""
+    import numpy as np
+    conf, ok = np.asarray(conf, dtype=float), np.asarray(ok, dtype=int)
+    n1, n0 = int(ok.sum()), int((1 - ok).sum())
+    if n1 == 0 or n0 == 0:
+        return None
+    orden = np.argsort(conf, kind="stable")
+    rangos = np.empty(len(conf))
+    c = conf[orden]
+    i = 0
+    while i < len(c):
+        j = i
+        while j + 1 < len(c) and c[j + 1] == c[i]:
+            j += 1
+        rangos[orden[i:j + 1]] = (i + j) / 2 + 1
+        i = j + 1
+    return float((rangos[ok == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
+
+
+def base_top1(a):
+    """Guarda para cada modelo de `--pred` {id: [top1, probabilidad máxima]}: lo que necesita `informe-l2x` para comparar sin las predicciones enteras."""
+    pred = Path(a.pred)
+    filas = {c: ev for c, (_, ev) in cargar_bateria(a.bateria).items()}
+    filas["jevbench"] = leer_jev(a.jevbench)
+    out = {}
+    for d in sorted(x for x in pred.iterdir() if x.is_dir()):
+        out[d.name] = {}
+        for c, fs in filas.items():
+            f = d / (c + ".jsonl")
+            if not f.exists():
+                continue
+            por = {p["id"]: p["probs"] for p in leer(f)}
+            for r in fs:
+                pr = por.get(r["id"])
+                if pr is not None:
+                    out[d.name][r["id"]] = [top1(r, pr), round(max(pr.values()), 4)]
+    Path(a.salida).write_text(json.dumps(out, ensure_ascii=False) + "\n", encoding="utf-8")
+    print({k: len(v) for k, v in out.items()})
+
+
+def informe_l2x(a):
+    """Informe de paso de P3: la batería es la vara (agrupada y por tarea), hatecheck-es aparte (la única tarea de verdad no vista),
+    más los criterios de latencia y AUROC de la revisión. `--pred` es la carpeta con `<conjunto>.jsonl` de L2x."""
+    base = json.loads(Path(a.base).read_text(encoding="utf-8"))
+    bat = cargar_bateria(a.bateria)
+    filas = {c: ev for c, (_, ev) in bat.items()}
+    filas["jevbench"] = leer_jev(a.jevbench)
+    P = {c: leer(Path(a.pred) / (c + ".jsonl")) for c in filas if (Path(a.pred) / (c + ".jsonl")).exists()}
+    modelos = {"l2x": None, "l2": base["l2"], "cruzado": base["ce-fp32-onnx"]}
+    if "knn" in base:
+        modelos["knn-e5"] = base["knn"]
+
+    def top(m, r):
+        if m == "l2x":
+            pr = {p["id"]: p["probs"] for p in P[c]}.get(r["id"])
+            return (top1(r, pr), max(pr.values())) if pr else (None, 0.0)
+        v = modelos[m].get(r["id"])
+        return (v[0], v[1]) if v else (None, 0.0)
+
+    A, F, C = {}, {}, {}
+    for c in P:
+        for m in modelos:
+            if m == "knn-e5" and c == "jevbench":
+                continue
+            t = [top(m, r) for r in filas[c]]
+            A[(m, c)] = [1.0 if x[0] == r["etiqueta"] else 0.0 for x, r in zip(t, filas[c])]
+            C[(m, c)] = [x[1] for x in t]
+            F[(m, c)] = macro_f1(filas[c], [{"id": r["id"], "probs": {x[0]: 1.0}} for x, r in zip(t, filas[c]) if x[0] is not None])
+    tareas = [c for c in P if c != "jevbench"]
+    res = {"tareas": {}, "agrupada": {}, "media_tareas": {}, "hatecheck-es": {}, "mcnemar": {}, "criterios": {}}
+    for c in P:
+        res["tareas"][c] = {m: dict(n=len(A[(m, c)]), **ic(A[(m, c)]), macro_f1=round(F[(m, c)], 4)) for m in modelos if (m, c) in A}
+    for m in modelos:
+        todo = [v for c in tareas for v in A[(m, c)]]
+        res["agrupada"][m] = dict(n=len(todo), **ic(todo))
+        res["media_tareas"][m] = {"acc": round(sum(res["tareas"][c][m]["acc"] for c in tareas) / len(tareas), 4),
+                                  "macro_f1": round(sum(res["tareas"][c][m]["macro_f1"] for c in tareas) / len(tareas), 4)}
+    if "hatecheck-es" in P:
+        res["hatecheck-es"] = res["tareas"]["hatecheck-es"]
+    for m in ("l2", "cruzado"):
+        d = {}
+        for c in tareas + ["jevbench"]:
+            if c in P:
+                n01, n10, p = mcnemar(A[("l2x", c)], A[(m, c)])
+                d[c] = dict(solo_l2x=n01, **{"solo_" + m: n10}, p_mcnemar=round(p, 4), **ic_dif(A[("l2x", c)], A[(m, c)]))
+        ax, am = [v for c in tareas for v in A[("l2x", c)]], [v for c in tareas for v in A[(m, c)]]
+        n01, n10, p = mcnemar(ax, am)
+        d["AGRUPADA"] = dict(solo_l2x=n01, **{"solo_" + m: n10}, p_mcnemar=round(p, 6), **ic_dif(ax, am))
+        res["mcnemar"]["l2x - " + m] = d
+    conf = [v for c in tareas for v in C[("l2x", c)]]
+    oks = [v for c in tareas for v in A[("l2x", c)]]
+    res["auroc_confianza"] = {"agrupada": auroc(conf, oks), "por_tarea": {c: auroc(C[("l2x", c)], A[("l2x", c)]) for c in tareas},
+                              "nota": "AUROC de la probabilidad máxima para separar aciertos de fallos; no hay cabeza de escalada aprendida"}
+    mt = res["media_tareas"]
+    por_debajo = [c for c in tareas if res["tareas"][c]["l2x"]["acc"] < res["tareas"][c]["cruzado"]["acc"] - 0.01]
+    cr = {
+        "C1 macro-F1 medio (6 tareas) >= L2 + 12 pts": [mt["l2x"]["macro_f1"], round(mt["l2"]["macro_f1"] + 0.12, 4)],
+        "C2 macro-F1 medio >= cruzado (hito 4) - 1 pt": [mt["l2x"]["macro_f1"], round(mt["cruzado"]["macro_f1"] - 0.01, 4)],
+        "C3 exactitud agrupada >= cruzado - 1 pt": [res["agrupada"]["l2x"]["acc"], round(res["agrupada"]["cruzado"]["acc"] - 0.01, 4)],
+        "C4 AUROC de la confianza >= 0,78": [res["auroc_confianza"]["agrupada"], 0.78],
+    }
+    res["criterios"] = {k: {"valor": v[0], "umbral": v[1], "pasa": bool(v[0] is not None and v[0] >= v[1])} for k, v in cr.items()}
+    res["criterios"]["C5 latencia p50 <= 60 ms en el i7 (int8, 4 hilos, <= 8 opciones)"] = {"valor": None, "umbral": 60, "pasa": None, "nota": "se mide aparte con bench_l2x_i7.py sobre l2x_int8.onnx"}
+    res["refuta"] = {"tareas_por_debajo_del_cruzado": por_debajo, "refutado": len(por_debajo) >= 3,
+                     "regla": "por debajo del cruzado en exactitud (-1 pt) en >= 3 de las 6 tareas"}
+    sal = Path(a.salida)
+    sal.mkdir(parents=True, exist_ok=True)
+    (sal / "informe-l2x.json").write_text(json.dumps(res, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    md = ["# L2x frente a la batería no vista", "", "| conjunto | n | " + " | ".join(modelos) + " |", "|---|---|" + "---|" * len(modelos)]
+    for c in P:
+        md.append("| %s%s | %d | %s |" % (c, " (única tarea de verdad no vista)" if c == "hatecheck-es" else "", res["tareas"][c]["l2x"]["n"],
+                                           " | ".join(("%.3f [%.3f–%.3f]" % (res["tareas"][c][m]["acc"], res["tareas"][c][m]["lo"], res["tareas"][c][m]["hi"])) if m in res["tareas"][c] else "–" for m in modelos)))
+    md.append("| **agrupada (6 tareas)** | %d | %s |" % (res["agrupada"]["l2x"]["n"], " | ".join("%.3f [%.3f–%.3f]" % (res["agrupada"][m]["acc"], res["agrupada"][m]["lo"], res["agrupada"][m]["hi"]) for m in modelos)))
+    md.append("| **macro-F1 medio** | | %s |" % " | ".join("%.3f" % mt[m]["macro_f1"] for m in modelos))
+    md += ["", "## McNemar pareado (L2x frente a cada uno)", ""]
+    for k, d in res["mcnemar"].items():
+        for c, v in d.items():
+            md.append("- %s, %s: diferencia %+.1f pts [%+.1f; %+.1f], p = %s" % (k, c, 100 * v["dif"], 100 * v["lo"], 100 * v["hi"], v["p_mcnemar"]))
+    md += ["", "## Criterios", ""]
+    for k, v in res["criterios"].items():
+        md.append("- %s: %s (valor %s, umbral %s)" % (k, {True: "PASA", False: "NO PASA", None: "PENDIENTE"}[v["pasa"]], v["valor"], v["umbral"]))
+    md.append("- Refutación: %s (%s)" % ("SÍ" if res["refuta"]["refutado"] else "no", ", ".join(res["refuta"]["tareas_por_debajo_del_cruzado"]) or "ninguna tarea por debajo"))
+    (sal / "informe-l2x.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+    print("\n".join(md))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -239,7 +375,22 @@ def main(argv=None):
     i.add_argument("--salida", required=True)
     i.add_argument("--llm")
     i.add_argument("--pares", nargs="*", default=["l2:ce", "ce-fp32-onnx:ce-int8-onnx", "ce:ce-int8-onnx"])
+    b = sub.add_parser("base-top1")
+    b.add_argument("--pred", required=True)
+    b.add_argument("--bateria", required=True)
+    b.add_argument("--jevbench", required=True)
+    b.add_argument("--salida", required=True)
+    x = sub.add_parser("informe-l2x")
+    x.add_argument("--pred", required=True, help="carpeta con <conjunto>.jsonl de L2x")
+    x.add_argument("--bateria", required=True)
+    x.add_argument("--jevbench", required=True)
+    x.add_argument("--base", required=True, help="baseline-top1.json")
+    x.add_argument("--salida", required=True)
     a = ap.parse_args(argv)
+    if a.cmd == "base-top1":
+        return base_top1(a) or 0
+    if a.cmd == "informe-l2x":
+        return informe_l2x(a) or 0
     if a.cmd == "informe":
         return informe(a) or 0
     conj = {} if a.sin_bateria else cargar_bateria(a.bateria, a.max_filas)

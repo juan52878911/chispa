@@ -4,7 +4,10 @@ Solo biblioteca estándar (corre en el anfitrión de kindling, que llama a las r
 
     python3 llm_jevbench.py --filas jevbench_filas.jsonl --url http://IP1:8000 [--url http://IP2:8000] --salida l3_jevbench.jsonl
 
-Una línea por caso: {id, probs, valida, raw, ms, error} (`raw` es la salida del LLM, para medir también la lectura permisiva). Reanuda: salta los ids que ya están en la salida. Una respuesta inválida
+Salida restringida (v2): con `--formato llama|vllm` se manda un esquema JSON con TODOS los ids de las opciones como propiedades obligatorias
+(cada una un número entre 0 y 1) y el servidor solo puede generar JSON que lo cumpla; sin `--formato` es la v1 (libre) del primer intento.
+Si la respuesta no es válida (suma fuera de 1±0,05, p. ej.) se reintenta `--reintentos` veces (por defecto 1) con temperatura 0,3.
+Una línea por caso: {id, probs, valida, raw, intentos, ms, error} (`raw` es la salida del LLM, para medir también la lectura permisiva). Reanuda: salta los ids que ya están en la salida. Una respuesta inválida
 (JSON roto, ids ajenos, suma fuera de 1±0,05) cuenta como fallo en la exactitud, igual que en L3 (escala sin respuesta).
 Las respuestas de Jev en JevBench solo sirven para medir (MCA 2.3(b)): este script no escribe nada que sirva de entrenamiento.
 """
@@ -60,9 +63,26 @@ def interpretar(contenido, f):
     return {o: pr[o] / s for o in ops}
 
 
-def llamar(url, modelo, msgs, n_ops, timeout):
-    cuerpo = {"model": modelo, "messages": msgs, "temperature": 0, "max_tokens": 16 + 24 * n_ops, "stream": False,
-              "response_format": {"type": "json_object"}}
+def esquema(f):
+    """Esquema JSON: {"probs": {<id>: número en [0,1], …}} con todos los ids obligatorios y ninguno más."""
+    ops = sorted(f["opciones"], key=int) if f["tipo"] == "score" else f["opciones"]
+    prop = {o: {"type": "number", "minimum": 0, "maximum": 1} for o in ops}
+    return {"type": "object", "properties": {"probs": {"type": "object", "properties": prop, "required": list(ops), "additionalProperties": False}},
+            "required": ["probs"], "additionalProperties": False}
+
+
+def formato(nombre, f):
+    if nombre == "llama":     # llama-cpp-python (servidor OpenAI): json_object + schema
+        return {"type": "json_object", "schema": esquema(f)}
+    if nombre == "vllm":      # vLLM: salida estructurada por json_schema
+        return {"type": "json_schema", "json_schema": {"name": "probs", "strict": True, "schema": esquema(f)}}
+    return {"type": "json_object"}
+
+
+def llamar(url, modelo, msgs, n_ops, timeout, fmt=None, temperatura=0.0):
+    # con esquema el JSON ocupa más (llaves, comillas, ids): sin tope ajustado a la v1
+    cuerpo = {"model": modelo, "messages": msgs, "temperature": temperatura, "max_tokens": (24 + 24 * n_ops) if fmt is None else (64 + 40 * n_ops), "stream": False,
+              "response_format": fmt or {"type": "json_object"}}
     req = urllib.request.Request(url.rstrip("/") + "/v1/chat/completions", data=json.dumps(cuerpo).encode(), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())["choices"][0]["message"]["content"]
@@ -74,7 +94,9 @@ def main():
     ap.add_argument("--url", action="append", required=True, help="una por réplica; cada una atiende un hilo")
     ap.add_argument("--modelo", default="qwen3-4b-instruct-2507-q4_k_m")
     ap.add_argument("--salida", required=True)
-    ap.add_argument("--timeout", type=float, default=300)
+    ap.add_argument("--timeout", type=float, default=600)
+    ap.add_argument("--formato", choices=("llama", "vllm"), help="salida restringida por esquema con todos los ids; sin él, v1 libre")
+    ap.add_argument("--reintentos", type=int, default=1)
     ap.add_argument("--max", type=int, help="solo los primeros N casos (pruebas)")
     a = ap.parse_args()
     filas = [json.loads(l) for l in open(a.filas, encoding="utf-8") if l.strip()][:a.max]
@@ -92,13 +114,15 @@ def main():
                     return
                 f = cola.pop(0)
             msgs, n = mensajes(f)
-            t0, err, probs, raw = time.perf_counter(), "", None, ""
-            try:
-                raw = llamar(url, a.modelo, msgs, n, a.timeout)
-                probs = interpretar(raw, f)
-            except Exception as e:  # noqa: BLE001 - se anota y se sigue
-                err = str(e)[:120]
-            r = {"id": f["id"], "probs": probs, "valida": probs is not None, "raw": raw, "ms": round((time.perf_counter() - t0) * 1000), "error": err}
+            t0, err, probs, raw, intentos = time.perf_counter(), "", None, "", 0
+            while intentos <= (a.reintentos if a.formato else 0) and probs is None:
+                intentos += 1
+                try:
+                    raw = llamar(url, a.modelo, msgs, n, a.timeout, formato(a.formato, f) if a.formato else None, 0.0 if intentos == 1 else 0.3)
+                    probs, err = interpretar(raw, f), ""
+                except Exception as e:  # noqa: BLE001 - se anota y se sigue
+                    err = str(e)[:120]
+            r = {"id": f["id"], "probs": probs, "valida": probs is not None, "raw": raw, "intentos": intentos, "ms": round((time.perf_counter() - t0) * 1000), "error": err}
             with cerrojo:
                 out.write(json.dumps(r, ensure_ascii=False) + "\n")
                 out.flush()
