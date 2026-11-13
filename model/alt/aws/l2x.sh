@@ -61,8 +61,8 @@ estado entorno "OK dispositivo $DEV"
 # --- 2. código (con sdk/python) e imports ANTES de bajar nada
 echo "== 2. código $(date -u +%T)"
 s3cp "$CHISPA_S3/codigo.tgz" "$BASE/codigo.tgz" && tar -xzf "$BASE/codigo.tgz" -C "$REPO" || { fallo "codigo.tgz"; estado codigo "FALLO"; cierre; }
-export PYTHONPATH="$REPO:$REPO/sdk/python"
-( cd "$REPO" && "$PY" -I -c "import sys; sys.path[:0]=['$REPO','$REPO/sdk/python']; import chispa, model.alt.l2x, model.alt.entrenar, model.alt.p0_medir, model.alt.l2x_onnx, model.l2.datos, model.evaluacion.jevbench, model.evaluacion.chispa_eval; print('imports OK')" ) \
+export PYTHONPATH="$REPO:$REPO/sdk/python${PYTHONPATH:+:$PYTHONPATH}"
+( cd "$REPO" && "$PY" -c "import sys; sys.path[:0]=['$REPO','$REPO/sdk/python']; import chispa, model.alt.l2x, model.alt.entrenar, model.alt.p0_medir, model.alt.l2x_onnx, model.l2.datos, model.evaluacion.jevbench, model.evaluacion.chispa_eval; print('imports OK')" ) \
   || { fallo "imports del código (¿falta sdk/python?)"; estado codigo "FALLO imports"; cierre; }
 estado codigo "OK imports"
 cd "$REPO" || cierre
