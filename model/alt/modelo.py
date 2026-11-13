@@ -21,6 +21,8 @@ CODIFICADORES = {
 PREFIJOS = {"intfloat/multilingual-e5-small": "query: "}   # mmBERT no pide prefijo
 PLANTILLA_NOUL = {"false": "no", "true": "sí"}
 MAX_PREGUNTA, MAX_DESC = 48, 64   # tokens; el texto se queda con el resto de max_tok
+# Tokens con relleno por pasada. 384 secuencias × 256 (≈ 98 000) dieron OOM en la g5 (A10G, 22 GiB) aun con bf16: un tercio deja margen.
+MAX_TOKENS = 32768
 
 
 def resolver(nombre):
@@ -32,6 +34,20 @@ def opciones_ordenadas(fila):
     """Ids de las opciones en el orden en que se puntúan: score por id numérico; el resto, el de la fila."""
     ops = list(fila["opciones"])
     return sorted(ops, key=int) if fila.get("tipo") == "score" else ops
+
+
+def trozos(filas, max_tokens, largo):
+    """Grupos consecutivos de `filas` cuyo tensor relleno (secuencias × la más larga, `largo(fila)` tokens) no pasa de `max_tokens`.
+    Una fila sola nunca se parte, aunque sola pase del tope (clinc150 trae 150 opciones)."""
+    out, act, n, m = [], [], 0, 0
+    for f in filas:
+        k, l = len(f["opciones"]), largo(f)
+        if act and (n + k) * max(m, l) > max_tokens:
+            out.append(act)
+            act, n, m = [], 0, 0
+        act.append(f)
+        n, m = n + k, max(m, l)
+    return out + [act] if act else out
 
 
 def descripcion(fila, o):
@@ -47,6 +63,7 @@ class CrossEncoder(nn.Module):
         if pooling not in ("media", "cls"):
             raise ValueError("pooling: media o cls")
         self.enc, self.tok, self.codificador, self.pooling, self.max_tok = enc, tok, codificador, pooling, max_tok
+        self._largos = {}
         self.drop = nn.Dropout(dropout)
         self.cabeza = nn.Linear(enc.config.hidden_size, 1)
         self.prefijo = PREFIJOS.get(codificador, "")
@@ -61,23 +78,32 @@ class CrossEncoder(nn.Module):
     def _ids(self, texto, tope):
         return self.tok(texto, add_special_tokens=False, truncation=True, max_length=tope)["input_ids"]
 
-    def codificar(self, filas):
-        """(ids, máscara, tamaños): una secuencia por (fila, opción), con el texto recortado para que la opción siempre quepa."""
+    def secuencias(self, f):
+        """Una lista de ids por opción de `f`, con el texto recortado para que la opción siempre quepa."""
         t = self.tok
         cls_id = t.cls_token_id if t.cls_token_id is not None else t.bos_token_id
         sep_id = t.sep_token_id if t.sep_token_id is not None else t.eos_token_id
+        preg = self._ids(self.prefijo + f["pregunta"], MAX_PREGUNTA)
+        descs = [self._ids(descripcion(f, o), MAX_DESC) for o in opciones_ordenadas(f)]
+        resto = max(8, self.max_tok - 4 - len(preg) - max(len(d) for d in descs))
+        txt = self._ids(f["texto"], resto)
+        return [([cls_id] + preg + [sep_id] + txt + [sep_id] + d + [sep_id])[:self.max_tok] for d in descs]
+
+    def largo(self, f):
+        """Tokens de la secuencia más larga de `f` (para `trozos`; se calcula una vez por id)."""
+        if f["id"] not in self._largos:
+            self._largos[f["id"]] = max(len(s) for s in self.secuencias(f))
+        return self._largos[f["id"]]
+
+    def codificar(self, filas):
+        """(ids, máscara, tamaños): una secuencia por (fila, opción)."""
         seqs, tams = [], []
         for f in filas:
-            ops = opciones_ordenadas(f)
-            tams.append(len(ops))
-            preg = self._ids(self.prefijo + f["pregunta"], MAX_PREGUNTA)
-            descs = [self._ids(descripcion(f, o), MAX_DESC) for o in ops]
-            resto = max(8, self.max_tok - 4 - len(preg) - max(len(d) for d in descs))
-            txt = self._ids(f["texto"], resto)
-            for d in descs:
-                seqs.append(([cls_id] + preg + [sep_id] + txt + [sep_id] + d + [sep_id])[:self.max_tok])
+            ss = self.secuencias(f)
+            tams.append(len(ss))
+            seqs += ss
         n = max(len(s) for s in seqs)
-        pad = t.pad_token_id if t.pad_token_id is not None else 0
+        pad = self.tok.pad_token_id if self.tok.pad_token_id is not None else 0
         ids = torch.tensor([s + [pad] * (n - len(s)) for s in seqs])
         mask = torch.tensor([[1] * len(s) + [0] * (n - len(s)) for s in seqs])
         return ids, mask, tams

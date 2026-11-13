@@ -1,0 +1,1 @@
+{"max_opciones": 235, "max_tokens": 32768, "max_tok": 256, "trozos": [{"filas": 1, "secuencias": 235, "tokens": 60160, "error": null, "pico_gib": 2.81}, {"filas": 64, "secuencias": 128, "tokens": 32768, "error": null, "pico_gib": 2.62}], "total_gib": 22.06, "pico_gib": 2.81, "ok": true, "codificador": "e5-small", "recomputar": true}
