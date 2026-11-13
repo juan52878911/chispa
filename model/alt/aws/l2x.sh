@@ -21,7 +21,7 @@ export HOME="${HOME:-/root}"; T0=$(date +%s)
 BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/chispa-l2x}
 mkdir -p "$BASE"; exec > >(tee -a "$BASE/log.txt") 2>&1
 echo "== arranque l2x $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min"
-export HF_HOME="$HOME/hf"; mkdir -p "$HF_HOME"
+export HF_HOME="${HF_HOME:-$HOME/hf}"; mkdir -p "$HF_HOME"
 REPO=$BASE/repo DATOS=$BASE/datos OUT=$BASE/resultados CK=$BASE/ck JEV=$BASE/jevbench RAIZ=$BASE/datos/raiz
 mkdir -p "$OUT" "$REPO" "$RAIZ/datos"; FALLO=""
 quedan_min() { echo $(( MIN - ($(date +%s) - T0) / 60 )); }
