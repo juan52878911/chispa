@@ -713,6 +713,7 @@ def calib_completa(modelo, chispa):
 def construir(modelo, enc, encoder, ckpt_info, calib, filas_esq, salida, trabajo, vocab=None, filas_paridad=(), latencias=(16, 64, 256),
               cuant="codificador", per_channel=True, ids_calib=None):
     """Todo el camino hasta el `.chispa`. `encoder`: módulo HF (atención eager) del que sale el grafo; `vocab`: dict o None."""
+    modelo.exportable()   # las ablaciones (coseno, cabeza noul de dos torres) no tienen runtime: se niega aquí, no en Go
     trabajo = Path(trabajo)
     trabajo.mkdir(parents=True, exist_ok=True)
     remap = None
