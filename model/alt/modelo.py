@@ -95,6 +95,10 @@ class CrossEncoder(nn.Module):
             self._largos[f["id"]] = max(len(s) for s in self.secuencias(f))
         return self._largos[f["id"]]
 
+    def partir(self, filas, max_tokens):
+        """Grupos de filas que caben en `max_tokens` tokens con relleno (una pasada por opción en este modelo)."""
+        return trozos(filas, max_tokens, self.largo)
+
     def codificar(self, filas):
         """(ids, máscara, tamaños): una secuencia por (fila, opción)."""
         seqs, tams = [], []
