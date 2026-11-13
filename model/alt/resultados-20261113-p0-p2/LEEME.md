@@ -341,3 +341,95 @@ python -m unittest model.alt.tests.test_fusion_knn_l2                           
 ```
 Los JSON de este directorio solo llevan cifras (ningún texto de la batería).
 
+
+## 12. Paso 2: techo del LLM en la batería y el LLM como etiquetador (preparado, sin lanzar)
+
+Aprobado por Juan con tope de 1,5 USD dentro de la partida de 35 y sin push. Código: `model/alt/llm_bateria.py` (muestra, fondo, medición; test `model/alt/tests/test_llm_bateria.py`)
+y `model/alt/aws/llm_bateria.sh` (user-data). El cliente es `llm_jevbench.py` sin cambios: el método de llm-5eb239c (esquema con todos los ids obligatorios, contexto 16 k,
+temperatura 0, un reintento con la suma anterior como retroalimentación).
+
+**Criterio congelado.** PASA si la exactitud agrupada del LLM bf16 es ≥ 0,65, si en hatecheck-es saca ≥ 5 puntos sobre kNN (el mayor del guardado y el recalculado) y si el Q4_K_M
+pierde ≤ 2 puntos frente al bf16 en las mismas filas. REFUTADO si la agrupada queda por debajo de la fusión del paso 1 en las mismas filas (0,610 en la batería completa).
+También se mide el AUROC del escalado del LLM: la probabilidad máxima de la respuesta (una respuesta inválida cuenta como confianza 0) y la validez sola, por tarea y sobre todo en hatecheck-es.
+
+### 12.1 Muestra (`llm_bateria muestra`, semilla 0)
+
+Estratificada por etiqueta: 250 filas de test por tarea, hatecheck-es completa (2 000) e inyecciones completa (116). Total 3 116 filas.
+La agrupada se pondera por el tamaño de cada tarea en la batería completa (2 000, 116, 400, 1 503, 1 438, 1 194), así que es comparable con el 0,610 de la fusión.
+kNN, L2, el cruzado y la fusión se recalculan en las mismas filas (comparación pareada con McNemar e IC95 bootstrap dentro de cada tarea).
+`filas-q4.jsonl` lleva las mismas 3 116 filas para el Q4: primero una submuestra anidada de 430 (hatecheck-es 150, massive-es 40, el resto 60) y luego las demás, intercaladas por tarea.
+Si el Q4 se corta por tiempo, se mide solo en las filas que tienen respuesta.
+
+### 12.2 Q4_K_M: en la g5, no en el i7
+
+En el i7 (`px-01-i7`, i7-8700T con 6 hilos, llama.cpp b12138 para CPU, el GGUF de L3 con sha256 `3605803b…c67e597`, 2 ranuras) el Q4 tarda unos 65 s por fila en hatecheck-es,
+unos 30 s en inyecciones y jailbreak y unos 6 min en massive-es. La prefill va a ~30 tokens/s y la generación a ~5 tokens/s. La submuestra de 430 filas pasaría de 8 h, así que no cabe.
+En esa prueba 10 de 12 respuestas fueron válidas (las 2 inválidas, en massive-es y massive-esc, tras el reintento).
+Se mide en la misma g5 con el binario oficial `llama-b12138-bin-ubuntu-cuda-12.8-x64.tar.gz` (sha256 `8aa6fd55…`) más su `cudart` (sha256 `1402566b…`), los dos comprobados en la instancia.
+El GGUF es `unsloth/Qwen3-4B-Instruct-2507-GGUF` @ a06e946b; el sha256 se comprueba contra el de L3. La prueba usa 16 ranuras y 6 144 tokens por ranura.
+
+### 12.3 Fondo sin etiqueta para el paso 3 (`llm_bateria fondo`)
+
+Son textos de los splits train y dev de las mismas fuentes y revisiones. Ningún texto del fondo está en el test de ninguna tarea (texto normalizado). En hatecheck-es se descarta además
+toda plantilla que tenga algún caso en el test. Las etiquetas de la fuente se quedan fuera de la instancia (`fondo-fuente.jsonl`, en el i7) y solo sirven para medir el acierto del etiquetador.
+
+| tarea | candidatas | fuera por texto de test | fuera por plantilla de test | en el fondo |
+|---|---|---|---|---|
+| hatecheck-es | 3 655 | 2 000 | 1 475 | **180** |
+| inyecciones | 546 | 0 | 0 | 546 |
+| jailbreak | 1 598 | 12 | 0 | 1 572 |
+| massive-es | 13 547 | 197 | 0 | 2 000 (de 12 965) |
+| massive-esc | 13 547 | 197 | 0 | 2 000 (de 12 965) |
+| tuits-es | 2 163 | 324 | 0 | 1 839 |
+
+hatecheck-es no tiene fondo propio: quedan 180 casos de plantillas sin ningún caso en el test. Para el paso 3 haría falta otra fuente en español sin etiqueta.
+Total: 8 137 textos, intercalados por tarea para que un corte por tiempo deje parte de cada tarea.
+
+### 12.4 Instancia (g5.xlarge BAJO DEMANDA, ≤ 85 min, ≤ 1,43 USD)
+
+Fases en orden de prioridad. Cada una tiene su tope y lo cortado queda escrito (el cliente es reanudable):
+
+1. **A. bf16, vLLM 0.33.0:** las 3 116 filas, con 32 hilos, después de una autoprueba de 6 casos (uno por tarea, incluido massive-es con sus 60 opciones; FALLO si hay menos de 2/3 válidas).
+2. **B. Q4_K_M, llama.cpp CUDA:** se para vLLM y se mide `filas-q4.jsonl` durante 22 min como mucho.
+3. **C. Fondo:** vLLM otra vez, hasta que queden 15 min.
+
+El vigilante cierra a los 71 min y sube los resultados; `shutdown -h +85` es el tope duro.
+- Paquete en `llm-bateria-4994f3e/` (subido y vuelto a bajar con el mismo sha256):
+
+  | fichero | sha256 |
+  |---|---|
+  | `llm.tgz` | `9cae2eeacf61b687…` (solo `llm_jevbench.py`, sin `._*`) |
+  | `filas.jsonl` | `7ea97957…` |
+  | `filas-q4.jsonl` | `757fcae0…` |
+  | `fondo.jsonl` | `5bb146ef…` |
+
+  user-data: `model/alt/aws/lanzados/ud-llm-bateria-4994f3e.sh` (13 853 B, sha256 `34ae1ab2862c744d0193bfae5895f7515e0f5cf24957e7c77ce62d8fa0828088`).
+- Claves:
+  - **Lee:** esos 4 ficheros.
+  - **Escribe:** `log.txt`, `listo` y `resultados.tgz`.
+  - **Espera:** `verificado`, hasta 8 min.
+
+  Las 8 estaban libres (`head-object`). Los modelos vienen de Hugging Face y el binario de llama.cpp de GitHub, con el sha256 comprobado.
+- **Prueba en seco en el i7** (`CHISPA_LOCAL=1`, una fila por fase, contra llama-server en CPU, con el user-data y los tarballs exactos): pasaron las entradas por clave exacta, la autoprueba, A, B, C, el resumen y la subida simulada, en 66 s.
+  Después, `llm_bateria medir` sobre esas salidas recalcula las referencias en las filas de la muestra con la ponderación de la batería:
+
+  | referencia | agrupada (muestra ponderada) | batería completa |
+  |---|---|---|
+  | kNN | 0,578 | 0,578 |
+  | fusión | 0,606 | 0,610 |
+  | cruzado | 0,572 | 0,574 |
+
+  **No probado:** vLLM en esta ronda (sí en llm-5eb239c), el binario CUDA de llama.cpp en la A10G (que no le falte ninguna biblioteca) y el reinicio de vLLM tras el Q4. Si el Q4 falla, A y C siguen y queda un FALLO en el log.
+- Orden (`--dry-run`: `DryRunOperation: Request would have succeeded`):
+
+      aws ec2 run-instances --region us-east-1 --image-id ami-004851d2e6f24b4b4 --instance-type g5.xlarge --count 1 \
+        --subnet-id subnet-0b152606d6e4aedd2 --security-group-ids sg-0caaea4ac99da8ca1 --iam-instance-profile Name=chispa-pruebas-ec2 \
+        --instance-initiated-shutdown-behavior terminate \
+        --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
+        --user-data file://model/alt/aws/lanzados/ud-llm-bateria-4994f3e.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-bateria-4994f3e}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-bateria-4994f3e}]'
+
+  Cuando aparezca `listo`, se baja `resultados.tgz` y se mide en el i7 con
+  `python -m model.alt.llm_bateria medir --muestra $D/muestra --bf16 res/l3_bateria.jsonl --q4 res/l3_q4.jsonl --bateria …/p3-eval/full/bat --pred …/fusion-knn-l2/pred --vec …/fusion-knn-l2/vec`
+  y con `fondo-resumen`. Después se sube `verificado`.
+  Datos fuera del repo: `px-01-i7:/mnt/pve/nfs-ascci/chispa-audio/llm-bateria/` (`muestra/`, `fondo/` con `fondo-fuente.jsonl`, `hub/`, `llamacpp/`, `seco/`).
