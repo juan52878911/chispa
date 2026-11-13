@@ -169,3 +169,20 @@ En el i7 (`px-01-i7`, directorio nuevo, bajo `systemd-run --scope -p MemoryMax=3
 - llm: entradas por clave exacta, `[techo] OK` (231 casos, 12 con respuesta de juguete) y subida simulada.
 Un primer intento falló por el entorno del i7 (la caché de e5 no tenía `refs/main`); se arregló con una caché con enlaces en `/root/p3-prueba/hfcache`, sin tocar el script.
 **No probado:** el entrenamiento real en la A10G (rendimiento y 3 épocas), `pip install vllm==0.33.0` y la salida estructurada de vLLM, la descarga de HF desde la instancia, y las versiones de PyTorch y transformers de la AMI (las del i7 son otras). La exportación a ONNX en la AMI es opcional: si falla queda un AVISO y se rehace desde el checkpoint.
+
+## 9. Resultado del techo del LLM (EC2, 2026-11-13)
+
+Primera ronda, i-02e65025eb11b6e40 con el código 0be529b: vLLM 0.33.0 no arrancó. Durante el profile_run, el muestreador de FlashInfer se compila con JIT y pide nvcc, y la DLAMI no lo trae. Costó ≈ 0,32 USD.
+Arreglo en 5eb239c: `VLLM_USE_FLASHINFER_SAMPLER=0`, y la espera se corta si vLLM muere.
+Segunda ronda, i-058a29e80a810a5e5 con el prefijo llm-5eb239c: 672 s en total y los 231 casos en 206 s. Agregado en `llm-techo-5eb239c.json`.
+
+| | Exactitud (IC95) |
+|---|---|
+| Qwen3-4B-Instruct-2507 bf16, salida restringida, lectura estricta | **65,8 %** [59,7, 71,9] |
+| Lo mismo, lectura permisiva | 66,2 % [60,2, 72,3] |
+| L2 (referencia) | 49,8 % [43,3, 56,3] |
+| CE fp32 ONNX (referencia) | 51,1 % [45,0, 57,6] |
+
+- Inválidas en lectura estricta: 2 de 231 (0,9 %), frente al 61 % de la v1 libre. De los 67 casos comunes, había 41 inválidos y ahora queda 1.
+- Reintentos: 223 casos con 1 intento y 8 con 2. Latencia por caso en la A10G: p50 795 ms, p95 1 725 ms.
+- El techo es ≥ 0,60 en las dos lecturas, así que JevBench sigue siendo criterio de paso para los codificadores. El LLM queda unos 15 puntos por encima de L2 y del CE.
