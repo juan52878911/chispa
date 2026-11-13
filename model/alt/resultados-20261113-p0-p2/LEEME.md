@@ -105,30 +105,67 @@ Tamaño: 470 MB fp32, 118 MB int8. Diferencia máxima de puntuación frente a Py
 
 Pruebas: `python3 -m unittest discover -s model/alt -t .` (50, todas OK en el PC).
 
-## 8. P3 preparado (sin lanzar)
+## 8. P3 y techo del LLM: preparados, sin lanzar (código 0be529b)
 
-**Código:** `model/alt/l2x.py` (una secuencia `[CLS] query: pregunta [SEP] [OPC] desc… [SEP] texto [SEP]`, vector de cada opción = media de su tramo, cabeza sobre [opción, texto, opción⊙texto], softmax por pregunta; entrenamiento con ≤ 8 opciones barajadas con la correcta siempre dentro, torneo por trozos si hay más al evaluar), `entrenar.py --arquitectura l2x`, `l2x_onnx.py` (fp32 e int8), `bench_l2x_i7.py` (solo numpy + onnxruntime; p50/p99 con 4 hilos, 128 tokens, 2/4/8/16 opciones, cruzado y L2x), `manifiesto-l2x.json` (el del hito 4 más synzs, Apache-2.0). **No trae** las cabezas CORAL/multi, calibración, cabeza de escalada ni preselección con L1.
+Criterio actualizado por Juan: la vara de P3 es la batería de §1 (agrupada y por tarea) y `hatecheck-es` se informa aparte como la única tarea de verdad no vista (§0); se mantienen los criterios de latencia y AUROC de la revisión. El paquete lo calcula solo: `python -m model.alt.p0_medir informe-l2x` escribe `informe-l2x.{json,md}` con exactitud (IC95) y macro-F1 de L2x, L2, cruzado del hito 4 y kNN-e5 por tarea y agrupados, el bloque de `hatecheck-es`, McNemar de L2x frente a L2 y al cruzado (agrupado y por tarea) y los criterios:
+- C1 macro-F1 medio de las 6 tareas ≥ L2 + 12 pts; C2 ≥ cruzado − 1 pt; C3 exactitud agrupada ≥ cruzado − 1 pt;
+- C4 AUROC de la probabilidad máxima (aciertos frente a fallos) ≥ 0,78 (no hay cabeza de escalada aprendida);
+- C5 latencia p50 ≤ 60 ms en el i7 (int8, 4 hilos, ≤ 8 opciones): PENDIENTE, se mide con `bench_l2x_i7.py` sobre `onnx/l2x_int8.onnx`;
+- refutado si queda por debajo del cruzado (−1 pt) en ≥ 3 de las 6 tareas.
+Las referencias (L2, cruzado, kNN) van en `baseline-top1.json` dentro de `bateria-no-vista.tgz` (id → top-1 y probabilidad máxima; sin etiquetas de Jev como datos de entrenamiento).
 
-**Pruebas hechas (CPU, PC de pruebas):** 12 pruebas unitarias nuevas (entrada, presupuesto de tokens, torneo, sobreajuste de dos filas, guardado/carga, ONNX = PyTorch a 1e-3); humo con e5-small real (3 pasos, exportación a ONNX de 472 MB / 118 MB, predicción en torch y en ORT int8, banco); y **prueba en seco del paquete AWS desempaquetando el tarball en un directorio limpio** y corriendo el `l2x.sh` con `CHISPA_LOCAL=1` (sustituyendo `__CHISPA_S3__` como lo hará el lanzador): imports de `chispa` y `model.*` OK, 2 pasos de entrenamiento, evaluación, exportación y subida simulada de `ckpt/mejor-l2x.tgz` y `onnx/l2x_int8.onnx`. Esa prueba se hizo con el tarball de `16efc9b`; el actual (`e4025e7`) difiere solo en el cálculo del IC95 de `p0_medir` (no se usa al predecir), **sin repetir la prueba en seco** por el cambio de plan.
+### 8.1 Instancia L2x (g5.xlarge SPOT, ≤ 6 h)
 
-**Paquete:** `bash model/alt/aws/empaquetar_l2x.sh e4025e7 > codigo.tgz` (460 764 bytes, sha256 `2e9c2263eebec0ae…`; incluye `sdk/python`) y `bateria-no-vista.tgz` (515 331 bytes, sha256 `bec3ec60df67e5a7…`, las 6 tareas y el manifiesto). Ambos están en el scratchpad de la sesión, sin subir.
+- Código y entrada: `codigo.tgz` (sha256 `f1a9f41f3f87e2c6…`, 464 262 B, de `empaquetar_l2x.sh 0be529b`, con `sdk/python`, sin los informes) y `bateria-no-vista.tgz` (sha256 `d9887ba5f84c13a8…`, 701 909 B).
+- user-data: `model/alt/aws/lanzados/ud-l2x-0be529b.sh` (11 835 B, sha256 `387d4e4d1ba9d1656d867291940b1c425b09ec2ce1fe1076dcbe0c195a08c359`).
+- Claves (bucket `chispa-pruebas-879381269751`, todas por nombre exacto): **lee** `l2x-0be529b/{codigo.tgz,bateria-no-vista.tgz}` (subidos), `meta-20261027/meta/tsjev/{train,dev}-*` (13 ficheros), `meta-20261027/meta/synzs/train-00000..00007.jsonl.gz` y `synzs/dev-00000.jsonl.gz`, `blandas/e2deac55256e3314/blandas.jsonl.gz`; **escribe** `l2x-0be529b/{log.txt,listo,resultados.tgz,ckpt/mejor-l2x.tgz,onnx/l2x_int8.onnx,onnx/exportacion.json}`; **espera** `l2x-0be529b/verificado` hasta 30 min. Comprobadas con `head-object`: las 29 claves de lectura existen y las 11 de escritura están libres.
+- Cierre: tras subir `listo`, la instancia sondea cada 30 s la clave `verificado` (≤ 30 min) y luego apaga; `shutdown -h +360` es el tope duro (el vigilante cierra y sube 42 min antes) y la instancia se termina sola.
+- Coste máximo: 6 h × 0,51 USD/h spot ≈ 3,1 USD; con `MaxPrice=0,60` ≤ 3,6 USD; EBS de 150 GB < 0,2 USD. No puede caer a bajo demanda.
+- Comando (`describe-images`: dispositivo raíz `/dev/xvda`, AMI disponible; `describe-security-groups`: `sg-0caaea4ac99da8ca1` es el grupo `default` de `vpc-0960f9449d66c0416`; `describe-subnets`: `subnet-0b152606d6e4aedd2` es us-east-1f de la misma VPC, con IP pública; `g5.xlarge` ofrecida en us-east-1f). Con `--dry-run` la respuesta fue `DryRunOperation: Request would have succeeded, but DryRun flag is set.`
 
-**Claves de S3** (todas por nombre exacto, sin `--recursive`; `CHISPA_S3 = s3://chispa-pruebas-879381269751/l2x-e4025e7`). Las leídas con `head-object` existen hoy (blandas: 16,2 MB; synzs/train-00000: 7,8 MB; tsjev/train-00000: 20,3 MB).
-- Lee: `$CHISPA_S3/codigo.tgz`, `$CHISPA_S3/bateria-no-vista.tgz` (**subirlos antes**), `…/meta-20261027/meta/tsjev/{train,dev}-*.jsonl.gz` (los nombres salen de `model/meta/resultados/conversion-20261027.json`), `…/meta-20261027/meta/synzs/train-00000..00007.jsonl.gz` y `synzs/dev-00000.jsonl.gz`, `…/blandas/e2deac55256e3314/blandas.jsonl.gz`. Fuera de S3: Hugging Face (e5-small y 7 datasets del manifiesto) y el clon público de JevBench.
-- Escribe: `$CHISPA_S3/{log.txt,listo,resultados.tgz,ckpt/mejor-l2x.tgz,onnx/l2x_int8.onnx,onnx/exportacion.json}`; espera `$CHISPA_S3/terminar` hasta 20 min.
+      aws ec2 run-instances --region us-east-1 --image-id ami-004851d2e6f24b4b4 --instance-type g5.xlarge --count 1 \
+        --subnet-id subnet-0b152606d6e4aedd2 --security-group-ids sg-0caaea4ac99da8ca1 --iam-instance-profile Name=chispa-pruebas-ec2 \
+        --instance-initiated-shutdown-behavior terminate \
+        --instance-market-options 'MarketType=spot,SpotOptions={MaxPrice=0.60,SpotInstanceType=one-time}' \
+        --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":150,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
+        --user-data file://model/alt/aws/lanzados/ud-l2x-0be529b.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-l2x-0be529b}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-l2x-0be529b}]'
 
-**Coste máximo por ronda:** techo duro de 360 min (`shutdown -h +360`, con `terminate`). Spot g5.xlarge en us-east-1f ≈ 0,51 USD/h → ≤ 3,1 USD; con `MaxPrice=0,60` ≤ 3,6 USD; en el peor caso bajo demanda (1,006 USD/h) serían 6,0 USD, pero con MaxPrice no puede caer a bajo demanda. Más EBS de 150 GB: < 0,2 USD. Entrenamiento: 3 épocas, lote 32, bf16, hasta ~300 min; el rendimiento en la A10G **no está medido**, así que 3 épocas completas no están garantizadas (si se acaba el tiempo guarda la época en curso).
+  Cuando `listo` aparezca en S3: bajar `resultados.tgz`, verificarlo y `aws s3 cp <fichero con cualquier contenido> s3://chispa-pruebas-879381269751/l2x-0be529b/verificado`.
 
-**Comando para Juan** (el perfil `chispa-pruebas-ec2` y la AMI salen de mis lecturas; la AMI y el subred los comprobé con `describe-*`, el nombre del dispositivo raíz `/dev/xvda` y el SG por defecto **no** están verificados contra una ejecución anterior de esta cuenta):
+### 8.2 Instancia LLM (g5.xlarge BAJO DEMANDA, ≤ 60 min)
 
-    S3=s3://chispa-pruebas-879381269751/l2x-e4025e7
-    aws s3 cp codigo.tgz $S3/codigo.tgz && aws s3 cp bateria-no-vista.tgz $S3/bateria-no-vista.tgz
-    sed "s|__CHISPA_S3__|$S3|" model/alt/aws/l2x.sh > user-data.sh
-    aws ec2 run-instances --region us-east-1 --image-id ami-004851d2e6f24b4b4 --instance-type g5.xlarge --count 1 \
-      --subnet-id subnet-0b152606d6e4aedd2 --security-group-ids sg-0caaea4ac99da8ca1 --iam-instance-profile Name=chispa-pruebas-ec2 \
-      --instance-initiated-shutdown-behavior terminate \
-      --instance-market-options 'MarketType=spot,SpotOptions={MaxPrice=0.60,SpotInstanceType=one-time}' \
-      --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":150,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-      --user-data file://user-data.sh --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=chispa-l2x}]'
+Instancia aparte, bajo demanda: dura menos de una hora (spot no ahorra casi nada y una interrupción obligaría a repetir la instalación de vLLM), y mezclarla con el entrenamiento arriesgaría la ronda de 6 h con contexto de 16 k y otro runtime en la misma A10G.
 
-**Criterios de paso de P3 (de la revisión):** macro-F1 medio en massive, hatecheck e inyecciones ≥ L2 + 12 puntos y ≥ hito 4 − 1; p50 ≤ 60 ms en el i7 (int8, 4 hilos, ≤ 8 opciones); AUROC de escalar ≥ 0,78 fuera de pliegue. Se refuta si queda por debajo del hito 4 en ≥ 2 de las 3 tareas. Dos avisos míos: (a) massive e inyecciones están en el train de tsjev, así que esas tres tareas ya no miden zero-shot limpio; mejor añadir hatecheck-es y la media de la batería; (b) el int8 dinámico rompió 7,7 puntos al cross-encoder (§5), así que el int8 de L2x hay que medirlo antes de dar por buena la latencia (`p0_medir pred --modelo l2x-int8-onnx`); y la cabeza de escalada no está implementada, así que el AUROC solo se puede medir con la probabilidad máxima.
+- **Arreglo de las respuestas inválidas.** El primer intento (modelo libre, `response_format: json_object`) dio 41 inválidas de 67 (61 %): 16 sin respuesta (15 `timeout`, 1 HTTP 4xx) y 25 con un JSON parcial como `{"probs":{"weather":1.0}}`, que el intérprete de L3 rechaza. Ahora el cliente (`llm_jevbench.py --formato`) manda un esquema JSON con **todos los ids obligatorios** (número entre 0 y 1, sin ids ajenos), contexto 16 k, timeout 600 s y **un reintento** con la suma de la respuesta anterior como retroalimentación si no suma 1 ± 0,05.
+- **Prueba en el i7** (CPU, misma plantilla: Qwen3-4B-Instruct-2507 Q4_K_M, `unsloth/Qwen3-4B-Instruct-2507-GGUF` @ a06e946bb6b655725eafa393f4a9745d460374c9, sha256 `3605803b…c67e597`, servidor `llama-cpp-python` 0.3.36 con el esquema como gramática, contexto 4 096), 12 casos cortos (10 de los inválidos de antes y 2 válidos):
+
+  | | inválidas (lectura estricta) |
+  |---|---|
+  | libre, mismo servidor del i7 | 10 de 12 |
+  | restringida, primer intento | 4 de 12 (todas por sumar 1,1) |
+  | restringida con el reintento con retroalimentación | **1 de 12** |
+  | restringida, lectura permisiva (renormalizar) | 0 de 12 |
+
+  Es una muestra pequeña y elegida entre las inválidas: demuestra que el esquema elimina los JSON parciales y que las sumas mal hechas quedan en lo que corrige el reintento, no mide la tasa final. **Sin verificar:** vLLM 0.33.0 con `response_format: json_schema` en la A10G (el i7 solo pudo probar la gramática de llama.cpp). El script lo comprueba antes de gastar nada: autoprueba de 3 casos y FALLO si menos de 2 son válidas.
+- Runtime y modelo fijados: vLLM 0.33.0 (la versión de la ronda de destilación del 3 de noviembre en esta AMI), `Qwen/Qwen3-4B-Instruct-2507` @ cdbee75f17c01a7cc42f958dc650907174af0554 (Apache-2.0), bf16, `--max-model-len 16384`. Es bf16, no el Q4_K_M de L3: el techo sale algo más alto que el del servidor de producción.
+- Se recalculan los 231 casos con el mismo método (no se saltan los 67 del primer intento: 41 eran inválidos por el formato libre y mezclar métodos falsearía el techo). Las 26 válidas del primer intento se usan solo para contar cuántas inválidas pasan a válidas. Salida: `llm_techo.json` con exactitud estricta y permisiva (IC95 de 2 000 remuestreos), tasa de inválidas, errores, la referencia de L2 y del cruzado en los mismos casos y el criterio `< 0,60`.
+- Paquete: `llm-0be529b/llm.tgz` (sha256 `12afc145157cf132…`), `jev_filas.jsonl` (231 casos, sha256 `f06caab0564b6c2d…`), `l3_jevbench_parcial.jsonl` (67 filas), `baseline-top1.json`; user-data `model/alt/aws/lanzados/ud-llm-0be529b.sh` (7 135 B, sha256 `6d3c7deb1ce1fddeb9da7d56778b98b31f8909bfd5353e523a8cf384a452031b`).
+- Claves: **lee** `llm-0be529b/{llm.tgz,jev_filas.jsonl,l3_jevbench_parcial.jsonl,baseline-top1.json}` (subidos y comprobados); **escribe** `llm-0be529b/{log.txt,listo,resultados.tgz}`; **espera** `llm-0be529b/verificado` hasta 8 min. Modelo desde Hugging Face (no S3).
+- Coste máximo: `shutdown -h +60` → 1,006 USD (+ EBS de 100 GB < 0,02 USD). El vigilante cierra y sube 14 min antes del tope.
+- Comando (`--dry-run`: `DryRunOperation: Request would have succeeded`):
+
+      aws ec2 run-instances --region us-east-1 --image-id ami-004851d2e6f24b4b4 --instance-type g5.xlarge --count 1 \
+        --subnet-id subnet-0b152606d6e4aedd2 --security-group-ids sg-0caaea4ac99da8ca1 --iam-instance-profile Name=chispa-pruebas-ec2 \
+        --instance-initiated-shutdown-behavior terminate \
+        --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
+        --user-data file://model/alt/aws/lanzados/ud-llm-0be529b.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-0be529b}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-0be529b}]'
+
+### 8.3 Qué demostró la prueba en seco
+
+En el i7 (`px-01-i7`, directorio nuevo, bajo `systemd-run --scope -p MemoryMax=3500M -p AllowedCPUs=0-5 nice`, CPU, `/root/chispa-audio/venv` con torch 2.5.1 y transformers 4.46.3; sin tocar VM ni CT) se desempaquetaron los **tarballs exactos** que están en S3 (sha256 de `codigo.tgz` `f1a9f41f3f87e2c6…` y de `llm.tgz` `12afc145157cf132…`), se sustituyó `__CHISPA_S3__` y se corrieron los dos user-data con `CHISPA_LOCAL=1`:
+- l2x: `[codigo] OK imports` (con `chispa` de `sdk/python`), `[entrenar] OK` (2 pasos con e5-small real), `[evaluar] OK`, `[informe] OK 4 criterios` (produce `informe-l2x.md` con hatecheck-es aparte, McNemar y C1–C5), `[onnx] OK` (fp32 472 MB, int8 118 MB) y subida simulada de `ckpt/mejor-l2x.tgz`, `onnx/l2x_int8.onnx`, `onnx/exportacion.json`, `resultados.tgz` y `log.txt`.
+- llm: entradas por clave exacta, `[techo] OK` (231 casos, 12 con respuesta de juguete) y subida simulada.
+Un primer intento falló por el entorno del i7 (la caché de e5 no tenía `refs/main`); se arregló con una caché con enlaces en `/root/p3-prueba/hfcache`, sin tocar el script.
+**No probado:** el entrenamiento real en la A10G (rendimiento y 3 épocas), `pip install vllm==0.33.0` y la salida estructurada de vLLM, la descarga de HF desde la instancia, y las versiones de PyTorch y transformers de la AMI (las del i7 son otras). La exportación a ONNX en la AMI es opcional: si falla queda un AVISO y se rehace desde el checkpoint.
