@@ -1,120 +1,169 @@
-<p align="center"><img src="docs/marca/chispa.svg" width="128" alt="Icono de Chispa: una chispa que salta de tres astillas de leña"></p>
+<p align="center">
+  <img src="docs/marca/chispa.svg" width="128" alt="Icono de Chispa: una chispa que salta de tres astillas de leña">
+</p>
 
-# Chispa
+<h1 align="center">Chispa</h1>
 
-Clasificador tipado, de bajo coste y de propósito general, open source (Apache-2.0), en la línea de Jev o Laya. Tú mandas un texto y una
-pregunta con sus opciones; Chispa devuelve la opción elegida, una probabilidad por opción y la capa que contestó. Decide sobre
-esquemas que no ha visto (zero-shot) o con pocos ejemplos, en CPU y sin GPU: en servidor, en ARM y en el móvil.
-massive, clinc150, hatecheck, spam e injection son **benchmarks**, no el objetivo del producto.
+<p align="center">
+  <strong>Clasificador tipado, barato y open source: un texto, una pregunta con opciones y una respuesta con su probabilidad.</strong><br>
+  En CPU, sin GPU: en servidor, en ARM y en el móvil. Si no está seguro, no inventa: escala.
+</p>
 
-Si ninguna capa llega a su umbral, Chispa **no inventa**: escala (`"layer": "escalar"`) y te da su mejor pista.
+<p align="center">
+  <a href="LICENSE"><img alt="Licencia Apache-2.0" src="https://img.shields.io/badge/licencia-Apache--2.0-c48a52"></a>
+  <img alt="Servidor en Go" src="https://img.shields.io/badge/servidor-Go-ff9a3d">
+  <img alt="SDK de Python, JS, Go, Kotlin y Swift" src="https://img.shields.io/badge/SDK-Python%20%C2%B7%20JS%20%C2%B7%20Go%20%C2%B7%20Kotlin%20%C2%B7%20Swift-ffc23d">
+</p>
 
-## Tipos de pregunta
+<p align="center">
+  <a href="#inicio-rápido">Inicio rápido</a> ·
+  <a href="#me-sirve">¿Me sirve?</a> ·
+  <a href="#estado-real-con-cifras">Cifras</a> ·
+  <a href="#cómo-decide-por-dentro">Por dentro</a> ·
+  <a href="docs/00-indice.md">Documentación</a>
+</p>
 
-Valores de `kind` que acepta hoy `server/` ([`server/decide/types.go`](server/decide/types.go), [`docs/03-api.md`](docs/03-api.md)):
+---
+
+Chispa responde preguntas cerradas sobre un texto, en la línea de Jev o Laya. Mandas el texto y la pregunta con sus opciones, y
+recibes la opción elegida, una probabilidad por opción y la capa que contestó. Las capas van de la más barata a la más cara (TF-IDF,
+Model2Vec, e5-small y, si la activas, un LLM local) y cada una contesta solo si llega a su umbral τ. Si ninguna llega, devuelve
+`"layer": "escalar"` con su mejor pista, para que decida una persona o un sistema más caro.
+
+> [!NOTE]
+> **Dónde está hoy.** Con ejemplos tuyos (≥ 20 por opción) clasifica bien y rápido: macro-F1 de 0,81–0,89 con p99 de unos 10 ms.
+> Sin ejemplos (zero-shot) todavía escala casi todo. Las cifras, con su fichero de origen, están en [Estado real](#estado-real-con-cifras).
+
+## ¿Me sirve?
+
+| Sí, hoy | Todavía no |
+|---|---|
+| Enrutar mensajes con ejemplos propios: intenciones, buzones, tipo de PQRS | Decidir sin ejemplos con garantías (zero-shot) |
+| Filtrar spam e inyecciones de prompt antes de llamar a un LLM | Razonar en varios pasos, comparar números o fechas |
+| Ahorrar llamadas a un LLM: Chispa contesta lo fácil y escala lo dudoso | Puntuar en escala ordinal sin ejemplos (`score`) |
+| Clasificar en el móvil o en el borde, sin red | Textos largos: L2 corta en 128 tokens y lo marca con `truncado` |
+
+## Inicio rápido
+
+Paso a paso completo en [`docs/02-inicio-rapido.md`](docs/02-inicio-rapido.md). Hace falta Python ≥ 3.9, Go y un potion exportado
+(`potion.chispa-l1`, 155 MB, con [`runtime/l1/exportar.py`](runtime/l1/exportar.py)).
+
+**1. Describe la pregunta** (`ferreteria.yaml`). En zero-shot, las descripciones son lo único que Chispa ve de tu tarea:
+
+```yaml
+id: solicitud
+pregunta: ¿Qué necesita la persona que escribe a la ferretería?
+tipo: choice
+opciones:
+  cotizacion: pide precio o disponibilidad de un producto, o una cotización de materiales
+  pedido: quiere comprar y recibir productos, o pregunta por el estado de un pedido ya hecho
+  garantia: reclama por una herramienta defectuosa, un cambio o una devolución
+```
+
+**2. Empaqueta el modelo.** Con `--ejemplos ejemplos.csv` entrena también L0 y calibra con tus datos:
+
+```sh
+PYTHONPATH=sdk/python python -m chispa train --esquema ferreteria.yaml --salida ferreteria.chispa --l1 potion.chispa-l1
+```
+
+**3. Sírvelo y pregunta:**
+
+```sh
+cd server && go build -o chispa-server ./cmd/chispa-server
+./chispa-server -addr 127.0.0.1:8090 -modelo ../ferreteria.chispa
+```
+
+```sh
+curl -s localhost:8090/v1/decide -d '{"state":"No me ha llegado el pedido y lo necesito hoy",
+ "questions":[{"id":"u1","question":"¿Qué tan urgente es?","kind":"choice",
+   "options":[{"id":"alta","description":"Requiere atención inmediata"},{"id":"baja","description":"Puede esperar"}]}]}'
+```
+
+```json
+{"results": [
+  {"id": "u1", "kind": "choice", "answer": "alta", "probs": {"alta": 0.9, "baja": 0.1},
+   "layer": "L0", "escalate": false, "ms": 0}
+]}
+```
+
+La forma es esta; los valores cambian con el modelo (ejemplo real en
+[`choice.resp.json`](server/decide/testdata/choice.resp.json)). Contrato formal: [`server/api/openapi.yaml`](server/api/openapi.yaml).
+
+## La API en una pantalla
+
+`POST /v1/decide` (además de `/healthz` y `/metrics`). Valores de `kind` ([`server/decide/types.go`](server/decide/types.go)):
 
 | `kind` | Qué pregunta es | Respuesta |
 |---|---|---|
 | `choice` | Elegir una opción (2 a 256) | el `id` elegido |
 | `noul` | Sí o no | `"true"` o `"false"` |
 | `score` | Nivel ordinal, ids `"1"` … `"K"` | `"1"` … `"K"` |
-| `multi` | Multietiqueta: varias opciones a la vez, o ninguna | `answers`: la lista de activas |
+| `multi` | Varias opciones a la vez, o ninguna | `answers`: la lista de activas |
 
-## Cómo usarlo
+Cada resultado trae `answer`, `probs`, `layer`, `escalate` y `ms`. Además ([`docs/03-api.md`](docs/03-api.md)):
 
-### Servidor Go: `POST /v1/decide`
-
-```sh
-cd server && go build -o chispa-server ./cmd/chispa-server
-./chispa-server -addr 127.0.0.1:8090 -modelo ../ferreteria.chispa   # el .chispa lo escribe `chispa train`
-```
-
-```sh
-curl -s localhost:8090/v1/decide -d '{"state":"Mensaje urgente: no me ha llegado el pedido y lo necesito hoy",
- "questions":[{"id":"u1","question":"¿Qué tan urgente es?","kind":"choice",
-   "options":[{"id":"alta","description":"Requiere atención inmediata"},{"id":"baja","description":"Puede esperar"}],"nonce":"abc-1"}]}'
-```
-
-Respuesta (la forma; los valores cambian con el modelo; ejemplo real en [`choice.resp.json`](server/decide/testdata/choice.resp.json)):
-
-```json
-{"results": [
-  {"id": "u1", "kind": "choice", "answer": "alta", "probs": {"alta": 0.9, "baja": 0.1},
-   "layer": "L0", "escalate": false, "ms": 0, "nonce": "abc-1"}
-]}
-```
-
-Si escala: `"escalate": true`, `"layer": "escalar"` y `escalate_reason` (`baja_confianza`, `sin_opinion`, `score_ids_no_validos`,
-`sin_presupuesto_torres`, `incompleta`). Contrato formal: [`server/api/openapi.yaml`](server/api/openapi.yaml).
-Rutas: `/v1/decide`, `/healthz`, `/metrics`.
+| Campo | Cuándo sale | Qué dice |
+|---|---|---|
+| `escalate_reason` | al escalar | `baja_confianza`, `sin_opinion`, `score_ids_no_validos`, `sin_presupuesto_torres` o `incompleta` |
+| `calibrada` | cuando contesta una capa | `false`: la confianza de esa capa no está calibrada y el τ se aplicó sobre la cruda |
+| `truncado`, `tokens_originales` | si alguna capa vio solo una parte del texto | que se cortó y cuántos tokens tenía entero |
+| `unk_pct` | si se puede medir | fracción de tokens desconocidos (`<unk>`), en [0, 1] |
 
 ### SDK
 
 | SDK | Léelo en |
 |---|---|
-| Python (`chispa train`, cliente) | [`sdk/python/README.md`](sdk/python/README.md) |
+| Python (`chispa train` y cliente) | [`sdk/python/README.md`](sdk/python/README.md) |
 | JavaScript (Node ≥ 20 y navegador) | [`sdk/js/README.md`](sdk/js/README.md) |
 | Go (cliente HTTP) | [`sdk/go/README.md`](sdk/go/README.md) |
 | Android (Kotlin) | [`sdk/android/README.md`](sdk/android/README.md) |
 | iOS (Swift, sin compilar) | [`sdk/ios/README.md`](sdk/ios/README.md) |
-| Motor móvil Go (`gomobile`) | [`sdk/movil/README.md`](sdk/movil/README.md) |
+| Motor móvil en Go (`gomobile`) | [`sdk/movil/README.md`](sdk/movil/README.md) |
 
-Índice de todos: [`sdk/README.md`](sdk/README.md). Los paquetes no se han publicado en ningún registro: se usan desde el repositorio.
-
-Documentación: [`docs/00-indice.md`](docs/00-indice.md) · [qué es](docs/01-que-es.md) · [inicio rápido](docs/02-inicio-rapido.md) ·
-[API](docs/03-api.md) · [formato `.chispa`](docs/04-formato-chispa.md) · [rendimiento y límites](docs/07-rendimiento-y-limites.md).
+Ningún paquete está publicado en un registro: se usan desde el repositorio ([`sdk/README.md`](sdk/README.md)).
 
 ## Tres modos
 
 | Modo | Qué necesitas | Estado |
 |---|---|---|
-| Zero-shot | El esquema, con descripciones | Flojo; escala mucho (ver abajo) |
+| Zero-shot | El esquema, con buenas descripciones | Flojo: escala casi todo |
 | Few-shot | Pocos ejemplos por opción | L1 sube de 0,45 a 0,65 de macro-F1 con 32 ejemplos por clase |
 | **Con datos del cliente** (`chispa train --conjunta`: L0TF + L2c) | ≥ 20 ejemplos por opción | **El que funciona** |
 
 ## Estado real, con cifras
 
-Cada cifra sale del fichero enlazado. Una sola corrida y una sola semilla salvo que se diga otra cosa. Lo que no se midió se
-dice en [`docs/07`](docs/07-rendimiento-y-limites.md#qué-no-se-midió).
+Cada cifra sale del fichero enlazado. Una sola corrida y una sola semilla salvo que se diga otra cosa. Lo que no se midió está en
+[`docs/07`](docs/07-rendimiento-y-limites.md#qué-no-se-midió).
 
-**Con datos del cliente (el modo que funciona).** Macro-F1 por `/v1/decide` con la cascada de producción
-([`e2e-20261028/LEEME.md`](server/deploy/resultados/e2e-20261028/LEEME.md)):
-
-| tarea | macro-F1 por `/v1/decide` |
-|---|---|
-| massive | 0,814 |
-| clinc150 | 0,887 |
-
-Latencia en esa corrida (c6a.xlarge, 1 cliente, misma fuente): p99 de 9–12 ms por consulta; L0 responde el 54–67 % de las consultas.
-Sin ejemplos propios esas cifras no valen. Con tu tarea: sin medir (piloto en Colombia sin medir,
-[`pilotos/metrica.md`](pilotos/metrica.md)).
+**Con datos del cliente.** Macro-F1 por `/v1/decide` con la cascada de producción
+([`e2e-20261028/LEEME.md`](server/deploy/resultados/e2e-20261028/LEEME.md)): **0,814 en massive y 0,887 en clinc150**, con p99 de
+9–12 ms por consulta (c6a.xlarge, 1 cliente). L0 contesta el 54–67 % de las consultas. Sin ejemplos propios estas cifras no valen.
 
 **Zero-shot: no vende hoy.**
-- L1 con potion: macro-F1 medio de 0,455 en 5 tareas; 0,406 en massive y 0,445 en clinc150
-  ([`model/l1/resultados/2026-10-28/informe.md`](model/l1/resultados/2026-10-28/informe.md)).
-- Con L2 solo y un τ elegido en validación, solo spam cumple «escalada ≤ 30 % con precisión ≥ 0,85» (0 % de escalada, precisión 0,926).
-  clinc150 escala el 11,0 % pero con precisión 0,777; massive, hatecheck e inyecciones escalan entre el 78 % y el 100 %
-  ([`model/bench/tau/resultados-20261103/LEEME.md`](model/bench/tau/resultados-20261103/LEEME.md)). Con el τ de 0,93 anterior, escalaba del 98 % al 100 %.
-- **«Chispa: Caída»** (demo, servidor local sin GPU): con `--decidir tau` todas las preguntas nuevas escalan (escudo 100 %) y Chispa no
-  decide ninguna jugada; con `--decidir argmax` coincide con el profesor en el 28,2 % de las jugadas, todas bajo τ
-  ([`model/bench/caida/resultados-20261102/LEEME.md`](model/bench/caida/resultados-20261102/LEEME.md)).
+- L1 (potion): macro-F1 medio de 0,455 en 5 tareas; 0,406 en massive y 0,445 en clinc150
+  ([`informe`](model/l1/resultados/2026-10-28/informe.md)).
+- L2 solo, con τ elegido en validación: únicamente spam cumple «escalada ≤ 30 % con precisión ≥ 0,85» (0 % de escalada,
+  precisión 0,926). clinc150 escala el 11 % con precisión 0,777; massive, hatecheck e inyecciones escalan entre el 78 % y el 100 %
+  ([`LEEME`](model/bench/tau/resultados-20261103/LEEME.md)).
+- JevBench (231 casos, 117 esquemas): L2 zero-shot saca 0,407, por debajo del suelo de 0,55 que se buscaba; 108 casos pasan de
+  128 tokens ([`LEEME`](model/evaluacion/resultados/jevbench-20261029/LEEME.md)).
+- Un codificador abierto ajustado de punta a punta (e5-small sin congelar con cabeza cross-encoder, destilado de un LLM local)
+  saca 0,511 en JevBench frente a 0,4935 de Chispa en el mismo arnés, pero con p50 de 206 ms frente a los ≤ 60 ms pedidos: no
+  compensa ([`informe`](model/alt/resultados/g5-2058ffa/informe.md)).
 
-**L3 (LLM local), solo como respaldo asíncrono.** Con Ollama y `qwen3:4b-instruct` en un i7 de 4 núcleos, sobre 1 061 filas
-(massive-es, 700, y hatecheck-es, 361): la cascada sin L3 escalaba el 37,0 %. En hatecheck (sí/no) L3 contesta en todas las escaladas y
-la cascada pasa del 28,8 % al 48,5 %, a unos 4 s por escalada; en massive (60 opciones) casi nunca supera su τ y apenas cambia (43,6 → 44,0 %).
-Sus probabilidades son autodeclaradas, no calibradas
-([`model/bench/l3/resultados-20261103/LEEME.md`](model/bench/l3/resultados-20261103/LEEME.md)).
+**L3 (LLM local), como respaldo.** Con Ollama y `qwen3:4b-instruct` en un i7 de 4 núcleos, sobre 1 061 filas: en hatecheck (sí/no)
+la cascada pasa del 28,8 % al 48,5 % a unos 4 s por escalada; en massive (60 opciones) apenas cambia (43,6 → 44,0 %). Sus
+probabilidades son autodeclaradas, no calibradas ([`LEEME`](model/bench/l3/resultados-20261103/LEEME.md)).
 
-**Abstención y robustez.** Con el τ de `CALIB` anterior a T4.6b, la cascada escalaba el 46 % en clinc150 y el 43 % en massive, con precisión de
-0,984 y 0,969 en lo contestado ([`abstencion-20261028/LEEME.md`](server/deploy/resultados/abstencion-20261028/LEEME.md)). No hay medida de la
-abstención con el τ actual: mídela con tus datos. ASR de 0,021 en injection y spam, en parte porque el detector escala el 47 % y el 83 % de los ataques
-([`arena-20261028/LEEME.md`](server/deploy/resultados/arena-20261028/LEEME.md)).
+**Robustez.** ASR de 0,021 en injection y spam, en parte porque el detector escala el 47 % y el 83 % de los ataques
+([`LEEME`](server/deploy/resultados/arena-20261028/LEEME.md)).
 
-**Latencia en CPU para esquemas nuevos.** Servidor fp32 en un i7 de 4 núcleos, petición de 3 preguntas: p50 de 290 ms con la caché de torres fría y de 58 ms caliente
-(≈ 13 ms por torre e5) ([`model/bench/caida/resultados-20261102/LEEME.md`](model/bench/caida/resultados-20261102/LEEME.md)).
+**Latencia en CPU para esquemas nuevos.** Servidor fp32 en un i7 de 4 núcleos, petición de 3 preguntas: p50 de 290 ms con la caché
+de torres fría y de 58 ms caliente, unos 13 ms por torre e5 ([`LEEME`](model/bench/caida/resultados-20261102/LEEME.md)).
 
-Sin medir (ver [`docs/07`](docs/07-rendimiento-y-limites.md#qué-no-se-midió)): calidad de L2 con torre al vuelo en tareas no vistas, latencia en
-dispositivo Android/iOS, tareas colombianas reales y el tamaño de la imagen OCI.
+**Sin medir:** calidad de L2 con torre al vuelo en tareas no vistas, latencia en Android e iOS y tareas colombianas reales. Para estas
+últimas está en marcha un banco de 450 PQRS públicas anonimizadas, etiquetadas a ciegas
+([`GUIA_BANCO_PQRS.md`](model/etiquetado/GUIA_BANCO_PQRS.md)).
 
 ## Cómo decide por dentro
 
@@ -125,36 +174,33 @@ flowchart TD
     P["POST /v1/decide: state + questions"] --> C["Cascada.Decidir<br/>server/decide/cascada.go"]
     C --> L0["L0: TF-IDF de caracteres + logística (L0TF) o lineal (L0)<br/>solo si hay ejemplos del esquema"]
     L0 -->|"conf >= τ de L0"| R["Resultado: answer, probs, layer"]
-    L0 -->|"conf < τ de L0 o sin opinión"| L1["L1: Model2Vec en Go, int8<br/>coseno con pregunta · opción · descripción"]
+    L0 -->|"conf < τ de L0 o sin opinión"| L1["L1: Model2Vec en Go, int8 (opcional)<br/>coseno con pregunta · opción · descripción"]
     L1 -->|"conf >= τ de L1"| R
     L1 -->|"conf < τ de L1"| L2["L2: e5-small en ONNX (fp32 en servidor; fp16 o int8 en móvil), ranuras + torres de opción<br/>con CONJ es L2c (cabeza conjunta)"]
     TORR["Sección TORR del .chispa<br/>torre al vuelo para un esquema nuevo"] -.-> L2
-    L2 -->|"conf >= τ de L2 (tau_l2c con L2c)"| R
-    L2 -->|"conf < τ de L2"| L3["L3: LLM con API compatible con OpenAI<br/>opcional: sección l3 de la config"]
+    L2 -->|"conf >= τ de L2"| R
+    L2 -->|"conf < τ de L2"| L3["L3: LLM con API compatible con OpenAI<br/>opcional; ve las top_k opciones (8)"]
     L3 -->|"conf >= τ de L3"| R
     L3 -->|"conf < τ de L3"| E["escalar: layer = escalar, escalate = true<br/>+ escalate_reason"]
     R --> OUT["answer, probs, layer, escalate"]
     E --> OUT
 ```
 
-Reglas de la cascada, en [`server/decide/cascada.go`](server/decide/cascada.go) (`Cascada.Decidir`):
+Reglas de la cascada ([`server/decide/cascada.go`](server/decide/cascada.go), `Cascada.Decidir`):
 
-- Se prueba cada capa en orden; la respuesta se acepta si `conf > 0` y `conf >= τ` de esa capa. Una capa sin modelo o con error cuenta como confianza 0.
-- Orden de las capas en el servidor: L0, L1, L2, L3 ([`server/cmd/chispa-server/main.go`](server/cmd/chispa-server/main.go)).
-- τ por defecto: L0 0,80, L1 0,80, L2 0,70 y L3 0,60 ([`config.go`](server/decide/config.go), `ConfigPorDefecto`).
-  Con `CALIB`, L1 usa `tau_escalate`; L2 usa `tau_escalate_l2` (si falta, `tau_escalate`) y, si el `.chispa` trae `tau_l2c`, la cabeza
-  L2c usa ese y deja `tau_escalate_l2` como respaldo; para un esquema que no estaba en `ESQUEMAS`, `tau_l2_esquema_nuevo`
-  ([`modelo.go`](server/decide/modelo.go), [`cascada.go`](server/decide/cascada.go), [`format/chispa3/secciones.go`](format/chispa3/secciones.go) `Calib`).
-- `CALIB.tipos` (y `tipos_l2`) guarda por tipo (`choice`, `noul`, `scoreK`, …) los parámetros de calibración `T`, `a`, `b` y `theta`.
-- `escalate_reason`: `baja_confianza`, `sin_opinion`, `score_ids_no_validos`, `sin_presupuesto_torres`, `incompleta` (`cascada.go`).
-- **L3 existe en el servidor** ([`server/decide/l3.go`](server/decide/l3.go)) pero está **apagada por defecto**: sin sección `l3` en la config es un stub
-  sin opinión. **No existe en el motor móvil** ni en Kotlin/Swift (`sdk/android/README.md`, `sdk/movil/README.md`).
-- `--decidir argmax|tau` **no es una opción del servidor**: es del agente de la demo [`demos/caida`](demos/caida/README.md). Con `tau` (defecto), si Chispa
-  escala juega el profesor; con `argmax`, juega el argmax de `probs` aunque escale. El τ del servidor no se toca.
+- Se prueba cada capa en orden: L0, L1, L2, L3. La respuesta se acepta si `conf > 0` y `conf >= τ` de esa capa. Una capa sin modelo
+  o con error cuenta como confianza 0. Un `.chispa` sin sección L1 se salta esa capa.
+- **El τ lo manda la sección `CALIB`** del `.chispa`, se arranque o no con `-config`: L1 usa `tau_escalate`; L2, `tau_escalate_l2`
+  (si falta, `tau_escalate`), y con `CONJ`, `tau_l2c`. La config solo puede subirlo, nunca bajarlo. Un `CALIB` sin τ se rechaza
+  al cargar ([`docs/04`](docs/04-formato-chispa.md)). Sin `.chispa`, los τ por defecto son 0,80, 0,80, 0,70 y 0,60
+  ([`config.go`](server/decide/config.go)).
+- **L3 está apagada por defecto**: sin sección `l3` en la config no opina ([`l3.go`](server/decide/l3.go)). No existe en el motor
+  móvil ni en Kotlin o Swift.
 
-### Secciones del `.chispa` v3
+<details>
+<summary><strong>Secciones del <code>.chispa</code> v3</strong></summary>
 
-Enum `Tipo` en [`format/chispa3/chispa3.go`](format/chispa3/chispa3.go) (detalle en [`docs/04`](docs/04-formato-chispa.md)):
+Enum `Tipo` en [`format/chispa3/chispa3.go`](format/chispa3/chispa3.go); detalle en [`docs/04`](docs/04-formato-chispa.md).
 
 ```mermaid
 flowchart LR
@@ -165,7 +211,10 @@ flowchart LR
     F --> G["6 CALIB · 7 CONJ · 10 SOPL1<br/>umbrales y calibración, cabeza L2c, soporte few-shot"]
 ```
 
-### Servidor y móvil
+</details>
+
+<details>
+<summary><strong>Servidor y móvil</strong></summary>
 
 ```mermaid
 flowchart LR
@@ -180,52 +229,39 @@ flowchart LR
     end
 ```
 
-Precisión, según el código y la documentación:
+- **L1**: pesos int8 con escala float32 por fila y aritmética entera, idéntica en amd64 y arm64 ([`runtime/l1/embed.go`](runtime/l1/embed.go)).
+- **L2**: la precisión la elige el perfil de exportación (`--perfil servidor|movil|movil-int8`): fp32, fp16 con vocabulario podado o
+  int8 dinámico ([`docs/02`](docs/02-inicio-rapido.md)). El servidor puede tomar la torre int8 de otro `.chispa` con `torre_fichero`.
+- La cascada del móvil vive en Kotlin ([`Cascada.kt`](sdk/android/chispa/src/main/kotlin/com/chispa/sdk/Cascada.kt)) y Swift; el motor
+  Go no lleva ONNX Runtime.
 
-- **L1** (servidor y móvil): pesos int8 con escala float32 por fila y aritmética entera, idéntica en amd64 y arm64 ([`runtime/l1/embed.go`](runtime/l1/embed.go)).
-- **L2**: el `.chispa` guarda el ONNX del codificador y las torres de opción con la precisión del perfil de exportación ([`docs/04`](docs/04-formato-chispa.md)); el perfil de exportación se
-  elige con `--perfil servidor|movil|movil-int8`: `servidor` es fp32, `movil` es fp16 con vocabulario podado, `movil-int8` es int8 dinámico ([`docs/02`](docs/02-inicio-rapido.md)).
-  Las ranuras que salen de ORT son float32 ([`sdk/movil/README.md`](sdk/movil/README.md)).
-- La cascada del móvil vive en Kotlin ([`Cascada.kt`](sdk/android/chispa/src/main/kotlin/com/chispa/sdk/Cascada.kt)) y Swift; el motor Go no lleva ONNX Runtime.
+</details>
 
-### Flujo de una petición
+## De dónde viene
 
-```mermaid
-sequenceDiagram
-    participant Cl as Cliente
-    participant H as http.go
-    participant K as Cascada.Decidir
-    participant Cp as Capas L0 a L3
-    Cl->>H: POST /v1/decide (state, questions)
-    H->>H: valida, Authorization: Bearer si hay api_keys
-    H->>K: cada pregunta, en orden
-    loop capa tras capa
-        K->>Cp: Decidir
-        Cp-->>K: respuesta, conf
-        K->>K: conf >= tau: se acepta
-    end
-    K-->>H: Resultado (layer, escalate, escalate_reason)
-    H-->>Cl: 200 con results en el orden de questions
-```
+El nombre y el icono vienen de [kindling](https://github.com/juan52878911/kindling), la leña menuda con la que se enciende el fuego.
+Chispa nació allí como `pkg/chispa`, un clasificador lineal diminuto para decisiones pequeñas, y esa pieza sigue siendo su capa L0:
+`server/`, el formato `.chispa`, el motor móvil y el entrenador la importan como módulo de Go. kindling también pone la imagen para
+desplegar Chispa en una microVM ([`deploy/kindling/`](deploy/kindling/README.md)).
 
 ## Mapa del repositorio
 
-- [`docs/`](docs/00-indice.md): documentación de producto.
-- [`format/chispa3/`](format/chispa3/README.md): el formato `.chispa` v3 y su cargador en Go.
-- [`server/`](server/README.md): `chispa-server` (`/v1/decide`, `/healthz`, `/metrics`); `decide/` (cascada y capas), `torre/` ([README](server/torre/README.md)),
-  `api/` (OpenAPI), `carga/`, `deploy/`, `cmd/`.
-- `runtime/`: `l1/` (Model2Vec en Go int8) y `tok/` (tokenizador de e5 en Go).
-- `model/`: entrenamiento, L2, datos, líneas base e informes de las fases.
-- [`sdk/`](sdk/README.md): Python, JS, Go, Android, iOS y el motor móvil Go.
-- [`demos/caida`](demos/caida/README.md) y [`demo/wasm`](demo/wasm/README.md): demos.
-- [`pilotos/`](pilotos/README.md): kit de piloto para una empresa colombiana.
-- [`audio/`](audio/README.md): diseño de Chispa de audio, sin modelos.
-- [`arena/`](arena/README.md): banco de pruebas adversarial.
-- [`deploy/kindling/`](deploy/kindling/README.md): imagen para una microVM.
+| Carpeta | Qué hay |
+|---|---|
+| [`docs/`](docs/00-indice.md) | Documentación de producto: [qué es](docs/01-que-es.md), [inicio rápido](docs/02-inicio-rapido.md), [API](docs/03-api.md), [formato](docs/04-formato-chispa.md), [límites](docs/07-rendimiento-y-limites.md) |
+| [`server/`](server/README.md) | `chispa-server`: cascada y capas (`decide/`), torres (`torre/`), OpenAPI, carga y despliegue |
+| [`format/chispa3/`](format/chispa3/README.md) | El formato `.chispa` v3 y su cargador en Go |
+| `runtime/` | L1 (Model2Vec en Go, int8) y el tokenizador de e5 en Go |
+| `model/` | Entrenamiento, L2, evaluación, líneas base, banco de PQRS e informes |
+| [`sdk/`](sdk/README.md) | Python, JS, Go, Android, iOS y el motor móvil |
+| [`arena/`](arena/README.md) | Banco de pruebas adversarial; `make test` y `make smoke` delegan aquí |
+| [`pilotos/`](pilotos/README.md) | Kit de piloto para una empresa colombiana |
+| [`demos/caida`](demos/caida/README.md), [`demo/wasm`](demo/wasm/README.md) | Demos |
+| [`audio/`](audio/README.md) | Diseño de Chispa de audio, sin modelos |
 
-Desde la raíz, `make test` y `make smoke` delegan en `arena/`.
+Antes de dar algo por terminado: `make test` y `make smoke`.
 
 ## Licencia
 
-Apache-2.0: [`LICENSE`](LICENSE). Las atribuciones de terceros están en [`NOTICE`](NOTICE). Los datasets con SA, NC o con términos pendientes
-(XNLI, clima, datos.gov.co, SIB-200, etiquetas de ALIA, salidas de Haiku) no se redistribuyen y solo se usan como test.
+Apache-2.0, código y pesos: [`LICENSE`](LICENSE); atribuciones de terceros en [`NOTICE`](NOTICE). Los datasets con SA, NC o términos
+pendientes (XNLI, clima, datos.gov.co, SIB-200, etiquetas de ALIA, salidas de Haiku) no se redistribuyen y solo se usan como test.
