@@ -1,0 +1,79 @@
+{
+ "hatecheck-es": {
+  "repo": "Paul/hatecheck-spanish",
+  "rev": "a7ea759535bb9fad6361cca151cf94a46e88edf3",
+  "licencia": "cc-by-4.0",
+  "idioma": "es",
+  "n_eval": 2000,
+  "n_soporte": 16,
+  "solape_tsjev_descartado": 0,
+  "k": 8,
+  "tope": 2000,
+  "clases": 2
+ },
+ "massive-es": {
+  "repo": "mteb/amazon_massive_intent",
+  "rev": "940fd47a81eaa7f2cc7b129674d945d618ac38c2",
+  "licencia": "apache-2.0 (tarjeta mteb; original CC-BY-4.0)",
+  "idioma": "es",
+  "n_eval": 1503,
+  "n_soporte": 472,
+  "solape_tsjev_descartado": 3,
+  "k": 8,
+  "tope": 2000,
+  "clases": 58
+ },
+ "massive-esc": {
+  "repo": "mteb/amazon_massive_scenario",
+  "rev": "58871793b91addb7c5f7afff26ccf08737fb6697",
+  "licencia": "apache-2.0",
+  "idioma": "es",
+  "n_eval": 1438,
+  "n_soporte": 144,
+  "solape_tsjev_descartado": 2,
+  "k": 8,
+  "tope": 2000,
+  "clases": 18
+ },
+ "tuits-es": {
+  "repo": "mteb/tweet_sentiment_multilingual",
+  "rev": "bceb37eb62681b42e4147d879384917969bb1674",
+  "licencia": "cc-by-3.0",
+  "idioma": "es",
+  "n_eval": 1194,
+  "n_soporte": 24,
+  "solape_tsjev_descartado": 0,
+  "k": 8,
+  "tope": 2000,
+  "clases": 3
+ },
+ "jailbreak": {
+  "repo": "jackhhao/jailbreak-classification",
+  "rev": "2f2ceeb39658696fd3f462403562b6eea5306287",
+  "licencia": "apache-2.0",
+  "idioma": "en",
+  "n_eval": 400,
+  "n_soporte": 16,
+  "solape_tsjev_descartado": 0,
+  "k": 8,
+  "tope": 2000,
+  "clases": 2
+ },
+ "inyecciones": {
+  "repo": "deepset/prompt-injections",
+  "rev": "4f61ecb038e9c3fb77e21034b22511b523772cdd",
+  "licencia": "apache-2.0",
+  "idioma": "multi",
+  "n_eval": 116,
+  "n_soporte": 16,
+  "solape_tsjev_descartado": 0,
+  "k": 8,
+  "tope": 2000,
+  "clases": 2
+ },
+ "_total": {
+  "n_eval": 6651,
+  "n_eval_es": 6135,
+  "pct_es": 92.2
+ }
+}

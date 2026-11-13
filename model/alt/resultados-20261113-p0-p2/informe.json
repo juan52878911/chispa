@@ -1,0 +1,540 @@
+{
+ "modelos": [
+  "ce-fp32-onnx",
+  "ce-int8-onnx",
+  "knn",
+  "l2"
+ ],
+ "conjuntos": {
+  "ce-fp32-onnx": {
+   "hatecheck-es": {
+    "n": 2000,
+    "acc": 0.6155,
+    "lo": 0.594,
+    "hi": 0.6365,
+    "macro_f1": 0.5908
+   },
+   "inyecciones": {
+    "n": 116,
+    "acc": 0.7069,
+    "lo": 0.6207,
+    "hi": 0.7931,
+    "macro_f1": 0.6979
+   },
+   "jailbreak": {
+    "n": 400,
+    "acc": 0.665,
+    "lo": 0.6175,
+    "hi": 0.7076,
+    "macro_f1": 0.6645
+   },
+   "massive-es": {
+    "n": 1503,
+    "acc": 0.4538,
+    "lo": 0.4291,
+    "hi": 0.4777,
+    "macro_f1": 0.4779
+   },
+   "massive-esc": {
+    "n": 1438,
+    "acc": 0.6217,
+    "lo": 0.596,
+    "hi": 0.6474,
+    "macro_f1": 0.5871
+   },
+   "tuits-es": {
+    "n": 1194,
+    "acc": 0.5544,
+    "lo": 0.526,
+    "hi": 0.5829,
+    "macro_f1": 0.5561
+   },
+   "jevbench": {
+    "n": 231,
+    "acc": 0.5108,
+    "lo": 0.4459,
+    "hi": 0.5758,
+    "macro_f1": 0.4769
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "acc": 0.5739,
+    "lo": 0.5623,
+    "hi": 0.5858
+   },
+   "BATERIA(macro de tareas)": {
+    "acc": 0.6029,
+    "macro_f1": 0.5957,
+    "tareas": 6
+   }
+  },
+  "ce-int8-onnx": {
+   "hatecheck-es": {
+    "n": 2000,
+    "acc": 0.4975,
+    "lo": 0.475,
+    "hi": 0.5195,
+    "macro_f1": 0.4971
+   },
+   "inyecciones": {
+    "n": 116,
+    "acc": 0.6466,
+    "lo": 0.5517,
+    "hi": 0.7328,
+    "macro_f1": 0.6263
+   },
+   "jailbreak": {
+    "n": 400,
+    "acc": 0.6275,
+    "lo": 0.58,
+    "hi": 0.6725,
+    "macro_f1": 0.6021
+   },
+   "massive-es": {
+    "n": 1503,
+    "acc": 0.3939,
+    "lo": 0.3693,
+    "hi": 0.4172,
+    "macro_f1": 0.4443
+   },
+   "massive-esc": {
+    "n": 1438,
+    "acc": 0.5744,
+    "lo": 0.5487,
+    "hi": 0.6001,
+    "macro_f1": 0.5476
+   },
+   "tuits-es": {
+    "n": 1194,
+    "acc": 0.4715,
+    "lo": 0.443,
+    "hi": 0.4983,
+    "macro_f1": 0.4422
+   },
+   "jevbench": {
+    "n": 231,
+    "acc": 0.4459,
+    "lo": 0.381,
+    "hi": 0.5065,
+    "macro_f1": 0.3557
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "acc": 0.4965,
+    "lo": 0.484,
+    "hi": 0.5083
+   },
+   "BATERIA(macro de tareas)": {
+    "acc": 0.5352,
+    "macro_f1": 0.5266,
+    "tareas": 6
+   }
+  },
+  "knn": {
+   "hatecheck-es": {
+    "n": 2000,
+    "acc": 0.6925,
+    "lo": 0.6715,
+    "hi": 0.713,
+    "macro_f1": 0.5886
+   },
+   "inyecciones": {
+    "n": 116,
+    "acc": 0.7672,
+    "lo": 0.6897,
+    "hi": 0.8448,
+    "macro_f1": 0.7559
+   },
+   "jailbreak": {
+    "n": 400,
+    "acc": 0.565,
+    "lo": 0.5175,
+    "hi": 0.6125,
+    "macro_f1": 0.5563
+   },
+   "massive-es": {
+    "n": 1503,
+    "acc": 0.5003,
+    "lo": 0.4737,
+    "hi": 0.5263,
+    "macro_f1": 0.5042
+   },
+   "massive-esc": {
+    "n": 1438,
+    "acc": 0.5695,
+    "lo": 0.5431,
+    "hi": 0.5953,
+    "macro_f1": 0.5602
+   },
+   "tuits-es": {
+    "n": 1194,
+    "acc": 0.4816,
+    "lo": 0.4531,
+    "hi": 0.5109,
+    "macro_f1": 0.4754
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "acc": 0.5783,
+    "lo": 0.5662,
+    "hi": 0.59
+   },
+   "BATERIA(macro de tareas)": {
+    "acc": 0.596,
+    "macro_f1": 0.5734,
+    "tareas": 6
+   }
+  },
+  "l2": {
+   "hatecheck-es": {
+    "n": 2000,
+    "acc": 0.514,
+    "lo": 0.4925,
+    "hi": 0.5355,
+    "macro_f1": 0.5054
+   },
+   "inyecciones": {
+    "n": 116,
+    "acc": 0.4914,
+    "lo": 0.3966,
+    "hi": 0.5776,
+    "macro_f1": 0.3439
+   },
+   "jailbreak": {
+    "n": 400,
+    "acc": 0.6525,
+    "lo": 0.6075,
+    "hi": 0.7,
+    "macro_f1": 0.4082
+   },
+   "massive-es": {
+    "n": 1503,
+    "acc": 0.4112,
+    "lo": 0.3859,
+    "hi": 0.4365,
+    "macro_f1": 0.3468
+   },
+   "massive-esc": {
+    "n": 1438,
+    "acc": 0.5626,
+    "lo": 0.5376,
+    "hi": 0.5883,
+    "macro_f1": 0.5324
+   },
+   "tuits-es": {
+    "n": 1194,
+    "acc": 0.5536,
+    "lo": 0.5268,
+    "hi": 0.5804,
+    "macro_f1": 0.553
+   },
+   "jevbench": {
+    "n": 231,
+    "acc": 0.4978,
+    "lo": 0.4329,
+    "hi": 0.5628,
+    "macro_f1": 0.4497
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "acc": 0.5163,
+    "lo": 0.5044,
+    "hi": 0.528
+   },
+   "BATERIA(macro de tareas)": {
+    "acc": 0.5309,
+    "macro_f1": 0.4483,
+    "tareas": 6
+   }
+  }
+ },
+ "pareado": {
+  "l2 - ce-fp32-onnx": {
+   "hatecheck-es": {
+    "n": 2000,
+    "solo_l2": 250,
+    "solo_ce-fp32-onnx": 453,
+    "p_mcnemar": 0.0,
+    "dif": -0.1015,
+    "lo": -0.1275,
+    "hi": -0.0765
+   },
+   "inyecciones": {
+    "n": 116,
+    "solo_l2": 5,
+    "solo_ce-fp32-onnx": 30,
+    "p_mcnemar": 0.0,
+    "dif": -0.2155,
+    "lo": -0.3103,
+    "hi": -0.1293
+   },
+   "jailbreak": {
+    "n": 400,
+    "solo_l2": 118,
+    "solo_ce-fp32-onnx": 123,
+    "p_mcnemar": 0.7967,
+    "dif": -0.0125,
+    "lo": -0.085,
+    "hi": 0.0625
+   },
+   "jevbench": {
+    "n": 231,
+    "solo_l2": 45,
+    "solo_ce-fp32-onnx": 48,
+    "p_mcnemar": 0.8358,
+    "dif": -0.013,
+    "lo": -0.0952,
+    "hi": 0.0736
+   },
+   "massive-es": {
+    "n": 1503,
+    "solo_l2": 240,
+    "solo_ce-fp32-onnx": 304,
+    "p_mcnemar": 0.0069,
+    "dif": -0.0426,
+    "lo": -0.0712,
+    "hi": -0.0106
+   },
+   "massive-esc": {
+    "n": 1438,
+    "solo_l2": 162,
+    "solo_ce-fp32-onnx": 247,
+    "p_mcnemar": 0.0,
+    "dif": -0.0591,
+    "lo": -0.0862,
+    "hi": -0.032
+   },
+   "tuits-es": {
+    "n": 1194,
+    "solo_l2": 185,
+    "solo_ce-fp32-onnx": 186,
+    "p_mcnemar": 1.0,
+    "dif": -0.0008,
+    "lo": -0.0335,
+    "hi": 0.0285
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "solo_l2": 960,
+    "solo_ce-fp32-onnx": 1343,
+    "p_mcnemar": 0.0,
+    "dif": -0.0576,
+    "lo": -0.0716,
+    "hi": -0.0433
+   }
+  },
+  "l2 - ce-int8-onnx": {
+   "hatecheck-es": {
+    "n": 2000,
+    "solo_l2": 355,
+    "solo_ce-int8-onnx": 322,
+    "p_mcnemar": 0.2187,
+    "dif": 0.0165,
+    "lo": -0.0085,
+    "hi": 0.0425
+   },
+   "inyecciones": {
+    "n": 116,
+    "solo_l2": 5,
+    "solo_ce-int8-onnx": 23,
+    "p_mcnemar": 0.0009,
+    "dif": -0.1552,
+    "lo": -0.2414,
+    "hi": -0.0776
+   },
+   "jailbreak": {
+    "n": 400,
+    "solo_l2": 84,
+    "solo_ce-int8-onnx": 74,
+    "p_mcnemar": 0.4741,
+    "dif": 0.025,
+    "lo": -0.0325,
+    "hi": 0.0875
+   },
+   "jevbench": {
+    "n": 231,
+    "solo_l2": 51,
+    "solo_ce-int8-onnx": 39,
+    "p_mcnemar": 0.2461,
+    "dif": 0.0519,
+    "lo": -0.0303,
+    "hi": 0.1342
+   },
+   "massive-es": {
+    "n": 1503,
+    "solo_l2": 274,
+    "solo_ce-int8-onnx": 248,
+    "p_mcnemar": 0.2738,
+    "dif": 0.0173,
+    "lo": -0.012,
+    "hi": 0.0486
+   },
+   "massive-esc": {
+    "n": 1438,
+    "solo_l2": 187,
+    "solo_ce-int8-onnx": 204,
+    "p_mcnemar": 0.4185,
+    "dif": -0.0118,
+    "lo": -0.0396,
+    "hi": 0.0139
+   },
+   "tuits-es": {
+    "n": 1194,
+    "solo_l2": 255,
+    "solo_ce-int8-onnx": 157,
+    "p_mcnemar": 0.0,
+    "dif": 0.0821,
+    "lo": 0.0511,
+    "hi": 0.1139
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "solo_l2": 1160,
+    "solo_ce-int8-onnx": 1028,
+    "p_mcnemar": 0.00509,
+    "dif": 0.0198,
+    "lo": 0.0059,
+    "hi": 0.0341
+   }
+  },
+  "ce-fp32-onnx - ce-int8-onnx": {
+   "hatecheck-es": {
+    "n": 2000,
+    "solo_ce-fp32-onnx": 340,
+    "solo_ce-int8-onnx": 104,
+    "p_mcnemar": 0.0,
+    "dif": 0.118,
+    "lo": 0.0985,
+    "hi": 0.1375
+   },
+   "inyecciones": {
+    "n": 116,
+    "solo_ce-fp32-onnx": 10,
+    "solo_ce-int8-onnx": 3,
+    "p_mcnemar": 0.0923,
+    "dif": 0.0603,
+    "lo": 0.0,
+    "hi": 0.1207
+   },
+   "jailbreak": {
+    "n": 400,
+    "solo_ce-fp32-onnx": 64,
+    "solo_ce-int8-onnx": 49,
+    "p_mcnemar": 0.1876,
+    "dif": 0.0375,
+    "lo": -0.015,
+    "hi": 0.09
+   },
+   "jevbench": {
+    "n": 231,
+    "solo_ce-fp32-onnx": 31,
+    "solo_ce-int8-onnx": 16,
+    "p_mcnemar": 0.04,
+    "dif": 0.0649,
+    "lo": 0.0129,
+    "hi": 0.1213
+   },
+   "massive-es": {
+    "n": 1503,
+    "solo_ce-fp32-onnx": 182,
+    "solo_ce-int8-onnx": 92,
+    "p_mcnemar": 0.0,
+    "dif": 0.0599,
+    "lo": 0.0379,
+    "hi": 0.0799
+   },
+   "massive-esc": {
+    "n": 1438,
+    "solo_ce-fp32-onnx": 117,
+    "solo_ce-int8-onnx": 49,
+    "p_mcnemar": 0.0,
+    "dif": 0.0473,
+    "lo": 0.0299,
+    "hi": 0.0654
+   },
+   "tuits-es": {
+    "n": 1194,
+    "solo_ce-fp32-onnx": 188,
+    "solo_ce-int8-onnx": 89,
+    "p_mcnemar": 0.0,
+    "dif": 0.0829,
+    "lo": 0.0561,
+    "hi": 0.1114
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "solo_ce-fp32-onnx": 901,
+    "solo_ce-int8-onnx": 386,
+    "p_mcnemar": 0.0,
+    "dif": 0.0774,
+    "lo": 0.0672,
+    "hi": 0.0877
+   }
+  },
+  "l2 - knn": {
+   "hatecheck-es": {
+    "n": 2000,
+    "solo_l2": 389,
+    "solo_knn": 746,
+    "p_mcnemar": 0.0,
+    "dif": -0.1785,
+    "lo": -0.2095,
+    "hi": -0.147
+   },
+   "inyecciones": {
+    "n": 116,
+    "solo_l2": 24,
+    "solo_knn": 56,
+    "p_mcnemar": 0.0005,
+    "dif": -0.2759,
+    "lo": -0.4224,
+    "hi": -0.1379
+   },
+   "jailbreak": {
+    "n": 400,
+    "solo_l2": 174,
+    "solo_knn": 139,
+    "p_mcnemar": 0.0545,
+    "dif": 0.0875,
+    "lo": -0.0025,
+    "hi": 0.1701
+   },
+   "massive-es": {
+    "n": 1503,
+    "solo_l2": 190,
+    "solo_knn": 324,
+    "p_mcnemar": 0.0,
+    "dif": -0.0892,
+    "lo": -0.1184,
+    "hi": -0.0592
+   },
+   "massive-esc": {
+    "n": 1438,
+    "solo_l2": 218,
+    "solo_knn": 228,
+    "p_mcnemar": 0.67,
+    "dif": -0.007,
+    "lo": -0.0348,
+    "hi": 0.0216
+   },
+   "tuits-es": {
+    "n": 1194,
+    "solo_l2": 279,
+    "solo_knn": 193,
+    "p_mcnemar": 0.0001,
+    "dif": 0.072,
+    "lo": 0.036,
+    "hi": 0.1072
+   },
+   "BATERIA(agrupada)": {
+    "n": 6651,
+    "solo_l2": 1274,
+    "solo_knn": 1686,
+    "p_mcnemar": 0.0,
+    "dif": -0.0619,
+    "lo": -0.0783,
+    "hi": -0.0463
+   }
+  }
+ }
+}
