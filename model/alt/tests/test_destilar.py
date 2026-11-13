@@ -41,6 +41,23 @@ class TestDestilar(unittest.TestCase):
             self.assertEqual(len(leidas), 12)
             self.assertNotIn("blanda", next(r for r in leidas if r["id"] == "local:99"))
 
+    def test_guardar_y_aplicar_sin_vllm(self):
+        with tempfile.TemporaryDirectory() as t:
+            (Path(t) / "datos").mkdir()
+            p = Path(t) / "datos" / "x.jsonl.gz"
+            with gzip.open(p, "wt", encoding="utf-8") as f:
+                f.write("".join(json.dumps(fila(i, "t0")) + "\n" for i in range(4)))
+            m = Manifiesto({"conjuntos": [{"nombre": "x", "fuente": "propio", "licencia": "mit", "uso_comercial": True,
+                                           "fichero": "datos/x.jsonl.gz"}]})
+            g, r = Path(t) / "b.jsonl.gz", Path(t) / "r.json"
+            destilar.guardar({"local:%d" % i: {"o0": 0.7, "o1": 0.3} for i in range(4)}, g)
+            self.assertEqual(destilar.aplicar(m, t, g, r), 0)
+            self.assertEqual(json.loads(r.read_text())["escritas"], 4)
+            with gzip.open(p, "rt", encoding="utf-8") as f:
+                self.assertEqual(json.loads(f.readline())["blanda"], {"o0": 0.7, "o1": 0.3})
+            destilar.guardar({"local:%d" % i: {"o0": 1.0} for i in range(50, 54)}, g)   # ids que ya no existen
+            self.assertEqual(destilar.aplicar(m, t, g, r), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

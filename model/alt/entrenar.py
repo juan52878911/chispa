@@ -23,7 +23,7 @@ import torch
 from model.l2.datos import iterar
 
 from .manifiesto import ManifiestoInvalido, cargar, verificar_filas
-from .modelo import CrossEncoder
+from .modelo import MAX_TOKENS, CrossEncoder, trozos
 
 
 def fijar_semilla(s):
@@ -70,8 +70,9 @@ def tope_por_tarea(filas, tope, semilla=0):
 
 
 def entrenar(modelo, manifiesto, train, dev, salida, epocas=3, lote=16, lr=3e-5, pasos=None, peso_blanda=0.5, semilla=0, log=print,
-             minutos=None, bf16=False):
-    """Con `minutos`, corta (tras guardar la época en curso) al pasar ese tiempo. Devuelve la lista de {epoca, perdida, exactitud_dev}. Escribe epoca-N/ y mejor/ bajo `salida`."""
+             minutos=None, bf16=False, max_tokens=MAX_TOKENS):
+    """Cada lote se parte en trozos de ≤ `max_tokens` tokens con relleno (secuencias × la más larga) con acumulación de gradiente.
+    Con `minutos`, corta (tras guardar la época en curso) al pasar ese tiempo. Devuelve la lista de {epoca, perdida, exactitud_dev}. Escribe epoca-N/ y mejor/ bajo `salida`."""
     dev_, salida = next(modelo.parameters()).device, Path(salida)
     enc = [p for n, p in modelo.named_parameters() if not n.startswith("cabeza")]
     opt = torch.optim.AdamW([{"params": enc, "lr": lr}, {"params": modelo.cabeza.parameters(), "lr": lr * 10}], weight_decay=0.01)
@@ -92,14 +93,17 @@ def entrenar(modelo, manifiesto, train, dev, salida, epocas=3, lote=16, lr=3e-5,
                 break
             fs = [train[j] for j in orden[i:i + lote]]
             opt.zero_grad()
-            with torch.autocast("cuda", dtype=torch.bfloat16, enabled=bf16 and dev_.type == "cuda"):
-                p = modelo.perdida(fs, peso_blanda)
-            p.backward()
+            p = 0.0
+            for tr in trozos(fs, max_tokens, modelo.largo):
+                with torch.autocast("cuda", dtype=torch.bfloat16, enabled=bf16 and dev_.type == "cuda"):
+                    pt = modelo.perdida(tr, peso_blanda) * len(tr) / len(fs)
+                pt.backward()
+                p += float(pt.detach())
             torch.nn.utils.clip_grad_norm_(modelo.parameters(), 1.0)
             opt.step()
             sched.step()
             paso += 1
-            suma, n = suma + float(p.detach()), n + 1
+            suma, n = suma + p, n + 1
             if paso % 50 == 0:
                 log("época %d paso %d/%d pérdida %.4f (%.0f s)" % (ep, paso, total, suma / n, time.time() - t0))
         acc = exactitud_dev(modelo, dev, lote)
@@ -116,6 +120,56 @@ def entrenar(modelo, manifiesto, train, dev, salida, epocas=3, lote=16, lr=3e-5,
             break
     (salida / "historial.json").write_text(json.dumps(hist, indent=1), encoding="utf-8")
     return hist
+
+
+def peor_trozo(modelo, max_opciones, max_tokens):
+    """Los dos peores trozos posibles con relleno a `max_tok`: la fila con más opciones (sola, nunca se parte) y filas de 2 opciones
+    hasta llenar `max_tokens`. Texto y descripciones sintéticos y largos; con `blanda` para pasar también por esa pérdida."""
+    largo = " ".join(["palabra"] * (4 * modelo.max_tok))
+    def fila(i, k):
+        ops = ["o%d" % j for j in range(k)]
+        return {"id": "sondeo:%d" % i, "pregunta": largo, "texto": largo, "opciones": ops, "descripciones": {o: largo for o in ops},
+                "etiqueta": ops[0], "blanda": {o: 1.0 / k for o in ops}}
+    return [[fila(0, max_opciones)], [fila(1 + i, 2) for i in range(max(1, max_tokens // modelo.max_tok // 2))]]
+
+
+def sondeo(modelo, max_opciones, max_tokens=MAX_TOKENS, peso_blanda=0.5, bf16=False, lr=3e-5):
+    """Un paso de entrenamiento (forward, backward y AdamW) con cada peor trozo. {ok, pico_gib, total_gib, ...}; ok False con OOM o si
+    el pico pasa del 85 % de la GPU. En CPU no hay pico que medir."""
+    dev = next(modelo.parameters()).device
+    cuda = dev.type == "cuda"
+    opt = torch.optim.AdamW(modelo.parameters(), lr=lr)
+    res = {"max_opciones": max_opciones, "max_tokens": max_tokens, "max_tok": modelo.max_tok, "trozos": []}
+    modelo.train()
+    for tr in peor_trozo(modelo, max_opciones, max_tokens):
+        if cuda:
+            torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats(dev)
+        try:
+            opt.zero_grad()
+            with torch.autocast("cuda", dtype=torch.bfloat16, enabled=bf16 and cuda):
+                p = modelo.perdida(tr, peso_blanda)
+            p.backward()
+            opt.step()
+            err = None
+        except torch.OutOfMemoryError as e:
+            err = "OOM: %s" % str(e).split("\n")[0][:200]
+        sec = sum(len(f["opciones"]) for f in tr)
+        res["trozos"].append({"filas": len(tr), "secuencias": sec, "tokens": sec * max(modelo.largo(f) for f in tr), "error": err,
+                              "pico_gib": round(torch.cuda.max_memory_allocated(dev) / 2 ** 30, 2) if cuda else None})
+    opt.zero_grad(set_to_none=True)
+    res["total_gib"] = round(torch.cuda.get_device_properties(dev).total_memory / 2 ** 30, 2) if cuda else None
+    picos = [t["pico_gib"] for t in res["trozos"] if t["pico_gib"] is not None]
+    res["pico_gib"] = max(picos) if picos else None
+    res["ok"] = all(t["error"] is None for t in res["trozos"]) and (not cuda or res["pico_gib"] <= 0.85 * res["total_gib"])
+    return res
+
+
+def construir(a, dis):
+    modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
+    if a.recomputar:   # sin él, 150 opciones × 256 tokens (≈ 38 000) no caben en los 22 GiB de la A10G
+        modelo.enc.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+    return modelo
 
 
 def main(argv=None):
@@ -136,9 +190,14 @@ def main(argv=None):
     ap.add_argument("--minutos", type=float, help="tope de tiempo de entrenamiento")
     ap.add_argument("--bf16", action="store_true")
     ap.add_argument("--tope-tarea", type=int, default=1000, help="filas de train por tarea (0 = todas)")
+    ap.add_argument("--max-tokens", type=int, default=MAX_TOKENS, help="tokens con relleno por pasada; el lote se acumula en trozos")
     ap.add_argument("--max-dev", type=int, default=2000)
     ap.add_argument("--dispositivo", default="auto")
+    ap.add_argument("--recomputar", action="store_true", help="gradient checkpointing: ≈ 10× menos memoria de activaciones (medido en CPU), más lento")
+    ap.add_argument("--sondeo", metavar="RESUMEN", help="solo un paso con el peor trozo posible; escribe el pico de memoria en RESUMEN")
     a = ap.parse_args(argv)
+    if a.sondeo:
+        return main_sondeo(a)
     try:
         m = cargar(a.manifiesto) if a.manifiesto else cargar()
         if a.sellar:
@@ -152,11 +211,29 @@ def main(argv=None):
     train = tope_por_tarea(train, a.tope_tarea, a.semilla)
     dev = random.Random(a.semilla).sample(dev, min(a.max_dev, len(dev)))
     dis = ("cuda" if torch.cuda.is_available() else "cpu") if a.dispositivo == "auto" else a.dispositivo
-    modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
+    modelo = construir(a, dis)
     print("train %d filas, dev %d, dispositivo %s" % (len(train), len(dev), dis))
     entrenar(modelo, m, train, dev, a.salida, a.epocas, a.lote, a.lr, a.pasos, a.peso_blanda, a.semilla,
-             minutos=a.minutos, bf16=a.bf16)
+             minutos=a.minutos, bf16=a.bf16, max_tokens=a.max_tokens)
     return 0
+
+
+def main_sondeo(a):
+    """Antes de destilar: si el peor trozo no cabe, se sabe en minutos y no tras la destilación. Código 3 si no cabe."""
+    try:
+        m = cargar(a.manifiesto) if a.manifiesto else cargar()
+        train, _ = cargar_filas(m, a.datos)
+    except (ManifiestoInvalido, OSError) as e:
+        print("manifiesto no válido: %s" % e, file=sys.stderr)
+        return 2
+    k = max(len(r["opciones"]) for r in tope_por_tarea(train, a.tope_tarea, a.semilla))
+    fijar_semilla(a.semilla)
+    dis = ("cuda" if torch.cuda.is_available() else "cpu") if a.dispositivo == "auto" else a.dispositivo
+    modelo = construir(a, dis)
+    res = dict(sondeo(modelo, k, a.max_tokens, a.peso_blanda, a.bf16, a.lr), codificador=a.codificador, recomputar=a.recomputar)
+    Path(a.sondeo).write_text(json.dumps(res, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(json.dumps(res, ensure_ascii=False))
+    return 0 if res["ok"] else 3
 
 
 if __name__ == "__main__":
