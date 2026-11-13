@@ -15,6 +15,8 @@ EPOCAS=${CHISPA_EPOCAS:-3}; TOPE=${CHISPA_TOPE_TAREA:-5000}; LOTE=${CHISPA_LOTE:
 META_S3=${CHISPA_META_S3:-s3://chispa-pruebas-cuenta-aws/meta-20261027/meta}
 BL_S3=${CHISPA_BLANDAS_S3:-s3://chispa-pruebas-cuenta-aws/blandas/e2deac55256e3314}
 ESPERA_MIN=${CHISPA_ESPERA_MIN:-30}
+# Solo evaluar: con la clave (o ruta, en local) de un mejor-l2x.tgz ya entrenado, se salta datos de entrenamiento, sondeo, entrenamiento y ONNX.
+CKPT_S3=${CHISPA_CKPT_S3:-}
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-l2x-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
 set -uo pipefail
 export HOME="${HOME:-/root}"; T0=$(date +%s)
@@ -31,7 +33,7 @@ fallo() { echo "FALLO: $*"; FALLO="${FALLO:+$FALLO; }$*"; }
 subir_y_apagar() {
   trap - EXIT; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"; cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
   ( cd "$BASE" && tar -czf resultados.tgz resultados ) && s3cp "$BASE/resultados.tgz" "$CHISPA_S3/resultados.tgz" || echo "no se pudo subir resultados.tgz"
-  [ -d "$CK/mejor" ] && ( cd "$CK" && tar -czf "$BASE/mejor-l2x.tgz" mejor ) && { s3cp "$BASE/mejor-l2x.tgz" "$CHISPA_S3/ckpt/mejor-l2x.tgz" || echo "no se pudo subir el checkpoint"; }
+  [ -z "$CKPT_S3" ] && [ -d "$CK/mejor" ] && ( cd "$CK" && tar -czf "$BASE/mejor-l2x.tgz" mejor ) && { s3cp "$BASE/mejor-l2x.tgz" "$CHISPA_S3/ckpt/mejor-l2x.tgz" || echo "no se pudo subir el checkpoint"; }
   [ -f "$BASE/onnx/l2x_int8.onnx" ] && s3cp "$BASE/onnx/l2x_int8.onnx" "$CHISPA_S3/onnx/l2x_int8.onnx" && s3cp "$BASE/onnx/exportacion.json" "$CHISPA_S3/onnx/exportacion.json"
   s3cp "$BASE/log.txt" "$CHISPA_S3/log.txt" || echo "no se pudo subir log.txt"
   if [ "$LOCAL" != 1 ]; then
@@ -54,10 +56,10 @@ else
     [ -x "$c" ] && "$c" -c "import torch" 2>/dev/null && { PY=$c; break; }; done
   [ -n "$PY" ] || { fallo "ningún Python de la AMI importa torch"; estado entorno "FALLO sin torch"; cierre; }
   "$PY" -c "import torch; assert torch.cuda.is_available()" || { fallo "torch no ve la GPU"; estado entorno "FALLO sin GPU"; cierre; }
-  "$PY" -m pip install -q --no-cache-dir -U transformers huggingface_hub pyyaml pyarrow numpy onnx onnxruntime || { fallo "pip install"; estado entorno "FALLO pip"; cierre; }
+  "$PY" -m pip install -q --no-cache-dir -U transformers==5.22.2 huggingface_hub pyyaml pyarrow numpy onnx onnxruntime || { fallo "pip install"; estado entorno "FALLO pip"; cierre; }
   DEV=cuda; DISP=cuda
 fi
-estado entorno "OK dispositivo $DEV"
+estado entorno "OK dispositivo $DEV $("$PY" -c "import torch, transformers; print('torch', torch.__version__, 'transformers', transformers.__version__)" 2>/dev/null)"
 
 # --- 2. código (con sdk/python) e imports ANTES de bajar nada
 echo "== 2. código $(date -u +%T)"
@@ -76,6 +78,11 @@ if [ "$LOCAL" = 1 ]; then cp "$CHISPA_LOCAL_DATOS"/bateria-no-vista/* "$BAT/"; c
   MAN=$BASE/manifiesto.json; EXTRA="--pasos 2 --epocas 1 --lote 4 --max-tok 96 --max-tokens 4096 --tope-tarea 0 --max-dev 8"; estado datos "OK local"
 else
   s3cp "$CHISPA_S3/bateria-no-vista.tgz" "$BASE/bateria.tgz" && tar -xzf "$BASE/bateria.tgz" -C "$BAT" || { fallo "bateria-no-vista.tgz"; estado datos "FALLO bateria"; cierre; }
+  rm -f "$BAT"/._*   # AppleDouble de macOS (la ronda 0be529b no pudo evaluar por ellos)
+  if [ -n "$CKPT_S3" ]; then
+    git clone -q https://github.com/fstandhartinger/jevbench "$JEV" || { fallo "git clone JevBench"; estado jevbench "FALLO"; cierre; }
+    JEVARG=$JEV/datasets/public; estado datos "OK solo evaluar: batería y JevBench"
+  else
   "$PY" -I - <<'PYEOF' || { fallo "descarga de HF"; estado hf "FALLO"; cierre; }
 import sys
 from huggingface_hub import snapshot_download as s
@@ -111,20 +118,30 @@ PYEOF
   EXTRA="--epocas $EPOCAS --lote $LOTE --max-tok 256 --lr 3e-5 --bf16 --recomputar --tope-tarea $TOPE"
   "$PY" -m model.alt.entrenar --sondeo "$OUT/sondeo.json" --datos "$RAIZ" --manifiesto "$MAN" --arquitectura l2x --salida "$CK/sondeo" --max-tok 256 --max-tokens 16384 --bf16 --recomputar --tope-tarea $TOPE > "$OUT/sondeo.log" 2>&1 \
     && estado sondeo "OK $(cut -c1-160 "$OUT/sondeo.json")" || { tail -4 "$OUT/sondeo.log"; fallo "sondeo de memoria"; estado sondeo "FALLO"; cierre; }
+  fi
 fi
 
 # --- 4. entrenar y 5. evaluar (mismas filas y arnés que P0: p0_medir pred --modelo l2x) y exportar a ONNX
 echo "== 4. entrenar $(date -u +%T), quedan $(quedan_min) min"
+if [ -n "$CKPT_S3" ]; then
+  mkdir -p "$CK" && s3cp "$CKPT_S3" "$BASE/ckpt-previo.tgz" && tar -xzf "$BASE/ckpt-previo.tgz" -C "$CK" && [ -f "$CK/mejor/modelo.pt" ] \
+    || { fallo "checkpoint previo"; estado entrenar "FALLO ckpt previo"; cierre; }
+  estado entrenar "OMITIDO: checkpoint previo $CKPT_S3 ($(md5sum "$CK/mejor/modelo.pt" | cut -c1-12))"
+else
 MINS=$(( $(quedan_min) - 40 - ESPERA_MIN )); [ "$MINS" -ge 5 ] || { fallo "sin tiempo"; cierre; }
 "$PY" -m model.alt.entrenar --datos "$RAIZ" --manifiesto "$MAN" --sellar --arquitectura l2x --salida "$CK" --codificador e5-small --semilla 0 --minutos "$MINS" $EXTRA \
   || { fallo "entrenar"; estado entrenar "FALLO"; cierre; }
 estado entrenar "OK $(tr -d '\n ' < "$CK/historial.json" | cut -c1-240)"
+fi
 "$PY" -m model.alt.p0_medir pred --modelo l2x --ckpt "$CK/mejor" --bateria "$BAT" --jevbench "$JEVARG" --salida "$OUT/pred" --dispositivo "$DISP" --hilos 4 > "$OUT/pred.log" 2>&1 \
   && estado evaluar "OK" || { tail -4 "$OUT/pred.log"; fallo "evaluar"; estado evaluar "FALLO"; }
 # informe de paso: la batería es la vara (agrupada y por tarea), hatecheck-es aparte, frente a L2 y al cruzado del hito 4; AUROC; latencia pendiente (se mide en el i7)
 "$PY" -m model.alt.p0_medir informe-l2x --pred "$OUT/pred/l2x" --bateria "$BAT" --jevbench "$JEVARG" --base "$BAT/baseline-top1.json" --salida "$OUT/informe" > "$OUT/informe.log" 2>&1 \
   && estado informe "OK $(grep -c PASA "$OUT/informe/informe-l2x.md") criterios" || { tail -4 "$OUT/informe.log"; fallo "informe-l2x"; estado informe "FALLO"; }
+if [ -n "$CKPT_S3" ]; then estado onnx "OMITIDO (solo evaluar)"
+else
 "$PY" -m model.alt.l2x_onnx exportar --ckpt "$CK/mejor" --salida "$BASE/onnx" > "$OUT/onnx.log" 2>&1 \
   && estado onnx "OK $(tr -d '\n ' < "$BASE/onnx/exportacion.json" | cut -c1-200)" || estado onnx "AVISO la exportación falló (se rehace en el PC de pruebas desde el checkpoint)"
+fi
 kill "$VIG" 2>/dev/null
 cierre

@@ -42,6 +42,8 @@ def cargar_bateria(directorio, max_filas=None):
     """{conjunto: (soporte, evaluación)}"""
     out = {}
     for f in sorted(Path(directorio).glob("*.jsonl")):
+        if f.name.startswith("."):  # ._* de macOS (AppleDouble) que GNU tar saca de un tarball hecho en el Mac
+            continue
         rs = leer(f)
         ev = [r for r in rs if r["split"] == "test"][:max_filas]
         out[f.stem] = ([r for r in rs if r["split"] == "train"], ev)
