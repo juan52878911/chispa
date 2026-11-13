@@ -301,7 +301,7 @@ func TestArmarDesdeConConj(t *testing.T) {
 	fx, _, _ := leerFixtureConj(t)
 	raw, _ := base64.StdEncoding.DecodeString(fx.ConjB64)
 	for nombre, conj := range map[string][]byte{"sin CONJ": nil, "con CONJ": raw} {
-		mt, err := ArmarDesde(ficheroCon(t, conj), NuevoL0(4), &Config{}, false, tokFalso{})
+		mt, err := ArmarDesde(ficheroCon(t, conj), NuevoL0(4), &Config{}, tokFalso{})
 		if err != nil || mt.L2.Nombre() != "L2" {
 			t.Fatalf("%s: %v", nombre, err)
 		}
@@ -312,30 +312,37 @@ func TestArmarDesdeConConj(t *testing.T) {
 			t.Errorf("%s: avisos %v", nombre, mt.Avisos)
 		}
 	}
-	if _, err := ArmarDesde(ficheroCon(t, raw[:len(raw)-1]), NuevoL0(4), &Config{}, false, tokFalso{}); err == nil {
+	if _, err := ArmarDesde(ficheroCon(t, raw[:len(raw)-1]), NuevoL0(4), &Config{}, tokFalso{}); err == nil {
 		t.Fatal("un CONJ truncado debe ser un error de carga")
 	}
 }
 
-func TestAplicarTauL2c(t *testing.T) {
-	tau := 0.42
-	nuevo := func() *Config { return &Config{Capas: []Capa{{Nombre: "L0", Tau: 0.8}, {Nombre: "L2", Tau: 0.7}}} }
+func TestFijarTauDeCalib(t *testing.T) {
+	nuevo := func(explicitas bool) *Config {
+		return &Config{Capas: []Capa{{Nombre: "L0", Tau: 0.8}, {Nombre: "L2", Tau: 0.7}}, CapasExplicitas: explicitas}
+	}
 	casos := []struct {
-		nombre            string
-		calib             chispa3.Calib
-		esL2c, tauDeCalib bool
-		quiere            float64
+		nombre     string
+		explicitas bool
+		tauCalib   float64
+		quiere     float64
+		aviso      bool
 	}{
-		{"con τ de L2c", chispa3.Calib{TauL2c: &tau}, true, true, 0.42},
-		{"sin τ de L2c: igual que antes", chispa3.Calib{}, true, true, 0.7},
-		{"L2 sin cabeza conjunta", chispa3.Calib{TauL2c: &tau}, false, true, 0.7},
-		{"config explícita manda", chispa3.Calib{TauL2c: &tau}, true, false, 0.7},
+		{"sin capas en la config: manda CALIB aunque baje", false, 0.42, 0.42, false},
+		{"sin capas en la config: manda CALIB aunque suba", false, 0.9, 0.9, false},
+		{"capas explícitas por debajo de CALIB: se ignoran", true, 0.9, 0.9, true},
+		{"capas explícitas por encima de CALIB: la suben", true, 0.42, 0.7, true},
+		{"capas explícitas iguales: sin aviso", true, 0.7, 0.7, false},
 	}
 	for _, c := range casos {
-		cfg := nuevo()
-		aplicarTauL2c(cfg, c.calib, c.esL2c, c.tauDeCalib)
+		cfg := nuevo(c.explicitas)
+		var av []string
+		fijarTauDeCalib(cfg, "L2", "tau_l2c", c.tauCalib, &av)
 		if cfg.Capas[1].Tau != c.quiere || cfg.Capas[0].Tau != 0.8 {
 			t.Errorf("%s: τ L0=%v L2=%v, quiero L2=%v", c.nombre, cfg.Capas[0].Tau, cfg.Capas[1].Tau, c.quiere)
+		}
+		if (len(av) > 0) != c.aviso {
+			t.Errorf("%s: avisos %q", c.nombre, av)
 		}
 	}
 }

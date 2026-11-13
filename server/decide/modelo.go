@@ -70,21 +70,28 @@ type Montaje struct {
 	AvisosCalib []string
 	// Cerrar libera las sesiones (L2 y torre) que abrió ArmarDesde; nil si no hay nada que cerrar. Idempotente.
 	Cerrar func() error
+	// Calibracion es CALIB.calibracion (por capa) y Calibradas las capas con calibración: las de Calibracion y L2 si CALIB trae
+	// tipos_l2. Se pasan a Cascada.ConCalibracion. Hoy el exportador solo calibra L2; L0, L1 y L3 salen con «calibrada»: false.
+	Calibracion map[string]chispa3.CalibCapa
+	Calibradas  map[string]bool
 }
 
 // ArmarDesde añade a l0 el modelo de la sección L0TF, o el de L0 si no hay, y los de L0MULTI (uno por pregunta few-shot), y monta L1 y L2 con las secciones presentes;
-// las que faltan quedan como stub. Con tauDeCalib, el τ de L1 y L2 pasa a ser el tau_escalate
-// de CALIB (cfg se modifica; el de L2 es tau_escalate_l2 si existe); si L2 es L2c y CALIB trae tau_l2c, ese es el τ de L2. tok es el tokenizador de e5 que necesita L2 (puede ser nil).
+// las que faltan quedan como stub. Si el .chispa trae CALIB, el τ de L1 y L2 es siempre el de CALIB (tau_escalate; el de L2 es
+// tau_escalate_l2 si existe, y tau_l2c si L2 es L2c y CALIB lo trae): cfg se modifica. La config solo puede subirlo, si su JSON trae
+// «capas» (Config.CapasExplicitas), y eso se registra en el log; un τ de la config por debajo del de CALIB se ignora con aviso.
+// tok es el tokenizador de e5 que necesita L2 (puede ser nil).
 // Si el .chispa trae la sección TORR, L2 calcula al vuelo las torres de los esquemas que ESQUEMAS no trae (L2.ConTorres,
 // caché de cfg.CacheTorres torres, tope de cfg.MaxTorresNuevas por petición); sin ella, un esquema nuevo queda sin opinión de L2 como antes. Hace falta que tok
 // implemente TokenizadorPasaje: si no, la torre no se monta y se avisa.
 // f debe seguir abierto mientras se use la cascada.
-func ArmarDesde(f *chispa3.Fichero, l0 *L0, cfg *Config, tauDeCalib bool, tok Tokenizador, opts ...OpcionArmado) (Montaje, error) {
+func ArmarDesde(f *chispa3.Fichero, l0 *L0, cfg *Config, tok Tokenizador, opts ...OpcionArmado) (Montaje, error) {
 	var op opcionesArmado
 	for _, o := range opts {
 		o(&op)
 	}
 	mt := Montaje{L1: NuevoL1(), L2: NuevoL2()}
+	esL2c := false
 	// L0TF (el que entrenó la cabeza conjunta) manda sobre el L0 de kindling del mismo fichero; L0MULTI añade los demás, uno por pregunta.
 	if err := l0.AnadirDe(f); err != nil {
 		return mt, err
@@ -112,15 +119,13 @@ func ArmarDesde(f *chispa3.Fichero, l0 *L0, cfg *Config, tauDeCalib bool, tok To
 		if calib, err = f.Calib(); err != nil {
 			return mt, fmt.Errorf("sección CALIB: %w", err)
 		}
-		if tauDeCalib {
-			for i := range cfg.Capas {
-				switch cfg.Capas[i].Nombre {
-				case "L1":
-					cfg.Capas[i].Tau = calib.TauEscalate
-				case "L2":
-					cfg.Capas[i].Tau = calib.ParaL2().TauEscalate // tau_escalate_l2 si existe
-				}
-			}
+		fijarTauDeCalib(cfg, "L1", "tau_escalate", calib.TauEscalate, &mt.Avisos)
+		mt.Calibracion, mt.Calibradas = calib.Calibracion, map[string]bool{}
+		for n := range calib.Calibracion {
+			mt.Calibradas[n] = true
+		}
+		if calib.TiposL2 != nil {
+			mt.Calibradas["L2"] = true
 		}
 	}
 	var sopl *chispa3.Sopl1
@@ -236,7 +241,19 @@ func ArmarDesde(f *chispa3.Fichero, l0 *L0, cfg *Config, tauDeCalib bool, tok To
 					mt.Avisos = append(mt.Avisos, aviso) // lo escribe el llamador (main.go lo hace con todos los avisos)
 					cacheT, pedida = min, cfg.cacheTorresEfectiva()
 				}
-				if err := montarTorres(f, base, tok, op.torres, cacheT, cfg.MaxTorresNuevas, cfg.TorresPorSegundo); err != nil {
+				fuente := f
+				if cfg.TorreFichero != "" && op.torres == nil {
+					alt, err := abrirTorreAlterna(cfg, f, textoTorre)
+					if err != nil {
+						cierraTodo(cerrables...)() // la sesión de L2 ya está abierta
+						return mt, err
+					}
+					fuente = alt
+					cerrables = append(cerrables, alt)
+					mt.Avisos = append(mt.Avisos, "torres al vuelo con la TORR de torre_fichero "+cfg.TorreFichero+
+						" (p. ej. int8); las torres de ESQUEMAS siguen siendo las del -modelo")
+				}
+				if err := montarTorres(fuente, base, tok, op.torres, cacheT, cfg.MaxTorresNuevas, cfg.TorresPorSegundo); err != nil {
 					mt.Avisos = append(mt.Avisos, "sin torres al vuelo: "+err.Error())
 				} else {
 					base.ConCacheTorresEfectiva(cacheT, pedida)
@@ -251,15 +268,31 @@ func ArmarDesde(f *chispa3.Fichero, l0 *L0, cfg *Config, tauDeCalib bool, tok To
 			if conj != nil {
 				mt.L2 = NuevoL2cCon(base, base, conj).ConSoporte(sopl, cfg.L2ShrinkageLambda)
 			}
-			aplicarTauL2c(cfg, calib, conj != nil, tauDeCalib)
+			esL2c = conj != nil
 			if cfg.TauL2EsquemaNuevo == nil && !cfg.TauL2EsquemaNuevoApagado {
 				v := TauL2EsquemaNuevoPorDefecto
 				if calib.TauL2EsquemaNuevo != nil {
 					v = *calib.TauL2EsquemaNuevo
 				}
 				cfg.TauL2EsquemaNuevo = &v
+			} else if cfg.TauL2EsquemaNuevo != nil && calib.TauL2EsquemaNuevo != nil && *cfg.TauL2EsquemaNuevo < *calib.TauL2EsquemaNuevo {
+				// Como los τ de capa: la config solo puede subir el de CALIB.
+				mt.Avisos = append(mt.Avisos, fmt.Sprintf("AVISO: tau_l2_esquema_nuevo: la config pide %g, por debajo de %g (CALIB): se ignora (la config solo puede subir el τ)",
+					*cfg.TauL2EsquemaNuevo, *calib.TauL2EsquemaNuevo))
+				v := *calib.TauL2EsquemaNuevo
+				cfg.TauL2EsquemaNuevo = &v
 			}
 		}
+	}
+	if f.Tiene(chispa3.CALIB) {
+		tauL2, clave := calib.ParaL2().TauEscalate, "tau_escalate"
+		if calib.TauEscalateL2 != nil {
+			clave = "tau_escalate_l2"
+		}
+		if esL2c && calib.TauL2c != nil {
+			tauL2, clave = *calib.TauL2c, "tau_l2c" // el tau_escalate se calibró para L2 solo
+		}
+		fijarTauDeCalib(cfg, "L2", clave, tauL2, &mt.Avisos)
 	}
 	return mt, nil
 }
@@ -312,15 +345,59 @@ func montarTorres(f *chispa3.Fichero, l2 *L2, tok Tokenizador, enc CodificadorTo
 	return nil
 }
 
-// aplicarTauL2c fija el τ de L2 al de la cabeza conjunta si CALIB lo trae. El tau_escalate se calibró para L2 solo.
-func aplicarTauL2c(cfg *Config, calib chispa3.Calib, esL2c, tauDeCalib bool) {
-	if !tauDeCalib || !esL2c || calib.TauL2c == nil {
-		return
+// abrirTorreAlterna abre torre_fichero, un .chispa del que solo se usa la sección TORR (p. ej. la torre int8 del perfil movil-int8
+// para las torres al vuelo del servidor). Su TORR debe ser compatible con la del -modelo: misma dimensión, max_len, prefijo y
+// versión del texto de torre; si no, es un error de carga (no se degrada en silencio).
+func abrirTorreAlterna(cfg *Config, f *chispa3.Fichero, textoTorre string) (*chispa3.Fichero, error) {
+	alt, err := chispa3.AbrirCon(cfg.TorreFichero, chispa3.Limites{MaxFichero: cfg.MaxFicheroBytes()})
+	if err != nil {
+		return nil, fmt.Errorf("torre_fichero: %w", err)
 	}
+	falla := func(format string, a ...any) (*chispa3.Fichero, error) {
+		alt.Close()
+		return nil, fmt.Errorf("torre_fichero %s: "+format, append([]any{cfg.TorreFichero}, a...)...)
+	}
+	if !alt.Tiene(chispa3.TORR) {
+		return falla("no trae sección TORR")
+	}
+	ta, err := alt.Torre()
+	if err != nil {
+		return falla("sección TORR: %v", err)
+	}
+	tm, err := f.Torre()
+	if err != nil {
+		return falla("TORR del -modelo: %v", err)
+	}
+	if ta.Dim != tm.Dim || ta.MaxLen != tm.MaxLen || ta.Prefijo != tm.Prefijo {
+		return falla("TORR incompatible con la del -modelo (dim %d/%d, max_len %d/%d, prefijo %q/%q)", ta.Dim, tm.Dim, ta.MaxLen, tm.MaxLen, ta.Prefijo, tm.Prefijo)
+	}
+	if v, err := alt.TextoTorreEfectivo(); err != nil || v != textoTorre {
+		return falla("texto de torre %q, el -modelo usa %q (%v)", v, textoTorre, err)
+	}
+	return alt, nil
+}
+
+// fijarTauDeCalib pone en la capa nombre el τ de CALIB (clave es su nombre en CALIB). La config solo puede subirlo: con
+// CapasExplicitas y un τ mayor manda el de la config; con uno menor se ignora. Los dos casos van a avisos.
+func fijarTauDeCalib(cfg *Config, nombre, clave string, tauCalib float64, avisos *[]string) {
 	for i := range cfg.Capas {
-		if cfg.Capas[i].Nombre == "L2" {
-			cfg.Capas[i].Tau = *calib.TauL2c
+		if cfg.Capas[i].Nombre != nombre {
+			continue
 		}
+		pedido := cfg.Capas[i].Tau
+		cfg.Capas[i].Tau = tauCalib
+		if !cfg.CapasExplicitas || pedido == tauCalib {
+			return
+		}
+		var aviso string
+		if pedido > tauCalib {
+			cfg.Capas[i].Tau = pedido
+			aviso = fmt.Sprintf("τ de %s: la config lo sube de %g (%s de CALIB) a %g", nombre, tauCalib, clave, pedido)
+		} else {
+			aviso = fmt.Sprintf("AVISO: τ de %s: la config pide %g, por debajo de %g (%s de CALIB): se ignora (la config solo puede subir el τ)", nombre, pedido, tauCalib, clave)
+		}
+		*avisos = append(*avisos, aviso) // quien arma (chispa-server) escribe Avisos en el log
+		return
 	}
 }
 

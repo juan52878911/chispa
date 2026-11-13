@@ -54,7 +54,7 @@ func armarTorreZB(t *testing.T, meta, texto string, cfg Config) Montaje {
 		t.Fatal(err)
 	}
 	secs = append(secs, chispa3.Seccion{Tipo: chispa3.TORR, Datos: tr})
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &cfg, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(&codificadorPorTexto{clave: "x"}))
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &cfg, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(&codificadorPorTexto{clave: "x"}))
 	if err != nil {
 		t.Fatal(err)
 	}

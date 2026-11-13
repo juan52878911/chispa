@@ -17,7 +17,7 @@ import (
 func l1Largo(t *testing.T, tl *TextoLargo) *L1 {
 	t.Helper()
 	cfg := Config{CacheEsquemas: 16, CacheRespuestas: 16, L1ShrinkageApagado: true, TextoLargo: tl}
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), NuevoL0(8), &cfg, false, nil)
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), NuevoL0(8), &cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +69,7 @@ func TestTextoLargoL1CabezaCola(t *testing.T) {
 		got, _ := l.Decidir(context.Background(), q)
 		q.Estado = resumen
 		want, _ := base.Decidir(context.Background(), q)
+		got.Senal, want.Senal = nil, nil // la señal describe el texto, que aquí es distinto a propósito
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("%d (%s): %+v ≠ %+v", i, q.Kind, got, want)
 		}
@@ -101,6 +102,7 @@ func TestTextoLargoL1TrozosAgrega(t *testing.T) {
 			if q.Kind == KindNoul {
 				want = agregarRespuestas(q, rs, agg, calibTiny().Tipos["noul"].Theta)
 			}
+			got.Senal = nil // la agregación de ventanas no lleva señal; L1 la añade aparte
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("%s %s: %+v ≠ %+v", agg, q.Kind, got, want)
 			}
@@ -227,8 +229,9 @@ func l2Largo(t *testing.T, tl *TextoLargo, maxLen string) (*L2, *[][]int64, *Met
 	if maxLen != "" {
 		onnx = maxLen
 	}
-	mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, onnx), 0), NuevoL0(8), &Config{CacheEsquemas: 8, TextoLargo: tl}, false,
+	mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, onnx), 0), NuevoL0(8), &Config{CacheEsquemas: 8, TextoLargo: tl},
 		NuevoTokenizadorE5(tk), ConSesionS(sesionMarca{marca, &vistos, &n}))
+
 	if err != nil {
 		t.Fatal(err)
 	}

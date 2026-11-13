@@ -13,7 +13,7 @@ import (
 func armarL2Torres(t *testing.T, enc CodificadorTorre, maxNuevas int) *L2 {
 	t.Helper()
 	cfg := Config{CacheEsquemas: 64, MaxTorresNuevas: maxNuevas}
-	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &cfg, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(enc))
+	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &cfg, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(enc))
 	if err != nil {
 		t.Fatal(err)
 	}

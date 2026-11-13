@@ -33,6 +33,14 @@ export interface Resultado {
   escalate: boolean;
   /** Solo con escalate: "sin_opinion" (ninguna capa opinó), "score_ids_no_validos" (score cuyos ids no son 1..K), "baja_confianza" (alguna opinó, ninguna llegó a su τ) o "incompleta" (una capa falló o se quedó sin presupuesto). Ausente en servidores antiguos. */
   escalate_reason?: "sin_opinion" | "score_ids_no_validos" | "baja_confianza" | "incompleta";
+  /** Si la capa que contestó tiene calibración; false = su confianza es cruda. Ausente al escalar y en servidores antiguos. */
+  calibrada?: boolean;
+  /** true si alguna capa vio solo una parte del texto (pasaba de su max_tokens o max_len). Ausente = no se truncó o servidor antiguo. */
+  truncado?: boolean;
+  /** Con truncado: tokens del texto entero. */
+  tokens_originales?: number;
+  /** Fracción de tokens <unk> del texto, en [0,1]. Ausente si ninguna capa tokenizó o servidor antiguo. */
+  unk_pct?: number;
   ms: number;
   nonce?: string;
 }

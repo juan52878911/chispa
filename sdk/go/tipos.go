@@ -39,8 +39,17 @@ type Resultado struct {
 	Probs    map[string]float64 `json:"probs"`
 	Layer    string             `json:"layer"`
 	Escalate bool               `json:"escalate"`
-	MS       float64            `json:"ms"`
-	Nonce    string             `json:"nonce,omitempty"`
+	// EscalateReason: solo con Escalate (sin_opinion, score_ids_no_validos, baja_confianza, incompleta…); "" en servidores antiguos.
+	EscalateReason string  `json:"escalate_reason,omitempty"`
+	MS             float64 `json:"ms"`
+	Nonce          string  `json:"nonce,omitempty"`
+	// Campos opcionales (nil o cero en servidores antiguos). Calibrada: la capa que contestó tiene calibración (false = su
+	// confianza es cruda). Truncado: alguna capa vio solo una parte del texto; TokensOriginales, los tokens del texto entero.
+	// UnkPct: fracción de tokens <unk> del texto.
+	Calibrada        *bool    `json:"calibrada,omitempty"`
+	Truncado         bool     `json:"truncado,omitempty"`
+	TokensOriginales int      `json:"tokens_originales,omitempty"`
+	UnkPct           *float64 `json:"unk_pct,omitempty"`
 }
 
 type peticion struct {

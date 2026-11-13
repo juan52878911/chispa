@@ -18,7 +18,7 @@ func preguntaConjV2() Pregunta {
 
 func armarConjV2(t *testing.T, f *chispa3.Fichero) Montaje {
 	t.Helper()
-	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}))
+	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}))
 	if err != nil {
 		t.Fatal(err)
 	}

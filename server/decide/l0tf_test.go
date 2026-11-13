@@ -155,7 +155,7 @@ func TestArmarDesdeConL0TF(t *testing.T) {
 	}
 	l0 := NuevoL0(4)
 	cfg := Config{}
-	if _, err := ArmarDesde(f, l0, &cfg, false, nil); err != nil {
+	if _, err := ArmarDesde(f, l0, &cfg, nil); err != nil {
 		t.Fatal(err)
 	}
 	if l0.NumModelos() != 1 || l0.modelos[0].tf == nil {

@@ -73,7 +73,7 @@ func TestL2MaxLenConsultaDelONNX(t *testing.T) {
 		want   int
 	}{{"sin metadato", "l2_sintetico.onnx", 128}, {"metadato 256", "l2_sintetico_ml256.onnx", 256}} {
 		var n int
-		mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, c.onnx), 0), NuevoL0(8), &Config{CacheEsquemas: 8}, false, tk, ConSesionS(sesionLongitud{&n}))
+		mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, c.onnx), 0), NuevoL0(8), &Config{CacheEsquemas: 8}, tk, ConSesionS(sesionLongitud{&n}))
 		if err != nil || len(mt.Avisos) != 0 {
 			t.Fatalf("%s: %v %v", c.nombre, err, mt.Avisos)
 		}
@@ -91,7 +91,7 @@ func TestL2MaxLenConsultaSobreElTope(t *testing.T) {
 	onnx := append(leerTestdata(t, "l2_sintetico_ml256.onnx"), 0x72, 0x1e, 0x0a, 0x17) // un metadata_props más (len 2+23+2+3): clave y valor «513»; en protobuf la última gana
 	onnx = append(onnx, "chispa.consulta.max_len"...)
 	onnx = append(onnx, 0x12, 0x03, '5', '1', '3')
-	_, err := ArmarDesde(ficheroL2(t, onnx, 0), NuevoL0(8), &Config{}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}))
+	_, err := ArmarDesde(ficheroL2(t, onnx, 0), NuevoL0(8), &Config{}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}))
 	if err == nil || !strings.Contains(err.Error(), "513 fuera de rango (3..512)") || !strings.Contains(err.Error(), "chispa.consulta.max_len") {
 		t.Fatalf("error %v", err)
 	}
@@ -118,7 +118,7 @@ func TestArmarDesdePasaMaxLenAlTokenizador(t *testing.T) {
 	}{{"l2_sintetico.onnx", 0, 0, 0}, {"l2_sintetico.onnx", 128, 0, 0}, {"l2_sintetico.onnx", 300, 128, 300},
 		{"l2_sintetico_ml256.onnx", 0, 256, 128}, {"l2_sintetico_ml256.onnx", 256, 256, 256}} {
 		esp := &tokEspia{}
-		if _, err := ArmarDesde(ficheroL2(t, leerTestdata(t, c.onnx), c.torr), NuevoL0(8), &Config{CacheEsquemas: 8}, false, esp, ses, enc); err != nil {
+		if _, err := ArmarDesde(ficheroL2(t, leerTestdata(t, c.onnx), c.torr), NuevoL0(8), &Config{CacheEsquemas: 8}, esp, ses, enc); err != nil {
 			t.Fatal(err)
 		}
 		if esp.consulta != c.consulta || esp.pasaje != c.pas {
@@ -126,7 +126,7 @@ func TestArmarDesdePasaMaxLenAlTokenizador(t *testing.T) {
 		}
 	}
 	// Un tokenizador que no se puede ajustar avisa en vez de callar.
-	mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, "l2_sintetico_ml256.onnx"), 0), NuevoL0(8), &Config{}, false, tokFalso{}, ses)
+	mt, err := ArmarDesde(ficheroL2(t, leerTestdata(t, "l2_sintetico_ml256.onnx"), 0), NuevoL0(8), &Config{}, tokFalso{}, ses)
 	if err != nil || len(mt.Avisos) != 1 || !strings.Contains(mt.Avisos[0], "no admite truncado ajustable") {
 		t.Fatalf("%v %v", err, mt.Avisos)
 	}

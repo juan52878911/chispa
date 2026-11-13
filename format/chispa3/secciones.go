@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 )
 
@@ -173,6 +174,81 @@ type Calib struct {
 	TiposL2 map[string]ParamsTipo `json:"tipos_l2,omitempty"`
 	// TauEscalateL2 es el tau_escalate de L2; nil = L2 usa TauEscalate.
 	TauEscalateL2 *float64 `json:"tau_escalate_l2,omitempty"`
+	// Calibracion es la calibración de la confianza top-1 por capa («L0», «L1», «L2», «L3»), la que la cascada compara con el τ de
+	// la capa; nil o sin entrada = la capa no está calibrada así (ver CalibCapa). La produce el exportador; el lector no inventa valores.
+	Calibracion map[string]CalibCapa `json:"calibracion,omitempty"`
+}
+
+// Métodos de CalibCapa.
+const (
+	CalibPlatt     = "platt"     // c' = σ(a·logit(c) + b), con c recortada a [1e-6, 1−1e-6]
+	CalibIsotonica = "isotonica" // c' = interpolación lineal de (x, y); fuera de [x0, xn] se queda en y0 o yn
+)
+
+// CapasCalibrables son las capas que pueden llevar entrada en CALIB.calibracion.
+var CapasCalibrables = []string{"L0", "L1", "L2", "L3"}
+
+// CalibCapa es la calibración de una capa: Platt (a, b) o isotónica (x estrictamente creciente en [0,1], y no decreciente en
+// [0,1], misma longitud ≥ 2).
+type CalibCapa struct {
+	Metodo string    `json:"metodo"`
+	A      *float64  `json:"a,omitempty"`
+	B      *float64  `json:"b,omitempty"`
+	X      []float64 `json:"x,omitempty"`
+	Y      []float64 `json:"y,omitempty"`
+}
+
+// Aplicar devuelve la confianza calibrada; con c ≤ 0 (la capa no opina) devuelve 0.
+func (k CalibCapa) Aplicar(c float64) float64 {
+	if !(c > 0) {
+		return 0
+	}
+	switch k.Metodo {
+	case CalibPlatt:
+		const eps = 1e-6
+		c = math.Min(math.Max(c, eps), 1-eps)
+		return 1 / (1 + math.Exp(-(*k.A*math.Log(c/(1-c)) + *k.B)))
+	case CalibIsotonica:
+		n := len(k.X)
+		if c <= k.X[0] {
+			return k.Y[0]
+		}
+		if c >= k.X[n-1] {
+			return k.Y[n-1]
+		}
+		i := sort.SearchFloat64s(k.X, c) // X[i-1] < c ≤ X[i]
+		t := (c - k.X[i-1]) / (k.X[i] - k.X[i-1])
+		return k.Y[i-1] + t*(k.Y[i]-k.Y[i-1])
+	}
+	return c
+}
+
+func (k CalibCapa) validar() error {
+	finito := func(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
+	switch k.Metodo {
+	case CalibPlatt:
+		if k.A == nil || k.B == nil || !finito(*k.A) || !finito(*k.B) || k.X != nil || k.Y != nil {
+			return fmt.Errorf("platt exige a y b finitos (y sin x/y)")
+		}
+		if !(*k.A > 0) {
+			return fmt.Errorf("platt exige a > 0 (la calibración no puede invertir el orden)")
+		}
+	case CalibIsotonica:
+		if k.A != nil || k.B != nil || len(k.X) < 2 || len(k.X) != len(k.Y) {
+			return fmt.Errorf("isotonica exige x e y de la misma longitud ≥ 2 (y sin a/b)")
+		}
+		for i := range k.X {
+			if !(k.X[i] >= 0 && k.X[i] <= 1) || !(k.Y[i] >= 0 && k.Y[i] <= 1) {
+				return fmt.Errorf("isotonica: x e y deben estar en [0,1]")
+			}
+			if i > 0 && (!(k.X[i] > k.X[i-1]) || !(k.Y[i] >= k.Y[i-1])) {
+				return fmt.Errorf("isotonica: x estrictamente creciente e y no decreciente")
+			}
+		}
+	default:
+		return fmt.Errorf("método %q desconocido (platt o isotonica)", k.Metodo)
+	}
+	return nil
 }
 
 // ParaL2 devuelve la CALIB tal como la ve L2: con TiposL2 en lugar de Tipos y TauEscalateL2 en lugar de TauEscalate si el fichero los trae.
@@ -218,6 +294,14 @@ func (c Calib) validar() error {
 	if c.L1LambdaCalib != nil && !(*c.L1LambdaCalib >= 0) {
 		return fmt.Errorf("%w: CALIB.l1_lambda_calib %v", ErrContenido, *c.L1LambdaCalib)
 	}
+	for capa, k := range c.Calibracion {
+		if !slices.Contains(CapasCalibrables, capa) {
+			return fmt.Errorf("%w: CALIB.calibracion: capa %q desconocida (L0, L1, L2 o L3)", ErrContenido, capa)
+		}
+		if err := k.validar(); err != nil {
+			return fmt.Errorf("%w: CALIB.calibracion[%q]: %v", ErrContenido, capa, err)
+		}
+	}
 	for campo, m := range map[string]map[string]ParamsTipo{"tipos": c.Tipos, "tipos_l2": c.TiposL2} {
 		for k, p := range m {
 			if !(p.T > 0) || math.IsInf(p.T, 0) || math.IsNaN(p.A) || math.IsInf(p.A, 0) ||
@@ -236,10 +320,20 @@ func (c Calib) Codificar() ([]byte, error) {
 	return json.Marshal(c)
 }
 
+// ErrCalibSinTau: la CALIB no trae tau_escalate. Antes se leía como τ=0 y L1 aceptaba cualquier respuesta.
+var ErrCalibSinTau = fmt.Errorf("%w: CALIB sin tau_escalate (un τ ausente valdría 0 y la capa lo aceptaría todo); reexporte el modelo", ErrContenido)
+
 func DecodificarCalib(b []byte) (Calib, error) {
 	var c Calib
 	if err := decodificarJSON(b, &c); err != nil {
 		return Calib{}, err
+	}
+	var claves map[string]json.RawMessage
+	if err := json.Unmarshal(b, &claves); err != nil {
+		return Calib{}, fmt.Errorf("%w: %v", ErrContenido, err)
+	}
+	if t, ok := claves["tau_escalate"]; !ok || string(t) == "null" {
+		return Calib{}, ErrCalibSinTau
 	}
 	return c, c.validar()
 }
