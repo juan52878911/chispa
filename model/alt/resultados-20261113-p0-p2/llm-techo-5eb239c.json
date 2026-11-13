@@ -1,0 +1,131 @@
+{
+ "casos": 231,
+ "con_respuesta_del_llm": 231,
+ "invalidas_estricto": 2,
+ "tasa_invalidas_estricto": 0.0087,
+ "errores": {
+  "ninguno": 231
+ },
+ "exactitud_estricta": {
+  "acc": 0.658,
+  "lo": 0.5974,
+  "hi": 0.7186
+ },
+ "exactitud_permisiva": {
+  "acc": 0.6623,
+  "lo": 0.6017,
+  "hi": 0.7229
+ },
+ "referencia_l2": {
+  "acc": 0.4978,
+  "lo": 0.4329,
+  "hi": 0.5628
+ },
+ "referencia_ce-fp32-onnx": {
+  "acc": 0.5108,
+  "lo": 0.4502,
+  "hi": 0.5758
+ },
+ "por_tarea": {
+  "adequacy": {
+   "n": 12,
+   "estricta": 0.667,
+   "permisiva": 0.667
+  },
+  "adversarial": {
+   "n": 6,
+   "estricta": 1.0,
+   "permisiva": 1.0
+  },
+  "ambiguous": {
+   "n": 7,
+   "estricta": 0.429,
+   "permisiva": 0.429
+  },
+  "extraction": {
+   "n": 24,
+   "estricta": 1.0,
+   "permisiva": 1.0
+  },
+  "fact": {
+   "n": 12,
+   "estricta": 1.0,
+   "permisiva": 1.0
+  },
+  "intent": {
+   "n": 24,
+   "estricta": 0.833,
+   "permisiva": 0.875
+  },
+  "judge_hard": {
+   "n": 17,
+   "estricta": 0.471,
+   "permisiva": 0.471
+  },
+  "long_policy": {
+   "n": 19,
+   "estricta": 0.158,
+   "permisiva": 0.158
+  },
+  "multi_hop": {
+   "n": 18,
+   "estricta": 0.333,
+   "permisiva": 0.333
+  },
+  "ordinal": {
+   "n": 12,
+   "estricta": 0.917,
+   "permisiva": 0.917
+  },
+  "policy": {
+   "n": 12,
+   "estricta": 0.667,
+   "permisiva": 0.667
+  },
+  "probability": {
+   "n": 10,
+   "estricta": 0.7,
+   "permisiva": 0.7
+  },
+  "routing": {
+   "n": 12,
+   "estricta": 0.917,
+   "permisiva": 0.917
+  },
+  "routing_hard": {
+   "n": 5,
+   "estricta": 1.0,
+   "permisiva": 1.0
+  },
+  "temporal_numeric": {
+   "n": 15,
+   "estricta": 0.067,
+   "permisiva": 0.067
+  },
+  "tool_selection": {
+   "n": 12,
+   "estricta": 1.0,
+   "permisiva": 1.0
+  },
+  "tradeoff": {
+   "n": 6,
+   "estricta": 0.167,
+   "permisiva": 0.167
+  },
+  "trap": {
+   "n": 8,
+   "estricta": 0.75,
+   "permisiva": 0.75
+  }
+ },
+ "criterio_menor_de_0_60": {
+  "estricta": false,
+  "permisiva": false,
+  "nota": "si el techo del LLM sale < 0,60, JevBench deja de ser criterio de paso para codificadores"
+ },
+ "frente_a_la_v1_libre": {
+  "casos_comunes": 67,
+  "invalidos_antes": 41,
+  "invalidos_ahora": 1
+ }
+}
