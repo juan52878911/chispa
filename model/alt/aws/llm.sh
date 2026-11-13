@@ -56,7 +56,7 @@ for f in llm.tgz jev_filas.jsonl l3_jevbench_parcial.jsonl baseline-top1.json; d
 mkdir -p "$BASE/codigo" && tar -xzf "$BASE/llm.tgz" -C "$BASE/codigo" || { fallo "llm.tgz"; cierre; }
 [ "$(wc -l < "$BASE/jev_filas.jsonl")" = 231 ] || { fallo "jev_filas.jsonl no tiene 231 casos"; cierre; }
 estado entradas "OK"
-if [ "$LOCAL" = 1 ]; then estado modelo "OMITIDO (local)"; estado servidor "OMITIDO (local)"
+if [ "$LOCAL" = 1 ]; then cp "$CHISPA_LOCAL_DATOS/l3_demo.jsonl" "$OUT/l3_jevbench.jsonl"; estado modelo "OMITIDO (local)"; estado servidor "OMITIDO (local; respuestas de juguete)"
 else
   MODELO=$BASE/modelo
   HF_HUB_ENABLE_HF_TRANSFER=0 "$VPY" -c "from huggingface_hub import snapshot_download as s; s('Qwen/Qwen3-4B-Instruct-2507', revision='$REV', local_dir='$MODELO', allow_patterns=['*.json','*.safetensors','*.txt','merges.txt','vocab.json','LICENSE*'])" \
