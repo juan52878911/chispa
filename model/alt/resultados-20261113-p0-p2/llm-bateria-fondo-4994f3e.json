@@ -1,0 +1,44 @@
+{
+ "hatecheck-es": {
+  "en_fondo": 180,
+  "etiquetadas": 180,
+  "validas": 180,
+  "acierto_frente_a_la_fuente": 0.6333,
+  "con_pmax_ge_0_9": 168
+ },
+ "inyecciones": {
+  "en_fondo": 546,
+  "etiquetadas": 546,
+  "validas": 546,
+  "acierto_frente_a_la_fuente": 0.7179,
+  "con_pmax_ge_0_9": 545
+ },
+ "jailbreak": {
+  "en_fondo": 1572,
+  "etiquetadas": 1572,
+  "validas": 1572,
+  "acierto_frente_a_la_fuente": 0.9275,
+  "con_pmax_ge_0_9": 1572
+ },
+ "massive-es": {
+  "en_fondo": 2000,
+  "etiquetadas": 2000,
+  "validas": 1621,
+  "acierto_frente_a_la_fuente": 0.5626,
+  "con_pmax_ge_0_9": 1309
+ },
+ "massive-esc": {
+  "en_fondo": 2000,
+  "etiquetadas": 2000,
+  "validas": 1614,
+  "acierto_frente_a_la_fuente": 0.7131,
+  "con_pmax_ge_0_9": 1234
+ },
+ "tuits-es": {
+  "en_fondo": 1839,
+  "etiquetadas": 1839,
+  "validas": 1839,
+  "acierto_frente_a_la_fuente": 0.6368,
+  "con_pmax_ge_0_9": 728
+ }
+}
