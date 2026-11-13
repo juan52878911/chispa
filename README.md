@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/marca/chispa.svg" width="128" alt="Icono de Chispa: una chispa que salta de tres astillas de leña"></p>
+
 # Chispa
 
 Clasificador tipado, de bajo coste y de propósito general, open source (Apache-2.0), en la línea de Jev o Laya. Tú mandas un texto y una

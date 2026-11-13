@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="t d">
+  <title id="t">Chispa</title>
+  <desc id="d">Una chispa que salta de tres astillas de leña cruzadas: Chispa nace de kindling.</desc>
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1a14"/>
+      <stop offset="1" stop-color="#140c09"/>
+    </linearGradient>
+    <radialGradient id="brillo" cx="0.5" cy="0.42" r="0.5">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="chispa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff4c2"/>
+      <stop offset="0.55" stop-color="#ffc23d"/>
+      <stop offset="1" stop-color="#ff7a1a"/>
+    </linearGradient>
+    <linearGradient id="astilla" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5a36"/>
+      <stop offset="1" stop-color="#c48a52"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="28" fill="url(#fondo)"/>
+  <circle cx="64" cy="54" r="46" fill="url(#brillo)"/>
+
+  <!-- Tres astillas cruzadas (kindling): también las capas de la cascada -->
+  <g stroke-linecap="round">
+    <line x1="30" y1="104" x2="86" y2="74" stroke="url(#astilla)" stroke-width="9"/>
+    <line x1="98" y1="104" x2="42" y2="74" stroke="url(#astilla)" stroke-width="9"/>
+    <line x1="26" y1="108" x2="102" y2="108" stroke="#6e4428" stroke-width="9"/>
+    <!-- brasas en los cruces -->
+    <circle cx="64" cy="86" r="5" fill="#ff7a1a"/>
+    <circle cx="64" cy="86" r="2.2" fill="#ffd36b"/>
+  </g>
+
+  <!-- La chispa: estrella de cuatro puntas -->
+  <path d="M64 14 C66.5 34 70 39.5 88 42 C70 44.5 66.5 50 64 70 C61.5 50 58 44.5 40 42 C58 39.5 61.5 34 64 14 Z"
+        fill="url(#chispa)"/>
+  <circle cx="64" cy="42" r="4" fill="#fffbe6"/>
+
+  <!-- Pavesas que suben -->
+  <circle cx="90" cy="24" r="3" fill="#ffc23d"/>
+  <circle cx="38" cy="62" r="2.2" fill="#ff9a3d"/>
+  <circle cx="97" cy="56" r="1.8" fill="#ffd36b"/>
+</svg>
