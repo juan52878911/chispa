@@ -21,7 +21,7 @@ func TestArmarDesdeMetaZeroShotTolerante(t *testing.T) {
 		t.Fatal(err)
 	}
 	secs = append(secs, chispa3.Seccion{Tipo: chispa3.TORR, Datos: tr})
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
 	if err != nil {
 		t.Fatalf("META zero-shot debía cargar: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestArmarDesdeMetaSinTorreNoSeLee(t *testing.T) {
 		d, _ := f.Bytes(tp)
 		secs = append(secs, chispa3.Seccion{Tipo: tp, Datos: d})
 	}
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), secs...), NuevoL0(8), &Config{}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}))
 	if err != nil {
 		t.Fatalf("sin TORR no se lee texto_torre: %v", err)
 	}

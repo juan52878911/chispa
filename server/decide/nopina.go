@@ -145,6 +145,9 @@ func (c *Cascada) adoptaCuboTorres(old *Cascada) {
 // Capacidades de la cascada armada; /healthz las publica.
 func (c *Cascada) Capacidades() Capacidades {
 	cp := Capacidades{Capas: map[string]bool{}}
+	for _, n := range c.omitidas {
+		cp.Capas[n] = false
+	}
 	for _, k := range c.capas {
 		cp.Capas[k.d.Nombre()] = activaCapa(k.d)
 		if t, ok := k.d.(interface{ TorreAlVuelo() bool }); ok && t.TorreAlVuelo() {

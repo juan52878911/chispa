@@ -237,7 +237,9 @@ func armarDorados(t testing.TB) *armadoDorado { return armarDoradosCache(t, 64) 
 
 func armarDoradosCache(t testing.TB, cache int) *armadoDorado {
 	t.Helper()
-	cfg := Config{CacheEsquemas: cache, Capas: []Capa{{"L0", 0.8}, {"L1", 0.8}, {"L2", 0.7}, {"L3", 0.6}}}
+	// Los dorados fijan los τ de la cascada (no los de CALIB, que ArmarDesde pone en cfg): así comprueban las capas, no la calibración.
+	fijas := []Capa{{"L0", 0.8}, {"L1", 0.8}, {"L2", 0.7}, {"L3", 0.6}}
+	cfg := Config{CacheEsquemas: cache, Capas: append([]Capa(nil), fijas...)}
 	var a armadoDorado
 	abrir := func(n string) *chispa3.Fichero {
 		f, err := chispa3.Abrir(filepath.Join(dirDorados, n))
@@ -250,13 +252,13 @@ func armarDoradosCache(t testing.TB, cache int) *armadoDorado {
 		return f
 	}
 	l0 := NuevoL0(cache)
-	mt, err := ArmarDesde(abrir("l0l1.chispa"), l0, &cfg, false, nil)
+	mt, err := ArmarDesde(abrir("l0l1.chispa"), l0, &cfg, nil)
 	if err != nil || len(mt.Avisos) != 0 {
 		t.Fatalf("l0l1: %v %v", err, mt.Avisos)
 	}
 	a.l0, a.l1 = l0, mt.L1
 	l0tf := NuevoL0(cache)
-	if _, err := ArmarDesde(abrir("l0tf.chispa"), l0tf, &cfg, false, nil); err != nil {
+	if _, err := ArmarDesde(abrir("l0tf.chispa"), l0tf, &cfg, nil); err != nil {
 		t.Fatal(err)
 	}
 	a.l0tf = l0tf
@@ -270,7 +272,7 @@ func armarDoradosCache(t testing.TB, cache int) *armadoDorado {
 		t.Fatal(err)
 	}
 	a.l2 = NuevoL2Con(sesDorada{}, esq, cal, tokDorado{}).ConTorres(codTorreDorada{}, 256)
-	a.casc, err = NuevaCascada(cfg.Capas, []Decisor{a.l0, a.l1, a.l2, l3Dorado{}}, NuevasMetricas())
+	a.casc, err = NuevaCascada(fijas, []Decisor{a.l0, a.l1, a.l2, l3Dorado{}}, NuevasMetricas())
 	if err != nil {
 		t.Fatal(err)
 	}

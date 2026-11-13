@@ -65,6 +65,7 @@ func TestL2MultiSinCalibNoOpina(t *testing.T) {
 // Una multi escalada devuelve la mejor pista con probs por opción: L1 opina pero no llega a su τ y L2 no opina (sin multi_l2).
 func TestMultiEscaladaDevuelveProbsDeLaMejorPista(t *testing.T) {
 	cfg := ConfigPorDefecto()
+	cfg.CapasExplicitas = true // la config solo puede subir el τ de CALIB: aquí lo sube a 1
 	for i := range cfg.Capas {
 		if cfg.Capas[i].Nombre == "L1" {
 			cfg.Capas[i].Tau = 1

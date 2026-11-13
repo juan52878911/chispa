@@ -169,3 +169,13 @@ func (m *Modelo) viterbi(s string, ids []int32) []int32 {
 }
 
 var _ = utf8.RuneError
+
+// ContarUnk cuenta cuántos ids son el <unk> del modelo.
+func (m *Modelo) ContarUnk(ids []int32) (n int) {
+	for _, id := range ids {
+		if int(id) == m.p.UnkID {
+			n++
+		}
+	}
+	return n
+}

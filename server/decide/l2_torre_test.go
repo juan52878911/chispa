@@ -47,7 +47,7 @@ func TestDecideHTTPEsquemaNuevoConTorre(t *testing.T) {
 	enc := &codificadorPorTexto{clave: "· quejas ·"}
 	ses := sesionFalsa{[][]float32{{3, 0}}}
 	cfg := Config{CacheEsquemas: 64, CacheRespuestas: 0}
-	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &cfg, false, tokFalso{}, ConSesionS(ses), ConCodificadorTorre(enc))
+	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &cfg, tokFalso{}, ConSesionS(ses), ConCodificadorTorre(enc))
 	if err != nil || len(mt.Avisos) != 0 {
 		t.Fatalf("%v %v", err, mt.Avisos)
 	}
@@ -102,7 +102,7 @@ func TestDecideHTTPEsquemaNuevoConTorre(t *testing.T) {
 	// Sin la sección TORR no se monta nada: L2 sin opinión como hoy.
 	f := v3Tiny(t, calibTiny(), chispa3.Seccion{Tipo: chispa3.L2, Datos: []byte("onnx-l2")},
 		chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: mustEsq(t)})
-	mt2, err := ArmarDesde(f, NuevoL0(8), &cfg, false, tokFalso{}, ConSesionS(ses), ConCodificadorTorre(enc))
+	mt2, err := ArmarDesde(f, NuevoL0(8), &cfg, tokFalso{}, ConSesionS(ses), ConCodificadorTorre(enc))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestDecideHTTPEsquemaNuevoConTorre(t *testing.T) {
 
 // Con TORR pero un tokenizador sin modo passage la torre no se monta y se avisa; L2 sigue con ESQUEMAS.
 func TestArmarDesdeTorreSinTokenizadorPasaje(t *testing.T) {
-	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &Config{CacheEsquemas: 8}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}))
+	mt, err := ArmarDesde(conTorreSeccion(t), NuevoL0(8), &Config{CacheEsquemas: 8}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestArmarDesdeFicheroDeChispaTrainTorre(t *testing.T) {
 		t.Fatalf("%+v %v", tr, err)
 	}
 	enc := &codificadorPorTexto{clave: "· alta ·"}
-	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 16}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(enc))
+	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 16}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{3, 0}}}), ConCodificadorTorre(enc))
 	if err != nil || len(mt.Avisos) != 0 {
 		t.Fatalf("%v %v", err, mt.Avisos)
 	}
@@ -244,7 +244,7 @@ func TestArmarDesdeTorreDimDistinta(t *testing.T) {
 	tr, _ := chispa3.CodificarTORR(chispa3.Torre{Dim: 3, MaxLen: 128, Prefijo: "passage: ", ONNX: []byte("x")})
 	f := v3Tiny(t, calibTiny(), chispa3.Seccion{Tipo: chispa3.L2, Datos: []byte("onnx-l2")},
 		chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: esq}, chispa3.Seccion{Tipo: chispa3.TORR, Datos: tr})
-	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}), ConCodificadorTorre(&codificadorContador{}))
+	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}), ConCodificadorTorre(&codificadorContador{}))
 	if err != nil || mt.L2.(*L2).torres != nil || len(mt.Avisos) != 1 || !strings.Contains(mt.Avisos[0], "dimensión 3") {
 		t.Fatalf("%v %v", err, mt.Avisos)
 	}
@@ -256,7 +256,7 @@ func TestArmarDesdeTorrePrefijoInvalido(t *testing.T) {
 	tr, _ := chispa3.CodificarTORR(chispa3.Torre{Dim: 2, MaxLen: 128, Prefijo: "query: ", ONNX: []byte("x")})
 	f := v3Tiny(t, calibTiny(), chispa3.Seccion{Tipo: chispa3.L2, Datos: []byte("onnx-l2")},
 		chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: esq}, chispa3.Seccion{Tipo: chispa3.TORR, Datos: tr})
-	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, false, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}), ConCodificadorTorre(&codificadorContador{}))
+	mt, err := ArmarDesde(f, NuevoL0(8), &Config{CacheEsquemas: 8}, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{1, 0}}}), ConCodificadorTorre(&codificadorContador{}))
 	if err != nil || mt.L2.(*L2).torres != nil || len(mt.Avisos) != 1 || !strings.Contains(mt.Avisos[0], `TORR v1: prefijo "query: " no válido; se espera "passage: "`) {
 		t.Fatalf("%v %v", err, mt.Avisos)
 	}

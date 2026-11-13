@@ -85,3 +85,11 @@ func (t *Tokenizador) TokenizarMax(prefijo, texto string, maxLen int) []int32 {
 	ids = append(ids, cuerpo...)
 	return append(ids, idEOS)
 }
+
+// Senales cuenta los tokens de prefijo+texto con <s> y </s> sin truncar (acotado al recorte máximo del tokenizador) y cuántos son
+// el <unk>; truncado dice si TokenizarMax con maxLen lo recortaría.
+func (t *Tokenizador) Senales(prefijo, texto string, maxLen int) (tokens, unk int, truncado bool) {
+	maxLen = min(max(maxLen, 3), TopeMaxLen)
+	cuerpo := t.m.TokenizarSinTope(prefijo+texto, 0)
+	return len(cuerpo) + 2, t.m.ContarUnk(cuerpo), len(cuerpo) > maxLen-2
+}

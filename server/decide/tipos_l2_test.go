@@ -16,7 +16,7 @@ func armarConCalib(t *testing.T, calib chispa3.Calib) (Montaje, Config) {
 	}
 	f := v3Tiny(t, calib, chispa3.Seccion{Tipo: chispa3.L2, Datos: []byte("onnx-l2")}, chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: esq})
 	cfg := Config{CacheEsquemas: 64, Capas: ConfigPorDefecto().Capas}
-	mt, err := ArmarDesde(f, NuevoL0(8), &cfg, true, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{0.3, 0.1}, {0.1, 0.4}}}))
+	mt, err := ArmarDesde(f, NuevoL0(8), &cfg, tokFalso{}, ConSesionS(sesionFalsa{[][]float32{{0.3, 0.1}, {0.1, 0.4}}}))
 	if err != nil {
 		t.Fatal(err)
 	}

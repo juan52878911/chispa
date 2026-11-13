@@ -106,9 +106,15 @@ def meta(tareas, licencias=None, dorado="", texto_torre=None) -> bytes:
 
 
 def calib(tipos: dict, tau_escalate: float, tau_l2c=None, tau_l2_esquema_nuevo=None, l1_lambda_calib=None,
-          tipos_l2=None, tau_escalate_l2=None) -> bytes:
-    """`tipos_l2` y `tau_escalate_l2` (opcionales) son lo que leen L2 y L2c en lugar de `tipos` y `tau_escalate`; L1 lee siempre los suyos."""
+          tipos_l2=None, tau_escalate_l2=None, calibracion=None) -> bytes:
+    """`tipos_l2` y `tau_escalate_l2` (opcionales) son lo que leen L2 y L2c en lugar de `tipos` y `tau_escalate`; L1 lee siempre los suyos.
+    `calibracion` (opcional): calibración de la confianza top-1 por capa, {"L0".."L3": {"metodo": "platt", "a": a, "b": b} o
+    {"metodo": "isotonica", "x": [...], "y": [...]}}; ver docs/04. Un `tau_escalate` ausente lo rechaza el lector de Go."""
+    if tau_escalate is None:
+        raise ValueError("CALIB exige tau_escalate")
     d = {"tipos": tipos, "tau_escalate": tau_escalate}
+    if calibracion is not None:
+        d["calibracion"] = calibracion
     if tipos_l2 is not None:
         d["tipos_l2"] = tipos_l2
     if tau_escalate_l2 is not None:

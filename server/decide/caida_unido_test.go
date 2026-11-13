@@ -48,7 +48,7 @@ func rutasCaida() []string {
 func cascadaCaida(t *testing.T, f *chispa3.Fichero, l0 *L0) *Cascada {
 	t.Helper()
 	cfg := ConfigPorDefecto()
-	mt, err := ArmarDesde(f, l0, &cfg, false, nil)
+	mt, err := ArmarDesde(f, l0, &cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

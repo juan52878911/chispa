@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"chispa/format/chispa3"
 )
 
 // Resultado es la decisión final de una pregunta.
@@ -18,9 +20,18 @@ type Resultado struct {
 	Layer    string   `json:"layer"`
 	Escalate bool     `json:"escalate"`
 	// EscalateReason: por qué escaló (solo con escalate); ver MotivoSinOpinion, MotivoBajaConfianza, MotivoScoreIdsNoValidos y MotivoIncompleta.
-	EscalateReason string  `json:"escalate_reason,omitempty"`
-	Ms             float64 `json:"ms"`
-	Nonce          string  `json:"nonce,omitempty"`
+	EscalateReason string `json:"escalate_reason,omitempty"`
+	// Calibrada: la capa que contestó tiene calibración (CALIB.calibracion, o tipos_l2 en L2). Solo sale si la cascada sabe qué capas
+	// lo están (Cascada.ConCalibracion) y una capa contestó; false = su confianza no está calibrada y el τ se cortó sobre la cruda.
+	Calibrada *bool `json:"calibrada,omitempty"`
+	// Truncado: alguna capa que corrió vio solo una parte del texto (pasaba de su max_tokens o max_len y la estrategia no es
+	// «trozos»); TokensOriginales son los tokens del texto entero (el mayor entre las capas). Solo salen con truncado.
+	Truncado         bool `json:"truncado,omitempty"`
+	TokensOriginales int  `json:"tokens_originales,omitempty"`
+	// UnkPct: fracción de tokens <unk> del texto (la mayor entre las capas que tokenizaron); no sale si ninguna tokenizó.
+	UnkPct *float64 `json:"unk_pct,omitempty"`
+	Ms     float64  `json:"ms"`
+	Nonce  string   `json:"nonce,omitempty"`
 	// Incompleto: una capa falló o el ctx se canceló; no debe guardarse bajo un nonce.
 	Incompleto bool `json:"-"`
 }
@@ -62,6 +73,9 @@ type capa struct {
 	tau float64
 	// tauNuevo, si no es nil, sustituye a tau cuando la respuesta de la capa trae EsquemaNuevo.
 	tauNuevo *float64
+	// cal, si no es nil, calibra la confianza top-1 antes de compararla con τ (CALIB.calibracion de la capa).
+	cal       *chispa3.CalibCapa
+	calibrada bool
 }
 
 // Cascada pasa por las capas en orden mientras la confianza top-1 sea < τ.
@@ -72,6 +86,30 @@ type Cascada struct {
 	vistas map[string]VistaCalib
 	// tauNuevo es el τ de esquema nuevo de la config; el gauge lo fija Recargar al hacer el cambio (nuevoVivo), no el armado.
 	tauNuevo *float64
+	// marcaCalib: ConCalibracion se llamó y cada Resultado contestado lleva «calibrada».
+	marcaCalib bool
+	// omitidas son capas que el modelo no trae y la cascada se salta (L1 sin sección L1): Capacidades las da como inactivas.
+	omitidas []string
+}
+
+// ConOmitidas apunta capas que no están en la cascada porque el modelo no las trae (ver SinL1Ausente).
+func (c *Cascada) ConOmitidas(nombres ...string) *Cascada {
+	c.omitidas = append(c.omitidas, nombres...)
+	return c
+}
+
+// ConCalibracion aplica la calibración por capa de CALIB (cal, por nombre de capa) y marca en cada respuesta si la capa que contestó
+// está calibrada (calibradas). Sin llamarla, la cascada corta sobre la confianza cruda y no pone «calibrada». Antes de servir.
+func (c *Cascada) ConCalibracion(cal map[string]chispa3.CalibCapa, calibradas map[string]bool) *Cascada {
+	c.marcaCalib = true
+	for i := range c.capas {
+		n := c.capas[i].d.Nombre()
+		if k, ok := cal[n]; ok {
+			c.capas[i].cal = &k
+		}
+		c.capas[i].calibrada = calibradas[n]
+	}
+	return c
 }
 
 // NuevaCascada empareja decisores y umbrales por posición y nombre.
@@ -111,6 +149,15 @@ func NuevaCascadaConTauNuevo(cfg []Capa, ds []Decisor, met *Metricas, tauNuevo *
 	c.vistas = met.cierraPrepCalib()
 	cerrada = true
 	return c, nil
+}
+
+// Taus devuelve el τ efectivo de cada capa de la cascada, por nombre.
+func (c *Cascada) Taus() map[string]float64 {
+	m := make(map[string]float64, len(c.capas))
+	for _, cp := range c.capas {
+		m[cp.d.Nombre()] = cp.tau
+	}
+	return m
 }
 
 // PublicaCalib pone en /metrics la CALIB y los τ de esta cascada, y quita las series de las capas que ya no están. Se llama
@@ -182,6 +229,7 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 	sinPres := false            // alguna capa quedó sin presupuesto de torres nuevas
 	otraFalla := false          // alguna capa falló por error o plazo, o quedó incompleta por otra causa que el presupuesto de torres
 	previas := Previas{}
+	var sen senalesRespuesta
 	ctx = conPresupuesto(ctx)
 	for _, l := range c.capas {
 		if ctx.Err() != nil {
@@ -201,6 +249,13 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 			r, err = l.d.Decidir(ctx, p)
 		}
 		c.met.ObservaCapa(l.d.Nombre(), time.Since(t), err)
+		if err == nil && r.Senal != nil {
+			sen.suma(*r.Senal)
+		} else if cs, ok := l.d.(ConSenales); ok && err == nil {
+			if s, ok := cs.Senales(p.Estado); ok {
+				sen.suma(s)
+			}
+		}
 		if err != nil || ctx.Err() != nil {
 			res.Incompleto = true
 			otraFalla = true
@@ -239,12 +294,21 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 				tau = *l.tauNuevo
 			}
 		}
-		if r.Conf > 0 && r.Conf >= tau {
+		conf := r.Conf
+		if l.cal != nil {
+			conf = l.cal.Aplicar(conf)
+		}
+		if conf > 0 && conf >= tau {
 			if r.EsquemaNuevo {
 				c.met.EsquemaNuevoDecididas.Add(1)
 			}
 			res.Answer, res.Answers, res.Probs, res.Layer = r.Answer, r.Answers, r.Probs, l.d.Nombre()
+			if c.marcaCalib {
+				cb := l.calibrada
+				res.Calibrada = &cb
+			}
 			c.met.Decidida(res.Layer, false)
+			sen.aplica(&res)
 			res.Ms = ms(time.Since(t0))
 			return res
 		}
@@ -270,6 +334,7 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 		res.Probs = mejor.Probs
 	}
 	c.met.Decidida(res.Layer, true)
+	sen.aplica(&res)
 	res.Ms = ms(time.Since(t0))
 	return res
 }

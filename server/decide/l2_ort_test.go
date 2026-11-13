@@ -58,7 +58,7 @@ func TestL2TorreORTEsquemaNuevo(t *testing.T) {
 	f := v3Tiny(t, calib, chispa3.Seccion{Tipo: chispa3.L2, Datos: l2onnx},
 		chispa3.Seccion{Tipo: chispa3.ESQUEMAS, Datos: esq}, chispa3.Seccion{Tipo: chispa3.TORR, Datos: tr})
 	cfg := Config{CacheEsquemas: 64}
-	mt, err := ArmarDesde(f, NuevoL0(8), &cfg, false, tokORT{})
+	mt, err := ArmarDesde(f, NuevoL0(8), &cfg, tokORT{})
 	if err != nil || len(mt.Avisos) != 0 {
 		t.Fatalf("%v %v", err, mt.Avisos)
 	}

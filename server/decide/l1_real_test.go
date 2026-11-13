@@ -35,7 +35,7 @@ func l1Real(tb testing.TB) *Cascada {
 		tb.Fatal(err)
 	}
 	cfg := ConfigPorDefecto()
-	mt, err := ArmarDesde(f, NuevoL0(cfg.CacheEsquemas), &cfg, false, nil)
+	mt, err := ArmarDesde(f, NuevoL0(cfg.CacheEsquemas), &cfg, nil)
 	if err != nil {
 		tb.Fatal(err)
 	}

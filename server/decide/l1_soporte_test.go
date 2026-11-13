@@ -40,7 +40,7 @@ func l1Con(t *testing.T, sopl []byte, lambda *float64) *L1 {
 	}
 	// lambda nil = apagado explícito (el comportamiento anterior al default 4); ver TestL1DefaultCuatro para el ausente.
 	cfg := Config{CacheEsquemas: 16, CacheRespuestas: 16, L1ShrinkageLambda: lambda, L1ShrinkageApagado: lambda == nil}
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), extra...), NuevoL0(8), &cfg, false, nil)
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny(), extra...), NuevoL0(8), &cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestL1DefaultCuatro(t *testing.T) {
 		extra := []chispa3.Seccion{{Tipo: chispa3.SOPL1, Datos: sopl}}
 		calib := calibTiny()
 		calib.L1LambdaCalib = floatPtr(4) // calibrado con el λ por defecto: el soporte se usa sin λ en la config
-		mt, err := ArmarDesde(v3Tiny(t, calib, extra...), NuevoL0(8), &cfg, false, nil)
+		mt, err := ArmarDesde(v3Tiny(t, calib, extra...), NuevoL0(8), &cfg, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -216,7 +216,7 @@ func TestL1DefaultCuatro(t *testing.T) {
 	}
 	// .chispa sin SOPL1: el default no cambia nada.
 	sin := l1Con(t, nil, nil)
-	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), NuevoL0(8), &Config{CacheEsquemas: 16, CacheRespuestas: 16}, false, nil)
+	mt, err := ArmarDesde(v3Tiny(t, calibTiny()), NuevoL0(8), &Config{CacheEsquemas: 16, CacheRespuestas: 16}, nil)
 	if err != nil || !reflect.DeepEqual(mt.L1.(*L1).opciones(p), sin.opciones(p)) {
 		t.Fatalf("sin SOPL1 no debe cambiar: %v", err)
 	}

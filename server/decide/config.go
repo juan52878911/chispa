@@ -66,7 +66,7 @@ type Config struct {
 	L1ShrinkageApagado bool     `json:"l1_shrinkage_apagado,omitempty"`
 	L2ShrinkageLambda  *float64 `json:"l2_shrinkage_lambda,omitempty"`
 	// τ de L2 solo para preguntas cuyas torres no estaban en ESQUEMAS (salieron al vuelo).
-	// Prioridad: config > tau_l2_esquema_nuevo de CALIB (se usa aunque haya -config) > TauL2EsquemaNuevoPorDefecto (0,846).
+	// Prioridad: tau_l2_esquema_nuevo de CALIB > TauL2EsquemaNuevoPorDefecto (0,846); la config solo puede subir el de CALIB (uno menor se ignora con aviso).
 	// Para volver al comportamiento de antes (sin τ propio: L2 usa su τ de siempre) `"tau_l2_esquema_nuevo_apagado": true`, que
 	// ignora también el de CALIB; mismo patrón que l1_shrinkage_apagado (un booleano, porque null y ausente no se distinguen).
 	// Apagado junto con un τ es error.
@@ -77,6 +77,12 @@ type Config struct {
 	TextoLargo *TextoLargo `json:"texto_largo,omitempty"`
 	// L3 (opcional): escalado a un LLM compatible con OpenAI; ver ConfigL3. Ausente = apagada. Exige una capa "L3" en capas.
 	L3 *ConfigL3 `json:"l3,omitempty"`
+	// CapasExplicitas: el JSON de la config trae «capas». Solo entonces sus τ de L1 y L2 cuentan frente a los de CALIB, y solo para
+	// subirlos (ArmarDesde); sin «capas» (también con «{}») el τ es el de CALIB, igual que sin -config. Lo fija CargarConfig.
+	CapasExplicitas bool `json:"-"`
+	// TorreFichero: otro .chispa del que se toma solo la sección TORR para las torres al vuelo (p. ej. el del perfil movil-int8,
+	// con la torre int8, frente a la fp32 del perfil servidor). Debe ser compatible con la TORR del -modelo; ausente = la del -modelo.
+	TorreFichero string `json:"torre_fichero,omitempty"`
 }
 
 // TauL2EsquemaNuevoPorDefecto: τ de L2 para esquemas nuevos cuando ni la config ni CALIB lo dicen. Punto prudente medido sobre
@@ -130,6 +136,10 @@ func CargarConfig(path string) (Config, error) {
 	}
 	if dec.More() {
 		return c, fmt.Errorf("config %s: datos tras el objeto JSON", path)
+	}
+	var claves map[string]json.RawMessage
+	if json.Unmarshal(b, &claves) == nil {
+		_, c.CapasExplicitas = claves["capas"]
 	}
 	if err := c.Validar(); err != nil {
 		return c, err
