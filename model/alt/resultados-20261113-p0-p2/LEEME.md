@@ -433,3 +433,67 @@ El vigilante cierra a los 71 min y sube los resultados; `shutdown -h +85` es el 
   `python -m model.alt.llm_bateria medir --muestra $D/muestra --bf16 res/l3_bateria.jsonl --q4 res/l3_q4.jsonl --bateria …/p3-eval/full/bat --pred …/fusion-knn-l2/pred --vec …/fusion-knn-l2/vec`
   y con `fondo-resumen`. Después se sube `verificado`.
   Datos fuera del repo: `maquina-i7:/mnt/nfs-lab/chispa-audio/llm-bateria/` (`muestra/`, `fondo/` con `fondo-fuente.jsonl`, `hub/`, `llamacpp/`, `seco/`).
+
+### 12.5 Resultado (EC2 inst-08, 2026-11-13): INCOMPLETO, falta el Q4; sin Q4 no pasaría (agrupada 0,6497 frente a 0,65)
+
+Duró 3 468 s hasta `listo`; `verificado` se subió al momento y la instancia se terminó sola. Costó ≈ 1,0 USD (≈ 60 min a 1,006 USD/h, con el EBS de 100 GB aparte).
+Cifras en `llm-bateria-4994f3e.json` (medición) y `llm-bateria-fondo-4994f3e.json` (fondo). Ninguno de los dos lleva textos.
+
+| fase | resultado |
+|---|---|
+| A. bf16 (vLLM) | 3 116 de 3 116 filas en 350 s, 3 025 válidas (las 91 inválidas: 45 en massive-es y 46 en massive-esc) |
+| B. Q4_K_M (llama.cpp CUDA) | **FALLO**: el binario oficial `ubuntu-cuda-12.8` pide `GLIBC_2.38` y la DLAMI AL2023 trae la 2.34. No se midió nada del Q4 |
+| C. fondo | 8 137 de 8 137 textos en 2 501 s, 7 372 válidos |
+
+**Criterio:**
+
+| criterio | resultado | ¿se cumple? |
+|---|---|---|
+| agrupada ≥ 0,65 | **0,6497** [0,627, 0,673]; permisiva 0,662 | no, por 0,0003; el IC cubre el umbral |
+| hatecheck-es ≥ kNN + 5 pts | 0,824 frente a 0,6985 (kNN recalculado) = **+12,6 pts** | sí |
+| Q4 pierde ≤ 2 pts | sin medir | — |
+| refutado si < fusión | 0,650 frente a 0,606 (fusión en las mismas filas) = +4,4 pts [+1,5, +7,1] | no está refutado |
+
+#### Por tarea
+
+Lectura estricta, IC95 bootstrap; las referencias son de las mismas filas.
+
+| tarea | n | LLM bf16 | kNN | L2 | cruzado | fusión | LLM − fusión [IC95] | inválidas | AUROC pmax | AUROC validez |
+|---|---|---|---|---|---|---|---|---|---|---|
+| hatecheck-es | 2000 | **0,824** [0,807, 0,841] | 0,693 / 0,699 | 0,514 | 0,616 | 0,665 | +0,160 [+0,137, +0,183] | 0 | **0,517** | 0,5 |
+| inyecciones | 116 | 0,569 [0,474, 0,655] | 0,767 | 0,491 | 0,707 | 0,793 | −0,224 [−0,328, −0,129] | 0 | 0,588 | 0,5 |
+| jailbreak | 250 | **0,924** [0,892, 0,956] | 0,556 | 0,656 | 0,656 | 0,628 | +0,296 [+0,224, +0,368] | 0 | 0,672 | 0,5 |
+| massive-es | 250 | 0,444 [0,384, 0,504] | 0,480 | 0,396 | 0,464 | 0,520 | −0,076 [−0,152, −0,004] | 45 | 0,732 | 0,662 |
+| massive-esc | 250 | 0,564 [0,500, 0,624] | 0,580 | 0,548 | 0,628 | 0,616 | −0,052 [−0,116, +0,008] | 46 | 0,833 | 0,711 |
+| tuits-es | 250 | 0,636 [0,576, 0,692] | 0,496 | 0,560 | 0,528 | 0,580 | +0,056 [−0,028, +0,140] | 0 | 0,681 | 0,5 |
+| agrupada (ponderada) | 3116 | **0,650** [0,627, 0,673] | 0,578 | 0,511 | 0,572 | 0,606 | +0,044 [+0,015, +0,071] | 91 | 0,616 (mezcla) | 0,560 |
+
+#### Lectura
+
+- **El LLM gana mucho donde hay que entender el texto** (hatecheck-es, jailbreak, tuits-es) y pierde donde hay muchas opciones o un sesgo de la fuente:
+  - En massive-es y massive-esc el 18 % de las respuestas no son válidas: con 18 a 60 ids obligatorios la suma se va de 1 ± 0,05 incluso tras el reintento. En lectura permisiva massive-esc sube a 0,608.
+  - En inyecciones (deepset) se queda en 0,569: el etiquetado de deepset no coincide con lo que el LLM entiende por inyección.
+- **Escalado:** el LLM casi siempre responde con probabilidad 0,9–1, así que la probabilidad máxima no separa aciertos de fallos.
+  - hatecheck-es da AUROC 0,517, peor que el 0,616 de la fusión.
+  - La validez solo informa en massive (0,66–0,71).
+  - Con este formato el LLM **no da una señal de escalado útil**; haría falta otra (logprobs del token de la opción, autoconsistencia o acuerdo con kNN).
+- **Fondo para el paso 3**, acierto frente a la etiqueta de la fuente en las respuestas válidas:
+
+  | tarea | acierto | respuestas válidas con pmax ≥ 0,9 |
+  |---|---|---|
+  | jailbreak | 0,928 | 1 572 de 1 572 |
+  | inyecciones | 0,718 | 545 de 546 |
+  | massive-esc | 0,713 | 1 234 de 1 614 |
+  | tuits-es | 0,637 | 728 de 1 839 |
+  | hatecheck-es | 0,633 (180 textos) | 168 de 180 |
+  | massive-es | 0,563 | 1 309 de 1 621 |
+
+  En hatecheck-es el fondo acierta mucho menos que en el test (0,824): son plantillas distintas.
+
+#### Q4 pendiente: qué haría falta
+
+El binario CUDA de llama.cpp no carga en AL2023 por glibc. Hay dos salidas sin compilar:
+- **(a)** llama.cpp en el contenedor oficial `ghcr.io/ggml-org/llama.cpp:server-cuda` con `--gpus all` (la DLAMI trae Docker y nvidia-container-toolkit);
+- **(b)** el GGUF en vLLM 0.33.0 (experimental; no es el runtime de producción).
+
+Una ronda solo de Q4 con el user-data de esta y las fases A y C desactivadas costaría ≈ 0,4 USD. La de esta ronda fue la primera falla.
