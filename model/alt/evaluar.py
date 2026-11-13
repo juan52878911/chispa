@@ -29,7 +29,7 @@ def predecir(modelo, filas, lote=16, max_tokens=MAX_TOKENS):
     """[{id, probs}] en el orden de `filas` (cada lote en trozos de ≤ `max_tokens` tokens con relleno)."""
     out = []
     for i in range(0, len(filas), lote):
-        for fs in trozos(filas[i:i + lote], max_tokens, modelo.largo):
+        for fs in modelo.partir(filas[i:i + lote], max_tokens):
             out += [{"id": r["id"], "probs": p} for r, p in zip(fs, modelo.probs(fs))]
     return out
 

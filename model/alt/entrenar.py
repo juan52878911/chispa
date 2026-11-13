@@ -94,7 +94,7 @@ def entrenar(modelo, manifiesto, train, dev, salida, epocas=3, lote=16, lr=3e-5,
             fs = [train[j] for j in orden[i:i + lote]]
             opt.zero_grad()
             p = 0.0
-            for tr in trozos(fs, max_tokens, modelo.largo):
+            for tr in modelo.partir(fs, max_tokens):
                 with torch.autocast("cuda", dtype=torch.bfloat16, enabled=bf16 and dev_.type == "cuda"):
                     pt = modelo.perdida(tr, peso_blanda) * len(tr) / len(fs)
                 pt.backward()
@@ -130,6 +130,8 @@ def peor_trozo(modelo, max_opciones, max_tokens):
         ops = ["o%d" % j for j in range(k)]
         return {"id": "sondeo:%d" % i, "pregunta": largo, "texto": largo, "opciones": ops, "descripciones": {o: largo for o in ops},
                 "etiqueta": ops[0], "blanda": {o: 1.0 / k for o in ops}}
+    if hasattr(modelo, "max_opciones"):   # l2x: una secuencia por fila con hasta `max_opciones` opciones
+        return [[fila(0, max_opciones)], [fila(1 + i, modelo.max_opciones) for i in range(max(1, max_tokens // modelo.max_tok))]]
     return [[fila(0, max_opciones)], [fila(1 + i, 2) for i in range(max(1, max_tokens // modelo.max_tok // 2))]]
 
 
@@ -166,7 +168,11 @@ def sondeo(modelo, max_opciones, max_tokens=MAX_TOKENS, peso_blanda=0.5, bf16=Fa
 
 
 def construir(a, dis):
-    modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
+    if getattr(a, "arquitectura", "cruzado") == "l2x":
+        from .l2x import L2x
+        modelo = L2x.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok, max_opciones=a.max_opciones).to(dis)
+    else:
+        modelo = CrossEncoder.desde_hf(a.codificador, pooling=a.pooling, max_tok=a.max_tok).to(dis)
     if a.recomputar:   # sin él, 150 opciones × 256 tokens (≈ 38 000) no caben en los 22 GiB de la A10G
         modelo.enc.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     return modelo
@@ -180,6 +186,8 @@ def main(argv=None):
     ap.add_argument("--sellar", action="store_true", help="calcula filas y sha256 de los ficheros bajo --datos antes de validar")
     ap.add_argument("--codificador", default="e5-small")
     ap.add_argument("--pooling", default="media", choices=("media", "cls"))
+    ap.add_argument("--arquitectura", default="cruzado", choices=("cruzado", "l2x"), help="cruzado: una pasada por opción (hito 4); l2x: una pasada por pregunta")
+    ap.add_argument("--max-opciones", type=int, default=8, help="solo l2x: opciones por pasada de entrenamiento (la correcta y el resto al azar)")
     ap.add_argument("--epocas", type=int, default=3)
     ap.add_argument("--lote", type=int, default=16)
     ap.add_argument("--max-tok", type=int, default=256)
