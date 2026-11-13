@@ -133,15 +133,21 @@ def mcnemar(a, b):
     return n01, n10, min(1.0, p)
 
 
+def _ic95(ok, remuestreos=2000, semilla=0):
+    """(media, bajo, alto): bootstrap percentil sobre casos; el mismo algoritmo que `model.l2.largos.ic95` (sin importar torch)."""
+    import numpy as np
+    ok = np.asarray(ok, dtype=float)
+    medias = ok[np.random.RandomState(semilla).randint(0, len(ok), (remuestreos, len(ok)))].mean(1)
+    return float(ok.mean()), float(np.percentile(medias, 2.5)), float(np.percentile(medias, 97.5))
+
+
 def ic(x):
-    from model.l2.largos import ic95
-    m, lo, hi = ic95(x)
+    m, lo, hi = _ic95(x)
     return {"acc": round(m, 4), "lo": round(lo, 4), "hi": round(hi, 4)}
 
 
 def ic_dif(a, b):
-    from model.l2.largos import ic95_diferencia
-    m, lo, hi = ic95_diferencia(a, b)
+    m, lo, hi = _ic95([x - y for x, y in zip(a, b)])
     return {"dif": round(m, 4), "lo": round(lo, 4), "hi": round(hi, 4)}
 
 
