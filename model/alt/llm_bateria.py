@@ -278,7 +278,10 @@ def cmd_medir(a):
         out["q4"] = {"n": len(sub), "n_fichero": len(leer(mu / "filas-q4.jsonl")), "invalidas": sum(1 for f in sub if not q4[f["id"]][2]),
                      "q4_ponderada": boot(oq, pq), "bf16_mismas_filas": boot(ob, pq), "q4_menos_bf16": boot(oq, pq, ref=ob),
                      "por_tarea": {c: {"n": len(oq[c]), "q4": round(sum(oq[c]) / len(oq[c]), 4), "bf16": round(sum(ob[c]) / len(ob[c]), 4),
-                                       "mcnemar": mcnemar(oq[c], ob[c])} for c in oq},
+                                       "mcnemar": mcnemar(oq[c], ob[c]), "q4_menos_bf16": boot({c: oq[c]}, {c: 1}, ref={c: ob[c]}),
+                                       "invalidas_q4": sum(1 for f in sub if f["conjunto"] == c and not q4[f["id"]][2]),
+                                       "invalidas_bf16": sum(1 for f in sub if f["conjunto"] == c and not bf[f["id"]][2])} for c in oq},
+                     "mcnemar_agrupado": mcnemar([x for c in sorted(oq) for x in oq[c]], [x for c in sorted(ob) for x in ob[c]]),
                      "acuerdo_top1": round(sum(1 for f in sub if q4[f["id"]][0] == bf[f["id"]][0]) / len(sub), 4)}
     out["veredicto"] = veredicto(out)
     Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
