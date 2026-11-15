@@ -37,11 +37,19 @@ type ConfigL3 struct {
 	// TopK: en choice con más opciones, L3 solo ve las top_k mejores según la capa anterior que opinó (L2, si no L1 o L0); las
 	// demás salen con p = 0. 0 o ausente = L3TopKPorDefecto; si no, ≥ 2.
 	TopK int `json:"top_k,omitempty"`
+	// Modo: "" o "json" (por defecto: se pide un JSON de probabilidades) o "logprobs" (una etiqueta por opción y se lee la
+	// distribución de su primer token; ver l3_logprobs.go). Los campos siguientes solo cuentan en modo logprobs.
+	Modo           string   `json:"modo,omitempty"`
+	MaxConcurrente int      `json:"max_concurrente,omitempty"` // filas puntuadas a la vez contra el LLM; 0 = L3MaxConcurrentePorDefecto
+	TimeoutFila    Duracion `json:"timeout_fila,omitempty"`    // tope por fila incluido el relleno; 0 = timeout
+	MaxExtra       *int     `json:"max_extra,omitempty"`       // etiquetas fuera del top 20 puntuadas por prompt_logprobs; ausente = 4
+	SinPensar      bool     `json:"sin_pensar,omitempty"`      // manda chat_template_kwargs {"enable_thinking": false} (Qwen3 híbridos); solo si true
 }
 
 const (
 	L3TimeoutPorDefecto        = 10 * time.Second
 	L3MaxPorPeticionPorDefecto = 8
+	L3MaxConcurrentePorDefecto = 4
 	// L3TopKPorDefecto: con 60 opciones L3 tenía p99 ≈ 120 s y solo opinaba en el 2,9 % de los casos (bench l3 de model/); la
 	// salida y la entrada del LLM crecen con las opciones.
 	L3TopKPorDefecto = 8
@@ -105,6 +113,12 @@ func (c ConfigL3) validar() error {
 	if c.Timeout < 0 {
 		return fmt.Errorf("config: l3.timeout no puede ser negativo")
 	}
+	if c.Modo != "" && c.Modo != L3ModoJSON && c.Modo != L3ModoLogprobs {
+		return fmt.Errorf("config: l3.modo debe ser %q o %q: %q", L3ModoJSON, L3ModoLogprobs, c.Modo)
+	}
+	if c.MaxConcurrente < 0 || (c.MaxExtra != nil && *c.MaxExtra < 0) || c.TimeoutFila < 0 {
+		return fmt.Errorf("config: l3.max_concurrente, l3.max_extra y l3.timeout_fila no pueden ser negativos")
+	}
 	if c.Tau != nil && !(*c.Tau >= 0 && *c.Tau <= 1) {
 		return fmt.Errorf("config: l3.tau fuera de [0,1]: %v", *c.Tau)
 	}
@@ -139,6 +153,7 @@ type L3LLM struct {
 	clave  string
 	cli    *http.Client
 	max    int
+	sem    chan struct{} // semáforo del modo logprobs (max_concurrente)
 	met    *Metricas
 	cuenta sync.Map // weak.Pointer[presupuestoTorres] (la petición) → *atomic.Int64 de llamadas; se limpia al recogerse la petición
 }
@@ -153,6 +168,11 @@ func NuevoL3LLM(cfg ConfigL3, cli *http.Client) (*L3LLM, error) {
 	if l.max == 0 {
 		l.max = L3MaxPorPeticionPorDefecto
 	}
+	mc := cfg.MaxConcurrente
+	if mc == 0 {
+		mc = L3MaxConcurrentePorDefecto
+	}
+	l.sem = make(chan struct{}, mc)
 	to := time.Duration(cfg.Timeout)
 	if to == 0 {
 		to = L3TimeoutPorDefecto
@@ -293,6 +313,9 @@ func (l *L3LLM) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 	if !l.reservar(ctx) {
 		l.met.l3Cuenta("presupuesto")
 		return Respuesta{Incompleto: true}, nil // no opina por falta de presupuesto, no por criterio: no se cachea bajo el nonce
+	}
+	if l.cfg.Modo == L3ModoLogprobs && p.Kind != KindMulti { // multi (sí/no independientes) no cabe en una etiqueta: sigue por JSON
+		return l.decidirLogprobs(ctx, p, ordenadas)
 	}
 	ops := make([]opL3, len(ordenadas))
 	for i, o := range ordenadas {
