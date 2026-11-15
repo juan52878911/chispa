@@ -169,6 +169,66 @@ def cmd_fondo(a):
     print(json.dumps(meta, ensure_ascii=False))
 
 
+def cmd_fondo2(a):
+    """R4: fondo ampliado. Textos sin usar de los mismos train/dev (massive-es y massive-esc, las únicas tareas del fondo que no se
+    agotaron) más train/dev de LexBOE, con las mismas exclusiones que `fondo` (ningún texto de test de la batería, de las tareas nuevas
+    ni de su soporte de oro, ni ya usado en el fondo de esa tarea). Orden: bloque 1 = LexBOE y massive-esc intercalados; bloque 2 =
+    massive-es y el resto de massive-esc intercalados (massive-es es lo más caro: 60 opciones). Un corte por tiempo deja el bloque 1."""
+    from model.alt.bateria_no_vista import convertir_todo
+    from model.alt.p0_medir import cargar_bateria
+    from model.alt.tareas_nuevas import lexboe
+    bat = cargar_bateria(a.bateria)
+    nuevas = cargar_bateria(a.nuevas)
+    prohibido = {norm(r["texto"]) for d in (bat, nuevas) for sop, ev in d.values() for r in sop + ev}
+    previo = {}
+    for r in leer(Path(a.fondo_previo) / "fondo.jsonl"):
+        previo.setdefault(r["conjunto"], set()).add(norm(r["texto"]))
+    def elegir(filas, c, n):
+        vistos, uni = set(previo.get(c, ())), []
+        for r in filas:
+            t = norm(r["texto"])
+            if r["split"] in ("train", "dev") and t not in prohibido and t not in vistos:
+                vistos.add(t)
+                uni.append(r)
+        rng = random.Random("llm-fondo2-%s" % c)
+        rng.shuffle(uni)
+        return uni[:n], len(uni)
+    todo = convertir_todo(a.hub)
+    por, meta = {}, {}
+    for c, n in (("massive-esc", a.massive_esc), ("massive-es", a.massive_es)):
+        por[c], meta[c] = elegir(todo[c][0], c, n)
+    lx, mlx = lexboe(a.hub_nuevas)
+    por["lexboe"], meta["lexboe"] = elegir(lx, "lexboe", a.lexboe)
+    meta = {c: {"disponibles": meta[c], "en_fondo2": len(por[c])} for c in por}
+    def filas(c, rs):
+        out = []
+        for r in rs:
+            f = a_fila(r, c, etiqueta=False)
+            f["id"] = "fondo2:" + r["id"]
+            out.append((f, {"id": f["id"], "conjunto": c, "etiqueta": r["etiqueta"]}))
+        return out
+    mitad = len(por["massive-esc"]) // 2
+    b1 = intercalar([f for f, _ in filas("lexboe", por["lexboe"]) + filas("massive-esc", por["massive-esc"][:mitad])])
+    b2 = intercalar([f for f, _ in filas("massive-es", por["massive-es"]) + filas("massive-esc", por["massive-esc"][mitad:])])
+    fuente = [g for c in por for _, g in filas(c, por[c])]
+    sal = Path(a.salida)
+    sal.mkdir(parents=True, exist_ok=True)
+    escribir(sal / "fondo2.jsonl", b1 + b2)
+    escribir(sal / "fondo2-fuente.jsonl", fuente)
+    meta["_total"] = len(b1) + len(b2)
+    meta["_bloque1"] = len(b1)
+    (sal / "fondo2.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps(meta, ensure_ascii=False))
+
+
+def cmd_nuevas(a):
+    """R4 (a): el test de las tareas nuevas en formato de cliente (con conjunto y etiqueta, que el cliente no lee)."""
+    from model.alt.p0_medir import cargar_bateria
+    filas = [a_fila(r, c) for c, (_, ev) in sorted(cargar_bateria(a.nuevas).items()) for r in ev]
+    escribir(Path(a.salida), intercalar(filas))
+    print(json.dumps({c: sum(1 for f in filas if f["conjunto"] == c) for c in sorted({f["conjunto"] for f in filas})}))
+
+
 # ---------------------------------------------------------------- medición
 def llm_pred(ruta, filas, permisivo=False):
     """{id: (top1 o None, pmax, valida)}; sin respuesta = inválida."""
@@ -407,6 +467,19 @@ def main(argv=None):
     r.add_argument("--fondo", required=True)
     r.add_argument("--l3", required=True)
     r.add_argument("--salida", required=True)
+    f2 = sp.add_parser("fondo2")
+    f2.add_argument("--hub", required=True)
+    f2.add_argument("--hub-nuevas", required=True)
+    f2.add_argument("--bateria", required=True)
+    f2.add_argument("--nuevas", required=True)
+    f2.add_argument("--fondo-previo", required=True)
+    f2.add_argument("--salida", required=True)
+    f2.add_argument("--massive-es", type=int, default=6000)
+    f2.add_argument("--massive-esc", type=int, default=8000)
+    f2.add_argument("--lexboe", type=int, default=4000)
+    nv = sp.add_parser("nuevas")
+    nv.add_argument("--nuevas", required=True)
+    nv.add_argument("--salida", required=True)
     q = sp.add_parser("pequeno")
     q.add_argument("--muestra", required=True)
     q.add_argument("--ref", required=True, help="l3_bateria.jsonl de Qwen3-4B bf16 (paso 2)")
@@ -414,7 +487,7 @@ def main(argv=None):
     q.add_argument("--lat", action="append", help="nombre=lat_x.jsonl (subconjunto con un hilo)")
     q.add_argument("--salida", required=True)
     a = ap.parse_args(argv)
-    {"muestra": cmd_muestra, "fondo": cmd_fondo, "medir": cmd_medir, "fondo-resumen": cmd_fondo_resumen, "pequeno": cmd_pequeno}[a.cmd](a)
+    {"muestra": cmd_muestra, "fondo": cmd_fondo, "medir": cmd_medir, "fondo-resumen": cmd_fondo_resumen, "pequeno": cmd_pequeno, "fondo2": cmd_fondo2, "nuevas": cmd_nuevas}[a.cmd](a)
 
 
 if __name__ == "__main__":
