@@ -1232,3 +1232,13 @@ El kNN prequential no aporta casi nada sobre el estático; en las nuevas lo limi
 | tuits-es | 0,530 | 0,644 | 0,608 | 35,9 % |
 
 Al sumar las tareas nuevas, la cascada **iguala o supera a L3 solo escalando el 30 %**: 0,690 frente a 0,687. En lexboe gana a los dos, porque L2 (el oro) acierta más que el LLM. Solo es descriptivo: el criterio CRIT8E se evaluó en §15.3, sobre la batería.
+
+
+## 16. Tanda R9 (rama `llm-rondas-r9`, sin push)
+
+### 16.1 R9-m: el resto de massive-es por logprobs (g5, ≤ 35 min; código d778d88)
+
+- Se usa el ud de R7b sin cambios y el cliente de R5.
+- La cola tiene 6 961 textos. Van primero los 961 del fondo de R1 que faltaban, unos 19 min a 1,17 s por texto. Detrás van los 6 000 de massive-es de fondo2, de los que caben unos 250.
+- Entradas en `s3://…/llm-r9m-d778d88/`: reetiqueta.jsonl `317f8507…`. User-data: `lanzados/ud-llm-r9m-d778d88.sh` (sha256 `4777ec3c…`).
+- `--dry-run` da DryRunOperation.
