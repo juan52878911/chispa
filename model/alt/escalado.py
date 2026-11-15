@@ -33,6 +33,15 @@ CRIT8E = {"l2": "kNN oro ∪ fondo-LLM (logprobs donde haya), regla umbral s_oro
           "validacion": "semillas 5-9, mitad de validación", "escalado_max": 0.30, "pasa_auroc_min": 0.70, "pasa_dist_l3_max": 0.02,
           "refutado_si_auroc_lt": 0.60, "agrupada": "ponderada por tamaño de tarea, filas con L3"}
 CRIT8E_SHA = hashlib.sha256(json.dumps(CRIT8E, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+# R9: regla por tarea. Selección en las semillas 0–9 (las de R8, ya vistas): tareas cuyo margen tiene AUROC < 0,55 (media de las mitades de
+# calibración) se escalan siempre; en el resto, margen con la f ∈ 0,05..0,30 de mejor cascada. Validación SOLO en las semillas 10–19,
+# nunca usadas. Mismos umbrales que CRIT8E; `tope` dice cómo se cuenta el ≤ 30 %.
+CRIT9E = dict(CRIT8E, regla="por tarea: AUROC del margen < 0.55 en la selección -> escalar siempre; resto por margen con f global",
+              auroc_siempre_lt=0.55, seleccion="semillas 0-9, mitad de calibración", validacion="semillas 10-19 (nuevas), mitad de validación",
+              tope="__TOPE__")
+def crit9(tope):
+    c = dict(CRIT9E, tope=tope)
+    return c, hashlib.sha256(json.dumps(c, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
 def leer(p):
@@ -172,6 +181,63 @@ def aplicar(tareas, senal, f, semillas=10):
     return {"regla": {"senal": senal, "fraccion": f}, "resumen": m, "por_tarea": pt, "semillas": res}
 
 
+def cascada_t(tareas, partes, umbral, siempre):
+    out = {}
+    for c, t in tareas.items():
+        i = partes[c]
+        if not len(i):
+            continue
+        esc = np.ones(len(i), bool) if c in siempre else t["sen"]["margen"][i] < umbral
+        okc = np.where(esc, t["ok3"][i], t["ok2"][i])
+        out[c] = (float(okc.mean()), float(t["ok2"][i].mean()), float(t["ok3"][i].mean()), float(esc.mean()))
+    return out
+
+
+def medir_por_tarea(tareas, tope):
+    """R9 (CRIT9E): elige tareas «siempre» y f en las semillas 0–9 y valida en las 10–19."""
+    crit, sha = crit9(tope)
+    pesos = {c: t["peso"] for c, t in tareas.items()}
+    sel_s, val_s = range(0, 10), range(10, 20)
+    au = {c: [] for c in tareas}
+    for s in sel_s:
+        for c, (cal, _) in mitades(tareas, s).items():
+            au[c].append(auroc(tareas[c]["sen"]["margen"][cal], tareas[c]["ok2"][cal]))
+    au_m = {c: (float(np.mean([x for x in v if x is not None])) if any(x is not None for x in v) else 0.5) for c, v in au.items()}
+    siempre = sorted(c for c, a in au_m.items() if a < crit["auroc_siempre_lt"])
+    resto = [c for c in tareas if c not in siempre]
+    def umbral(cal, f):
+        v = np.concatenate([tareas[c]["sen"]["margen"][cal[c]] for c in resto]) if resto else np.zeros(1)
+        return float(np.quantile(v, f))
+    casc = {f: [] for f in FRACS}
+    for s in sel_s:
+        cal = {c: v[0] for c, v in mitades(tareas, s).items()}
+        for f in FRACS:
+            casc[f].append(ponderada({c: v[0] for c, v in cascada_t(tareas, cal, umbral(cal, f), siempre).items()}, pesos))
+    f_el = max(FRACS, key=lambda f: (np.mean(casc[f]), -f))
+    res = []
+    for s in val_s:
+        cal, val = (dict((c, v[j]) for c, v in mitades(tareas, s).items()) for j in (0, 1))
+        cv = cascada_t(tareas, val, umbral(cal, f_el), siempre)
+        n_val = {c: len(val[c]) for c in cv}
+        esc_todas = float(np.average([v[3] for v in cv.values()], weights=[n_val[c] for c in cv]))
+        esc_resto = float(np.average([cv[c][3] for c in resto], weights=[n_val[c] for c in resto])) if resto else 0.0
+        okr = np.concatenate([tareas[c]["ok2"][val[c]] for c in resto]) if resto else np.zeros(0)
+        res.append({"semilla": s, "cascada": ponderada({c: v[0] for c, v in cv.items()}, pesos), "l2": ponderada({c: v[1] for c, v in cv.items()}, pesos),
+                    "l3": ponderada({c: v[2] for c, v in cv.items()}, pesos), "escalado_todas": esc_todas, "escalado_resto": esc_resto,
+                    "auroc_resto": auroc(np.concatenate([tareas[c]["sen"]["margen"][val[c]] for c in resto]), okr) if resto else None,
+                    "por_tarea": {c: {"cascada": round(v[0], 4), "l2": round(v[1], 4), "l3": round(v[2], 4), "escalado": round(v[3], 4)} for c, v in cv.items()}})
+    m = {k: round(float(np.mean([r[k] for r in res if r[k] is not None])), 4) for k in ("cascada", "l2", "l3", "escalado_todas", "escalado_resto", "auroc_resto")}
+    m["cascada_menos_l3"] = round(m["cascada"] - m["l3"], 4)
+    esc = m["escalado_resto"] if tope == "sin_siempre" else m["escalado_todas"]
+    v = {"criterio_sha256": sha, "tope": tope, "siempre": siempre, "fraccion": f_el, **m}
+    v["c_auroc"] = bool(m["auroc_resto"] >= crit["pasa_auroc_min"])
+    v["c_cascada"] = bool(esc <= crit["escalado_max"] + 1e-9 and m["cascada_menos_l3"] >= -crit["pasa_dist_l3_max"])
+    v["estado"] = "REFUTADO" if m["auroc_resto"] < crit["refutado_si_auroc_lt"] else ("PASA" if v["c_auroc"] and v["c_cascada"] else "NO PASA")
+    return {"criterio": crit, "seleccion": {"auroc_margen_por_tarea": {c: round(a, 4) for c, a in au_m.items()},
+                                            "cascada_media": {"%.2f" % f: round(float(np.mean(x)), 4) for f, x in casc.items()}},
+            "validacion": res, "veredicto": v}
+
+
 def medir(tareas, semillas=10):
     pesos = {c: t["peso"] for c, t in tareas.items()}
     todos = lambda i_por, k: np.concatenate([tareas[c]["sen"][k][i_por[c]] for c in tareas])  # noqa: E731
@@ -225,6 +291,11 @@ def cmd_medir(a):
     tareas = cargar([d for d in a.bateria.split(",") if d], a.vec, fondo, varios(a.l3_fondo), varios(a.l3), z)
     out = {"criterio": CRIT8E, "criterio_sha256": CRIT8E_SHA, "semillas": a.semillas,
            "transformers_vectores": str(z["transformers"]) if "transformers" in z.files else None}
+    if a.por_tarea:
+        out.update(medir_por_tarea(tareas, a.por_tarea))
+        Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        print(json.dumps(out["veredicto"], ensure_ascii=False, indent=1))
+        return
     if a.regla:
         senal, f = a.regla.split(":")
         out["aplicada"] = aplicar(tareas, senal, float(f), a.semillas)
@@ -245,9 +316,15 @@ def main(argv=None):
         m.add_argument(k, required=True)
     m.add_argument("--semillas", type=int, default=10)
     m.add_argument("--regla", help="señal:fracción ya congelada (R8b): se aplica sin seleccionar")
-    sp.add_parser("criterio")
+    m.add_argument("--por-tarea", choices=("todas", "sin_siempre"), help="R9 (CRIT9E): regla por tarea; cómo se cuenta el tope del 30 %")
+    c = sp.add_parser("criterio")
+    c.add_argument("--r9", choices=("todas", "sin_siempre"))
     a = ap.parse_args(argv)
     if a.cmd == "criterio":
+        if a.r9:
+            c9, s9 = crit9(a.r9)
+            print(s9, json.dumps(c9, sort_keys=True, ensure_ascii=False))
+            return
         print(CRIT8E_SHA, json.dumps(CRIT8E, sort_keys=True, ensure_ascii=False))
         return
     cmd_medir(a)
