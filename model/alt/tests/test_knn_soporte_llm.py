@@ -63,3 +63,17 @@ def test_medir_de_punta_a_punta(tmp_path):
 def test_criterio_congelado():
     assert ks.CRIT == {"variante": "llm/todo", "referencia": "oro/todo", "perdida_max": 0.03, "agrupada_min": 0.55, "hatecheck_min": 0.60,
                        "refutado_si_agrupada_le": 0.516}
+
+
+def test_criterio_r4_y_varios_fondos(tmp_path):
+    bat, vec = _bateria(tmp_path)
+    f = str(tmp_path / "fondo.jsonl")
+    sal = tmp_path / "inf.json"
+    import numpy as np
+    z = np.load(vec / "fondo.npz")
+    np.savez(vec / "fondo.npz", X=np.vstack([z["X"], z["X"]]), ids=np.concatenate([z["ids"], z["ids"]]))   # el mismo fondo dos veces
+    l3 = str(tmp_path / "l3.jsonl")
+    ks.main(["medir", "--bateria", str(bat), "--vec", str(vec), "--fondo", f + "," + f, "--l3", l3 + "," + l3, "--salida", str(sal), "--semillas", "1", "--criterio", "r4"])
+    out = json.loads(sal.read_text())
+    assert out["criterio_r4_sha256"] == ks.CRIT4_SHA and out["veredicto_r4"]["estado"] in ("PASA", "NO PASA", "REFUTADO")
+    assert out["soporte"]["tuits-es"]["en_fondo"] == 60

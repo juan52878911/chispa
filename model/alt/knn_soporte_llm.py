@@ -27,6 +27,9 @@ import numpy as np
 CRIT = {"variante": "llm/todo", "referencia": "oro/todo", "perdida_max": 0.03, "agrupada_min": 0.55, "hatecheck_min": 0.60,
         "refutado_si_agrupada_le": 0.516}
 CRIT_SHA = hashlib.sha256(json.dumps(CRIT, sort_keys=True).encode()).hexdigest()
+# R4: el mismo kNN con el fondo ampliado (fondo + fondo2, todo lo válido del LLM); se mide en la batería original de 6 tareas
+CRIT4 = {"variante": "llm/todo", "fondo": "fondo+fondo2", "pasa_agrupada_min": 0.66, "refutado_si_agrupada_le": 0.638}
+CRIT4_SHA = hashlib.sha256(json.dumps(CRIT4, sort_keys=True).encode()).hexdigest()
 KS_ORO = (1, 2, 4, 8)
 KS_LLM = (1, 2, 4, 8, 16, 32, 64, 128)
 KS_FUENTE = (8, 32, 128)
@@ -34,6 +37,11 @@ KS_FUENTE = (8, 32, 128)
 
 def leer(p):
     return [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+
+
+def leer_varios(rutas):
+    """Varios jsonl separados por comas, concatenados en ese orden."""
+    return [r for p in str(rutas).split(",") if p for r in leer(p)]
 
 
 # ---------------------------------------------------------------- vectores (torch)
@@ -51,7 +59,7 @@ def cmd_vectores(a):
         Xte = vectores(enc, [r["texto"] for r in ev]).numpy()
         np.savez(sal / (c + ".npz"), Xtr=Xtr, Xte=Xte, idtr=np.array([r["id"] for r in sop]), idte=np.array([r["id"] for r in ev]))
         print(c, Xtr.shape, Xte.shape, flush=True)
-    fo = leer(a.fondo)[:a.max_fondo]
+    fo = leer_varios(a.fondo)[:a.max_fondo]
     X = vectores(enc, [r["texto"] for r in fo]).numpy()
     np.savez(sal / "fondo.npz", X=X, ids=np.array([r["id"] for r in fo]))
     print("fondo", X.shape, flush=True)
@@ -201,11 +209,11 @@ def cargar(bateria, vec):
 
 def cmd_medir(a):
     z = np.load(Path(a.vec) / "fondo.npz")
-    fondo = leer(a.fondo)[:len(z["ids"])]   # una prueba en seco vectoriza solo el principio del fondo
+    fondo = leer_varios(a.fondo)[:len(z["ids"])]   # una prueba en seco vectoriza solo el principio del fondo
     if list(z["ids"]) != [r["id"] for r in fondo]:
         raise ValueError("fondo.npz no corresponde a fondo.jsonl")
     datos = cargar(a.bateria, a.vec)
-    sop = soportes(fondo, leer(a.l3), leer(a.fuente) if a.fuente else None)
+    sop = soportes(fondo, leer_varios(a.l3), leer_varios(a.fuente) if a.fuente else None)
     faltan = [c for c in datos if c not in sop or not sop[c]["llm"]]
     if faltan:
         raise ValueError("sin soporte del LLM en: %s" % faltan)
@@ -215,6 +223,12 @@ def cmd_medir(a):
         out["vectores_frente_a_paso1"] = {c: round(float(max(np.abs(datos[c]["Xte"] - d1[c]["Xte"]).max(), np.abs(datos[c]["Xtr"] - d1[c]["Xtr"]).max())), 6) for c in datos}
     out.update(medir(datos, z["X"], sop, a.semillas))
     out["veredicto"] = veredicto(out)
+    if a.criterio == "r4":
+        agr = out["curvas"]["llm"]["todo"]["agrupada"][0]
+        out["criterios_r4"], out["criterio_r4_sha256"] = CRIT4, CRIT4_SHA
+        out["veredicto_r4"] = {"criterio_sha256": CRIT4_SHA, "agrupada_llm": agr, "refutado": agr <= CRIT4["refutado_si_agrupada_le"],
+                               "estado": "REFUTADO" if agr <= CRIT4["refutado_si_agrupada_le"] else ("PASA" if agr >= CRIT4["pasa_agrupada_min"] else "NO PASA")}
+        print(json.dumps(out["veredicto_r4"], ensure_ascii=False))
     Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(out["veredicto"], ensure_ascii=False, indent=1))
 
@@ -238,10 +252,12 @@ def main(argv=None):
     m.add_argument("--vec-oro")
     m.add_argument("--salida", required=True)
     m.add_argument("--semillas", type=int, default=10)
-    sp.add_parser("criterio")
+    m.add_argument("--criterio", choices=("r1", "r4"), default="r1", help="r4: además el veredicto del fondo ampliado (CRIT4)")
+    c = sp.add_parser("criterio")
+    c.add_argument("--cual", choices=("r1", "r4"), default="r1")
     a = ap.parse_args(argv)
     if a.cmd == "criterio":
-        print(CRIT_SHA, json.dumps(CRIT, sort_keys=True))
+        print(*((CRIT4_SHA, json.dumps(CRIT4, sort_keys=True)) if a.cual == "r4" else (CRIT_SHA, json.dumps(CRIT, sort_keys=True))))
         return
     {"vectores": cmd_vectores, "medir": cmd_medir}[a.cmd](a)
 
