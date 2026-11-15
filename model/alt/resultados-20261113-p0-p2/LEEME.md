@@ -852,3 +852,28 @@ Prueba en seco en el i7 (el ud sin sustituir, 400 textos de fondo, etiquetas fal
 
 Entradas: en `s3://chispa-pruebas-879381269751/knn-r6-805d1e0/` ya están todas menos `l3_fondo2.jsonl` y `l3_nuevas.jsonl`, que se suben al verificar R4. User-data: `lanzados/ud-knn-r6-805d1e0.sh` (sha256 `8276b475…`). `--dry-run` da DryRunOperation.
 **Se lanza solo después de que yo suba las dos entradas de R4**: sin ellas el ud se para en el paso 2.
+
+### 14.5 Resultado de R5 (EC2 i-004573edfb14e85ed, g5.xlarge, 2026-11-15): pequeños REFUTADOS; el 4B por logprobs da 0,729
+
+La instancia corrió 25 min de trabajo (1 511 s), unos 28 min en total contando la espera, por ≈ 0,47 USD. Las cifras están en `llm-logprobs-0bcbd78.json`, que no lleva textos ni `raw`, medidas con `llm_bateria pequeno --criterio r5` (CRIT5L, sha256 `17c1ea12…`).
+Respondieron las 3 116 filas de los tres modelos y no hubo ninguna inválida. El relleno por `prompt_logprobs` funcionó: no se anotó ni un error. Las 250 filas de massive-es llevan, además, el piso en alguna opción.
+
+| | 4B en JSON (paso 2) | **4B por logprobs** | 1.7B por logprobs | 0.6B por logprobs |
+|---|---|---|---|---|
+| agrupada ponderada | 0,6497 | **0,729** [0,708, 0,751] | 0,394 [0,374, 0,413] | 0,185 [0,171, 0,199] |
+| frente al 4B en JSON (por pares) | | **+8,0** [+5,8, +10,1] | −25,6 | −46,5 |
+| hatecheck-es | 0,824 | 0,831 | 0,726 (dice `true` en las 2 000) | 0,274 (dice `false` en todas) |
+| inyecciones | 0,569 | **0,767** | 0,517 | 0,483 |
+| jailbreak | 0,924 | 0,916 | 0,360 | 0,360 |
+| massive-es | 0,444 (45 inválidas) | **0,656** (0) | 0,088 | 0,012 |
+| massive-esc | 0,564 (46 inválidas) | **0,684** (0) | 0,268 | 0,044 |
+| tuits-es | 0,636 | 0,640 | 0,372 | 0,336 |
+| latencia un hilo p50 / p95 | | 33 / 1 402 ms | 20 / 758 ms | 14 / 434 ms |
+
+Veredicto con CRIT5L:
+- **Qwen3-1.7B y Qwen3-0.6B, REFUTADOS también por logprobs.** Ya no es el formato. El 1.7B no discrimina: responde una constante en hatecheck-es y un 36 % en jailbreak. Ningún Qwen3 pequeño sirve de L3 barato con este prompt.
+- **El método está validado por el 4B y lo mejora mucho:** 0,729 frente a 0,6497. Pasaría el criterio de agrupada del paso 2 (≥ 0,65), que el JSON no alcanzó. Las ganancias vienen de las tareas con muchas opciones o con JSON inválido: massive-es +21, massive-esc +12 e inyecciones +20.
+- **Latencia:** el p50 del 4B con un hilo es de 33 ms, porque genera 1 token en vez de un JSON. El p95 de 1,4 s viene de massive, donde hay que puntuar etiquetas fuera del top 20.
+
+**Lectura para L3:** el cambio que más gana no es un modelo más pequeño, sino el formato. El mismo 4B, pidiéndole una etiqueta y leyendo logprobs, es más exacto y mucho más rápido. Hay que confirmarlo con otra muestra antes de adoptarlo: la muestra es la del paso 2, que ya se miró, aunque el método se congeló antes de ver estas cifras.
+Las etiquetas del fondo de R1 y R4 están hechas en JSON; un fondo etiquetado por logprobs podría tener menos ruido (sin medir).
