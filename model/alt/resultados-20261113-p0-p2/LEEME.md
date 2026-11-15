@@ -1242,3 +1242,18 @@ Al sumar las tareas nuevas, la cascada **iguala o supera a L3 solo escalando el 
 - La cola tiene 6 961 textos. Van primero los 961 del fondo de R1 que faltaban, unos 19 min a 1,17 s por texto. Detrás van los 6 000 de massive-es de fondo2, de los que caben unos 250.
 - Entradas en `s3://…/llm-r9m-d778d88/`: reetiqueta.jsonl `317f8507…`. User-data: `lanzados/ud-llm-r9m-d778d88.sh` (sha256 `4777ec3c…`).
 - `--dry-run` da DryRunOperation.
+
+### 16.2 Regla de escalado por tarea: criterio congelado antes de usar las semillas nuevas
+
+**Única redefinición de CRIT8E para esta hipótesis**, a propuesta de la sesión madre y antes de medir.
+- Si una tarea se escala siempre, ya no cabe en el tope del 30 %: hatecheck-es sola supone el 32,9 % de las filas con L3.
+- Por eso el tope del 30 % se cuenta **sin** las tareas que se escalan siempre.
+- A cambio, el informe da también la fracción total escalada, que tiene que ser ≤ 50 %.
+- Los demás umbrales no cambian: AUROC ≥ 0,70 (aquí, el del margen en las tareas que no se escalan siempre), cascada a ≤ 2 puntos de L3 solo, y REFUTADO si el AUROC < 0,60.
+
+**CRIT9E** (`escalado.crit9("sin_siempre")`): sha256 `3179f5b53d12d0b7dbd8a7e1e318299ca894b782d60be09289399755cccf8c52`.
+
+- **Regla:** las tareas cuyo margen tenga un AUROC medio < 0,55 en la selección se escalan siempre. En el resto se escala por margen, con una única f ∈ {0,05 … 0,30}, la que mejor cascada dé.
+- **Selección:** semillas 0–9, las de R8, ya vistas, en su mitad de calibración.
+- **Validación:** **solo en las semillas 10–19, que nunca se han usado**, en su mitad de validación.
+- **Datos:** los mismos que en §15.3. Vectores del i7 con transformers 4.46.3; fondo con logprobs de R7, R7b y R8; L3 de R5 y R7. Batería original.
