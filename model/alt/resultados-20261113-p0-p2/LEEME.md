@@ -1067,3 +1067,33 @@ Junto con R7, `lp_reetiqueta.jsonl` reúne 11 405 etiquetas por logprobs:
 - Entradas en `s3://…/knn-r6b-4cb8cc7/`: lp_reetiqueta `7d22bae3…` (R7 + A + B), lp_bateria `16274abf…` (el 4B por logprobs de R5), codigo.tgz `9716c83b…`. El resto, igual que en R6.
 - Criterios: CRIT6B `75922ecb…` y su alcance `7e885b2a…`. El prequential descriptivo reutiliza CRIT_R6 `288d1260…`.
 - `--dry-run` da DryRunOperation.
+
+### 14.12 Resultado de R6b (EC2 i-02a1709584fdf8844, c7i.2xlarge, 2026-11-15): NO PASA (+1,7 puntos, pedía +2)
+
+La instancia trabajó 12 min (719 s) por ≈ 0,09 USD. Ficheros: `knn-r6b-4cb8cc7.json` y `prequential-r6b-4cb8cc7.json`, solo cifras.
+
+**CRIT6B (`75922ecb…`, alcance `7e885b2a…`): NO PASA.**
+- Medido sobre el soporte del kNN; la variante con etiquetas por logprobs se compara por pares con la de JSON.
+- Las tareas del alcance son hatecheck-es, inyecciones, jailbreak, massive-esc y tuits-es, con un 99–100 % de su soporte reetiquetado. massive-es queda fuera: solo tiene un 0,4 % reetiquetado.
+- Diferencia agrupada en el alcance: **+1,69 puntos** [+0,72, +2,60]. Es significativa, pero no llega a +2.
+- En las 6 tareas, la diferencia es +1,34 [+0,59, +2,07] (McNemar 366/277, p = 5e-4). El kNN con todo el soporte del LLM pasa de 0,6389 a 0,6522.
+
+| tarea | kNN, soporte en JSON | kNN, soporte por logprobs | diferencia [IC95] |
+|---|---|---|---|
+| inyecciones | 0,560 | **0,879** | +31,9 [+24,1, +40,5] |
+| massive-esc | 0,647 | **0,748** | +10,0 [+8,1, +12,0] |
+| hatecheck-es | 0,730 | 0,723 | −0,7 [−1,8, +0,4] |
+| jailbreak | 0,9625 | 0,9225 | −4,0 [−6,0, −2,0] |
+| tuits-es | 0,585 | 0,532 | −5,4 [−8,0, −2,8] |
+| massive-es (fuera del alcance) | 0,472 | 0,473 | +0,1 |
+
+**Lectura:**
+- Con etiquetas por logprobs se arreglan los dos peores casos del soporte LLM: inyecciones pasa de −20,7 a +11,2 sobre el oro y massive-esc gana +10 puntos.
+- Al mismo tiempo empeoran jailbreak y tuits-es, donde las etiquetas en JSON ya eran buenas. En tuits-es, el LLM por logprobs acierta 0,640 en el test, pero su soporte rinde peor en el kNN, sin causa verificada.
+- El efecto neto es positivo y significativo, aunque pequeño.
+
+**Prequential con etiquetas por logprobs** (descriptivo, CRIT_R6): REFUTADO otra vez. Las nuevas dan 0,521, frente a 0,632 del oro estático.
+- El banco del flujo lleva etiquetas por logprobs, pero el soporte estático de lexboe sigue siendo el de fondo2 en JSON, que no llegó a reetiquetarse. lexboe queda en 0,318.
+- Con la regla del umbral, lexboe da 0,629, las nuevas 0,643 y las originales 0,697.
+- inyecciones con fondo LLM sube a 0,88, frente a 0,57 con JSON.
+- El LLM directo por logprobs da lexboe 0,534 y fakenews 0,682: por encima de cualquier kNN en fakenews y por debajo del oro en lexboe.
