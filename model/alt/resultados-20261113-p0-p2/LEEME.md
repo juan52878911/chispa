@@ -1097,3 +1097,20 @@ La instancia trabajó 12 min (719 s) por ≈ 0,09 USD. Ficheros: `knn-r6b-4cb8cc
 - Con la regla del umbral, lexboe da 0,629, las nuevas 0,643 y las originales 0,697.
 - inyecciones con fondo LLM sube a 0,88, frente a 0,57 con JSON.
 - El LLM directo por logprobs da lexboe 0,534 y fakenews 0,682: por encima de cualquier kNN en fakenews y por debajo del oro en lexboe.
+
+
+## 15. Tanda R8 (rama `llm-rondas-r8`, sin push)
+
+### 15.1 R8: reetiquetar por logprobs lo que sigue en JSON (dos g5 a la vez, ≤ 35 min cada una; código d10bc5c)
+
+El ud es el de R7b (`llm_r7b.sh`, que no cambia) y el cliente es el de R5. Se saltan los 11 405 textos que ya están reetiquetados.
+
+| cola | contenido, en orden | estimación |
+|---|---|---|
+| A, 3 716 textos | lexboe de fondo2 con etiqueta de R4 (2 719, ≈ 0,3 s por texto); después la 2.ª mitad del massive-es del fondo de R1 (997, 1,17 s) | ≈ 14 + 19 min; el final de massive-es se cortará |
+| B, 6 996 textos | la 1.ª mitad del massive-es del fondo de R1 (996); después el massive-es de fondo2 (6 000, sin etiqueta JSON: es soporte nuevo) | ≈ 19 min la 1.ª mitad; de fondo2, unos 300 |
+
+Datos:
+- Entradas en `s3://…/llm-r8-a-d10bc5c/` (reetiqueta.jsonl `1b7b6a20…`) y en `s3://…/llm-r8-b-d10bc5c/` (reetiqueta.jsonl `59ad1b56…`).
+- User-data: `ud-llm-r8-a-d10bc5c.sh` y `ud-llm-r8-b-d10bc5c.sh`.
+- `--dry-run` da DryRunOperation.
