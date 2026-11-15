@@ -89,4 +89,5 @@ def test_r6b_etiquetas_alternativas(tmp_path):
              "--l3-alt", str(alt), "--salida", str(sal), "--semillas", "1", "--criterio", "r6b"])
     out = json.loads(sal.read_text())
     assert out["criterio_r6b_sha256"] == ks.CRIT6B_SHA and "llm_alt" in out["curvas"]
-    assert out["reetiquetados_por_tarea"]["tuits-es"] == 30 and out["veredicto_r6b"]["estado"] in ("PASA", "NO PASA", "REFUTADO")
+    assert out["reetiquetados_por_tarea"]["tuits-es"] == 29 and out["veredicto_r6b"]["estado"] in ("PASA", "NO PASA", "REFUTADO")
+    assert out["r6b_alcance"]["tareas"] == ["hatecheck-es", "tuits-es"] and out["veredicto_r6b"]["alcance_sha256"] == ks.CRIT6B_ALCANCE_SHA
