@@ -636,3 +636,76 @@ aws ec2 run-instances --region us-east-1 --image-id ami-ejemplo --instance-type 
   --user-data file://model/alt/aws/lanzados/ud-llm-pequeno-1208cd9.sh \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-1208cd9}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-1208cd9}]'
 ```
+
+### 13.5 Resultado de R1 (EC2 inst-26, c7i.2xlarge, 2026-11-15): PASA
+
+La instancia corrió 7 min de trabajo (427 s) y unos 10 min en total contando la espera de `verificado`, por ≈ 0,06 USD. Las cifras están en `knn-llm-1208cd9.json`, que no lleva textos. Se comprobó el criterio contra el sha256 congelado `5e0c38a6…`.
+
+**El kNN con soporte etiquetado por el LLM gana al de oro por 6,0 puntos agrupados** [IC95 +4,7, +7,3]: 0,6381 frente a 0,5783, en las 6 651 filas. hatecheck-es da 0,730.
+Se cumplen los tres criterios: no pierde frente al oro (gana), la agrupada da ≥ 0,55 y hatecheck-es ≥ 0,60. No está refutado.
+
+| k por clase (soporte) | oro | LLM | fuente (mismo fondo, etiqueta de la fuente) |
+|---|---|---|---|
+| 1 | 0,423 | 0,411 | |
+| 2 | 0,468 | 0,441 | |
+| 4 | 0,517 | 0,481 | |
+| 8 | 0,578 | 0,515 | 0,575 |
+| 16 | | 0,559 | |
+| 32 | | 0,583 | 0,647 |
+| 64 | | 0,601 | |
+| 128 | | 0,617 | 0,676 |
+| todo | 0,578 | **0,638** | 0,690 |
+
+Además: el LLM con p ≥ 0,9 da 0,619, y oro ∪ LLM da **0,656**.
+
+**Más soporte del LLM sube la curva sin aplanarse hasta «todo»:** +12 puntos entre 8 y todo. Para el mismo k, el soporte del LLM va 3–6 puntos por debajo del de oro.
+El techo con etiquetas limpias en el mismo fondo es 0,690: el ruido del LLM cuesta 5,2 puntos [−6,5, −4,0]. Filtrar por p ≥ 0,9 no ayuda, porque quita soporte.
+
+Por tarea (LLM / oro, todo el soporte):
+
+| tarea | LLM | oro | diferencia |
+|---|---|---|---|
+| hatecheck-es | 0,730 | 0,6925 | +3,8 |
+| inyecciones | 0,560 | 0,767 | −20,7 |
+| jailbreak | 0,9625 | 0,565 | +39,8 |
+| massive-es | 0,472 | 0,500 | −2,9 (n. s.) |
+| massive-esc | 0,644 | 0,570 | +7,4 |
+| tuits-es | 0,585 | 0,482 | +10,4 |
+
+Lectura y reservas:
+- **Inyecciones empeora.** El LLM etiqueta el fondo con acuerdo 0,72 con la fuente y el oro tiene etiquetas exactas.
+- **massive-es (57 clases) no gana.** El acuerdo es 0,56, y 379 de 2 000 textos no tienen respuesta válida.
+- **El salto de jailbreak** dice sobre todo que 8 ejemplos de oro eran muy poco soporte.
+- **hatecheck-es** solo tiene 180 textos de fondo, de plantillas que no salen en el test. Con la etiqueta de la fuente baja a 0,583; el LLM etiqueta mejor que la fuente para lo que pide el test, o su sesgo coincide con el del test (causa no verificada).
+- Los vectores de esta máquina difieren de los del paso 1 hasta en 0,057 (hatecheck-es) y 0,011 (jailbreak); las demás tareas son idénticas. Puede deberse a otra versión de transformers (5.22.2 frente a 4.46.3) o de tokenizador, sin verificar. Por eso el oro recalculado da 0,5783 frente a 0,5801. La comparación del criterio usa vectores de una sola máquina.
+
+### 13.6 Resultado de R2 (EC2 inst-19, g5.xlarge, 2026-11-15): los dos REFUTADOS
+
+La instancia corrió 22 min de trabajo (1 330 s) y unos 25 min en total con la espera, por ≈ 0,42 USD. Las cifras están en `llm-pequeno-1208cd9.json` (sin textos), medidas con `llm_bateria pequeno` contra `CRIT5` (sha256 `767064e1…`). Las 3 116 filas tienen respuesta en los dos modelos.
+
+| | Qwen3-4B bf16 (paso 2) | Qwen3-1.7B | Qwen3-0.6B |
+|---|---|---|---|
+| agrupada ponderada | 0,6497 | **0,333** [0,314, 0,351] | **0,207** [0,193, 0,221] |
+| frente al 4B (por pares) | | −31,7 [−34,3, −29,1] | −44,3 [−46,8, −41,8] |
+| hatecheck-es | 0,824 | 0,478 | 0,274 |
+| inyecciones | 0,569 | 0,474 | 0,483 |
+| jailbreak | 0,924 | 0,644 | 0,624 |
+| massive-es (inválidas de 250) | 0,444 (45) | 0,056 (224) | 0,012 (231) |
+| massive-esc (inválidas de 250) | 0,564 (46) | 0,184 (176) | 0,032 (239) |
+| tuits-es | 0,636 | 0,500 | 0,384 |
+| latencia un hilo p50 / p95 | | 283 / 11 025 ms | 123 / 5 721 ms |
+| latencia 32 hilos p50 / p95 | 760 / 18 104 ms | 476 / 27 773 ms | 241 / 22 970 ms |
+| acuerdo top-1 con el 4B | | 0,509 | 0,311 |
+
+Los dos quedan muy por debajo de 0,58: **REFUTADOS como L3 barato** con este arnés. No hay modelo que pase, así que no hay estimación de CPU en el i7.
+Según el plan, tampoco se prepara la destilación 4B → 1,7B.
+
+Comprobado que no es un fallo del arnés:
+- hay 0 respuestas uniformes en el 1.7B;
+- el 0.6B dice `false` en las 2 000 filas de hatecheck-es (el 73 % es `true`);
+- el 1.7B dice `false` en el 69 %;
+- en massive las respuestas inválidas son vectores de ceros o todos iguales sobre las 60 opciones.
+
+El mismo cliente da 0,6497 con el 4B. La latencia de un hilo es baja en las tareas binarias (90–280 ms), pero massive (60 opciones en JSON) dispara el p95.
+
+Reserva: el arnés pide probabilidades en JSON, que es exigente para un modelo pequeño. Otro formato, como logprobs sobre la etiqueta, podría dar más. Sería otro método, no una repetición, y habría que congelarlo aparte.

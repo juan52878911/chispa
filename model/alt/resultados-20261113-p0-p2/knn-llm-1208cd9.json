@@ -1,0 +1,649 @@
+{
+ "criterios": {
+  "variante": "llm/todo",
+  "referencia": "oro/todo",
+  "perdida_max": 0.03,
+  "agrupada_min": 0.55,
+  "hatecheck_min": 0.6,
+  "refutado_si_agrupada_le": 0.516
+ },
+ "criterio_sha256": "5e0c38a679aed8f064cbc10e5df271075d2c5a0b22c8ad08ce8a99508aebafb9",
+ "semillas": 10,
+ "vectores_frente_a_paso1": {
+  "hatecheck-es": 0.056991,
+  "inyecciones": 0.0,
+  "jailbreak": 0.011221,
+  "massive-es": 0.0,
+  "massive-esc": 0.0,
+  "tuits-es": 0.0
+ },
+ "curvas": {
+  "oro": {
+   "1": {
+    "agrupada": [
+     0.423,
+     0.0139
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.5407,
+     "inyecciones": 0.6767,
+     "jailbreak": 0.5212,
+     "massive-es": 0.3246,
+     "massive-esc": 0.3387,
+     "tuits-es": 0.394
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 1.0,
+     "inyecciones": 1.0,
+     "jailbreak": 1.0,
+     "massive-es": 1.0,
+     "massive-esc": 1.0,
+     "tuits-es": 1.0
+    }
+   },
+   "2": {
+    "agrupada": [
+     0.4678,
+     0.014
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.5483,
+     "inyecciones": 0.7129,
+     "jailbreak": 0.571,
+     "massive-es": 0.395,
+     "massive-esc": 0.441,
+     "tuits-es": 0.3984
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 2.0,
+     "inyecciones": 2.0,
+     "jailbreak": 2.0,
+     "massive-es": 2.0,
+     "massive-esc": 2.0,
+     "tuits-es": 2.0
+    }
+   },
+   "4": {
+    "agrupada": [
+     0.5166,
+     0.0084
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.6177,
+     "inyecciones": 0.7198,
+     "jailbreak": 0.564,
+     "massive-es": 0.4498,
+     "massive-esc": 0.4991,
+     "tuits-es": 0.417
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 4.0,
+     "inyecciones": 4.0,
+     "jailbreak": 4.0,
+     "massive-es": 4.0,
+     "massive-esc": 4.0,
+     "tuits-es": 4.0
+    }
+   },
+   "8": {
+    "agrupada": [
+     0.5783,
+     0.0
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.6925,
+     "inyecciones": 0.7672,
+     "jailbreak": 0.565,
+     "massive-es": 0.5003,
+     "massive-esc": 0.5695,
+     "tuits-es": 0.4816
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 8.0,
+     "inyecciones": 8.0,
+     "jailbreak": 8.0,
+     "massive-es": 7.9,
+     "massive-esc": 8.0,
+     "tuits-es": 8.0
+    }
+   },
+   "todo": {
+    "agrupada": [
+     0.5783,
+     0.0
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.6925,
+     "inyecciones": 0.7672,
+     "jailbreak": 0.565,
+     "massive-es": 0.5003,
+     "massive-esc": 0.5695,
+     "tuits-es": 0.4816
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 8.0,
+     "inyecciones": 8.0,
+     "jailbreak": 8.0,
+     "massive-es": 7.9,
+     "massive-esc": 8.0,
+     "tuits-es": 8.0
+    }
+   }
+  },
+  "llm": {
+   "1": {
+    "agrupada": [
+     0.4106,
+     0.0224
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.5535,
+     "inyecciones": 0.6569,
+     "jailbreak": 0.5128,
+     "massive-es": 0.2566,
+     "massive-esc": 0.3536,
+     "tuits-es": 0.3757
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 1.0,
+     "inyecciones": 1.0,
+     "jailbreak": 1.0,
+     "massive-es": 1.0,
+     "massive-esc": 1.0,
+     "tuits-es": 1.0
+    }
+   },
+   "2": {
+    "agrupada": [
+     0.4414,
+     0.0266
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.5504,
+     "inyecciones": 0.6509,
+     "jailbreak": 0.5103,
+     "massive-es": 0.3156,
+     "massive-esc": 0.436,
+     "tuits-es": 0.3803
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 2.0,
+     "inyecciones": 2.0,
+     "jailbreak": 2.0,
+     "massive-es": 2.0,
+     "massive-esc": 2.0,
+     "tuits-es": 2.0
+    }
+   },
+   "4": {
+    "agrupada": [
+     0.481,
+     0.0312
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.5827,
+     "inyecciones": 0.7009,
+     "jailbreak": 0.5087,
+     "massive-es": 0.3713,
+     "massive-esc": 0.5027,
+     "tuits-es": 0.3919
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 4.0,
+     "inyecciones": 4.0,
+     "jailbreak": 4.0,
+     "massive-es": 3.8,
+     "massive-esc": 4.0,
+     "tuits-es": 4.0
+    }
+   },
+   "8": {
+    "agrupada": [
+     0.5146,
+     0.022
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.6039,
+     "inyecciones": 0.7147,
+     "jailbreak": 0.4862,
+     "massive-es": 0.4198,
+     "massive-esc": 0.5562,
+     "tuits-es": 0.4241
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 8.0,
+     "inyecciones": 8.0,
+     "jailbreak": 8.0,
+     "massive-es": 7.0,
+     "massive-esc": 8.0,
+     "tuits-es": 8.0
+    }
+   },
+   "16": {
+    "agrupada": [
+     0.5585,
+     0.0084
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.6789,
+     "inyecciones": 0.7483,
+     "jailbreak": 0.496,
+     "massive-es": 0.445,
+     "massive-esc": 0.5987,
+     "tuits-es": 0.4537
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 16.0,
+     "inyecciones": 16.0,
+     "jailbreak": 16.0,
+     "massive-es": 12.0,
+     "massive-esc": 16.0,
+     "tuits-es": 16.0
+    }
+   },
+   "32": {
+    "agrupada": [
+     0.5833,
+     0.0074
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.6881,
+     "inyecciones": 0.7922,
+     "jailbreak": 0.5178,
+     "massive-es": 0.4803,
+     "massive-esc": 0.6205,
+     "tuits-es": 0.4941
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 32.0,
+     "inyecciones": 32.0,
+     "jailbreak": 32.0,
+     "massive-es": 18.1,
+     "massive-esc": 32.0,
+     "tuits-es": 32.0
+    }
+   },
+   "64": {
+    "agrupada": [
+     0.6011,
+     0.0045
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.7014,
+     "inyecciones": 0.8681,
+     "jailbreak": 0.6425,
+     "massive-es": 0.4641,
+     "massive-esc": 0.6378,
+     "tuits-es": 0.5214
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 64.0,
+     "inyecciones": 57.5,
+     "jailbreak": 64.0,
+     "massive-es": 24.6,
+     "massive-esc": 59.2,
+     "tuits-es": 64.0
+    }
+   },
+   "128": {
+    "agrupada": [
+     0.6169,
+     0.0024
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.73,
+     "inyecciones": 0.7897,
+     "jailbreak": 0.716,
+     "massive-es": 0.4695,
+     "massive-esc": 0.6354,
+     "tuits-es": 0.541
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 90.0,
+     "inyecciones": 89.5,
+     "jailbreak": 128.0,
+     "massive-es": 28.0,
+     "massive-esc": 84.3,
+     "tuits-es": 128.0
+    }
+   },
+   "todo": {
+    "agrupada": [
+     0.6381,
+     0.0
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.73,
+     "inyecciones": 0.5603,
+     "jailbreak": 0.9625,
+     "massive-es": 0.4717,
+     "massive-esc": 0.6439,
+     "tuits-es": 0.5854
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 90.0,
+     "inyecciones": 273.0,
+     "jailbreak": 786.0,
+     "massive-es": 28.4,
+     "massive-esc": 89.7,
+     "tuits-es": 613.0
+    }
+   }
+  },
+  "llm_p09": {
+   "todo": {
+    "agrupada": [
+     0.6192,
+     0.0
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.7215,
+     "inyecciones": 0.5603,
+     "jailbreak": 0.9625,
+     "massive-es": 0.4611,
+     "massive-esc": 0.6189,
+     "tuits-es": 0.5377
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 84.0,
+     "inyecciones": 272.5,
+     "jailbreak": 786.0,
+     "massive-es": 23.8,
+     "massive-esc": 68.6,
+     "tuits-es": 242.7
+    }
+   }
+  },
+  "oro+llm": {
+   "todo": {
+    "agrupada": [
+     0.6563,
+     0.0
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.7345,
+     "inyecciones": 0.569,
+     "jailbreak": 0.965,
+     "massive-es": 0.5283,
+     "massive-esc": 0.6627,
+     "tuits-es": 0.5838
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 98.0,
+     "inyecciones": 281.0,
+     "jailbreak": 794.0,
+     "massive-es": 34.9,
+     "massive-esc": 97.7,
+     "tuits-es": 621.0
+    }
+   }
+  },
+  "fuente": {
+   "8": {
+    "agrupada": [
+     0.5749,
+     0.007
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.7142,
+     "inyecciones": 0.6776,
+     "jailbreak": 0.4688,
+     "massive-es": 0.5206,
+     "massive-esc": 0.5686,
+     "tuits-es": 0.4428
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 8.0,
+     "inyecciones": 8.0,
+     "jailbreak": 8.0,
+     "massive-es": 7.5,
+     "massive-esc": 8.0,
+     "tuits-es": 8.0
+    }
+   },
+   "32": {
+    "agrupada": [
+     0.6472,
+     0.0034
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.7162,
+     "inyecciones": 0.731,
+     "jailbreak": 0.4793,
+     "massive-es": 0.6679,
+     "massive-esc": 0.6976,
+     "tuits-es": 0.4928
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 32.0,
+     "inyecciones": 32.0,
+     "jailbreak": 32.0,
+     "massive-es": 21.7,
+     "massive-esc": 32.0,
+     "tuits-es": 32.0
+    }
+   },
+   "128": {
+    "agrupada": [
+     0.6757,
+     0.0017
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.6019,
+     "inyecciones": 0.869,
+     "jailbreak": 0.705,
+     "massive-es": 0.7183,
+     "massive-esc": 0.8204,
+     "tuits-es": 0.5426
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 81.5,
+     "inyecciones": 128.0,
+     "jailbreak": 128.0,
+     "massive-es": 33.6,
+     "massive-esc": 88.8,
+     "tuits-es": 128.0
+    }
+   },
+   "todo": {
+    "agrupada": [
+     0.6904,
+     0.0
+    ],
+    "por_tarea": {
+     "hatecheck-es": 0.583,
+     "inyecciones": 0.9828,
+     "jailbreak": 0.9175,
+     "massive-es": 0.7186,
+     "massive-esc": 0.815,
+     "tuits-es": 0.5804
+    },
+    "soporte_medio_por_clase": {
+     "hatecheck-es": 90.0,
+     "inyecciones": 273.0,
+     "jailbreak": 786.0,
+     "massive-es": 33.9,
+     "massive-esc": 111.1,
+     "tuits-es": 613.0
+    }
+   }
+  }
+ },
+ "comparacion": {
+  "llm_menos_oro": [
+   0.0598,
+   0.0468,
+   0.0734
+  ],
+  "mcnemar": [
+   1248,
+   850,
+   3.52271803331314e-18
+  ],
+  "por_tarea": {
+   "hatecheck-es": {
+    "llm": 0.73,
+    "oro": 0.6925,
+    "llm_menos_oro": [
+     0.0375,
+     0.015,
+     0.059
+    ],
+    "mcnemar": [
+     294,
+     219,
+     0.001066563416641899
+    ]
+   },
+   "inyecciones": {
+    "llm": 0.5603,
+    "oro": 0.7672,
+    "llm_menos_oro": [
+     -0.2069,
+     -0.3448,
+     -0.069
+    ],
+    "mcnemar": [
+     24,
+     48,
+     0.006309827313666047
+    ]
+   },
+   "jailbreak": {
+    "llm": 0.9625,
+    "oro": 0.565,
+    "llm_menos_oro": [
+     0.3975,
+     0.35,
+     0.445
+    ],
+    "mcnemar": [
+     160,
+     1,
+     1.1084489805694354e-46
+    ]
+   },
+   "massive-es": {
+    "llm": 0.4717,
+    "oro": 0.5003,
+    "llm_menos_oro": [
+     -0.0286,
+     -0.0599,
+     0.0013
+    ],
+    "mcnemar": [
+     248,
+     291,
+     0.07034160961416511
+    ]
+   },
+   "massive-esc": {
+    "llm": 0.6439,
+    "oro": 0.5695,
+    "llm_menos_oro": [
+     0.0744,
+     0.0508,
+     0.0994
+    ],
+    "mcnemar": [
+     234,
+     127,
+     1.9205801060988675e-08
+    ]
+   },
+   "tuits-es": {
+    "llm": 0.5854,
+    "oro": 0.4816,
+    "llm_menos_oro": [
+     0.1039,
+     0.0704,
+     0.1365
+    ],
+    "mcnemar": [
+     288,
+     164,
+     5.848580748038489e-09
+    ]
+   }
+  },
+  "llm_menos_fuente": [
+   -0.0523,
+   -0.0648,
+   -0.0397
+  ]
+ },
+ "n_test": {
+  "hatecheck-es": 2000,
+  "inyecciones": 116,
+  "jailbreak": 400,
+  "massive-es": 1503,
+  "massive-esc": 1438,
+  "tuits-es": 1194
+ },
+ "soporte": {
+  "hatecheck-es": {
+   "en_fondo": 180,
+   "llm": 180,
+   "llm_p09": 168,
+   "fuente": 180,
+   "clases_llm": 2,
+   "acuerdo_llm_fuente": 0.6333
+  },
+  "inyecciones": {
+   "en_fondo": 546,
+   "llm": 546,
+   "llm_p09": 545,
+   "fuente": 546,
+   "clases_llm": 2,
+   "acuerdo_llm_fuente": 0.7179
+  },
+  "jailbreak": {
+   "en_fondo": 1572,
+   "llm": 1572,
+   "llm_p09": 1572,
+   "fuente": 1572,
+   "clases_llm": 2,
+   "acuerdo_llm_fuente": 0.9275
+  },
+  "massive-es": {
+   "en_fondo": 2000,
+   "llm": 1621,
+   "llm_p09": 1309,
+   "fuente": 2000,
+   "clases_llm": 57,
+   "acuerdo_llm_fuente": 0.5626
+  },
+  "massive-esc": {
+   "en_fondo": 2000,
+   "llm": 1614,
+   "llm_p09": 1234,
+   "fuente": 2000,
+   "clases_llm": 18,
+   "acuerdo_llm_fuente": 0.7131
+  },
+  "tuits-es": {
+   "en_fondo": 1839,
+   "llm": 1839,
+   "llm_p09": 728,
+   "fuente": 1839,
+   "clases_llm": 3,
+   "acuerdo_llm_fuente": 0.6368
+  }
+ },
+ "veredicto": {
+  "criterio_sha256": "5e0c38a679aed8f064cbc10e5df271075d2c5a0b22c8ad08ce8a99508aebafb9",
+  "agrupada_llm": 0.6381,
+  "agrupada_oro": 0.5783,
+  "llm_menos_oro": [
+   0.0598,
+   0.0468,
+   0.0734
+  ],
+  "hatecheck_llm": 0.73,
+  "c_perdida": true,
+  "c_agrupada": true,
+  "c_hatecheck": true,
+  "refutado": false,
+  "estado": "PASA"
+ }
+}
