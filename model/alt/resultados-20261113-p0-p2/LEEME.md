@@ -1187,3 +1187,48 @@ Ficheros: `escalado-b61eb53.json`, solo cifras. Vectores calculados en el i7 con
   - Prueba en seco en el i7, con las etiquetas L3 recortadas a 300 filas: pasó.
   - `--dry-run`: DryRunOperation.
 - **Siguiente hipótesis** (anotada; no se mide sobre estos datos): una señal propia para hatecheck-es, o escalar siempre las tareas cuyo margen tenga un AUROC < 0,55 en la selección. Se congela antes de medir y se valida en semillas nuevas.
+
+### 15.5 Resultado de R8b (EC2 inst-11, c7i.2xlarge, 2026-11-16): prequential NO PASA; la cascada alcanza a L3 escalando el 30 %
+
+Ficheros: `prequential-r8b-cc82027.json` y `cascada-r8b-cc82027.json`, solo cifras. Usa los vectores del i7 (transformers 4.46.3). El soporte va por logprobs donde lo hay. Los flujos tienen ahora todas las filas de test con L3, por eso son más largos que en R6.
+
+**CRIT_R8B (`2d97fcc6…`): NO PASA. No está refutado.**
+- Las nuevas agrupadas con `preq_oro_fondo_umbral` dan 0,640, frente a 0,634 del oro estático: +0,6 puntos, cuando se pedían +5.
+- Frente a oro ∪ LLM estático, las originales pierden hasta 2,1 puntos (massive-esc −2,08, massive-es −1,74, hatecheck-es −1,27). Se pasa del límite de 2.
+
+| tarea | oro estático | oro ∪ LLM estático | preq oro ∪ fondo (peso) | **preq oro ∪ fondo (umbral)** |
+|---|---|---|---|---|
+| hatecheck-es | 0,699 | 0,725 | 0,729 | 0,712 |
+| lexboe | 0,609 | 0,551 | 0,554 | **0,607** |
+| fakenews-es | 0,500 | 0,500 | 0,504 | 0,504 |
+| inyecciones | 0,767 | 0,879 | 0,883 | 0,873 |
+| jailbreak | 0,565 | 0,915 | 0,908 | 0,908 |
+| massive-es | 0,492 | 0,597 | 0,626 | 0,580 |
+| massive-esc | 0,571 | 0,746 | 0,747 | 0,725 |
+| tuits-es | 0,482 | 0,530 | 0,544 | 0,531 |
+
+Con todo el soporte por logprobs, lexboe ya no se hunde: el estático oro ∪ LLM da 0,551, frente a 0,207 con JSON. La regla del umbral lo deja al nivel del oro.
+El kNN prequential no aporta casi nada sobre el estático; en las nuevas lo limita fakenews-es, que no tiene oro.
+
+**Cascada con la regla congelada** (margen, f = 0,30, 10 semillas, mitad de validación), en la batería y en las tareas nuevas:
+
+| | valor |
+|---|---|
+| L2 | 0,640 |
+| L3 | 0,6865 |
+| **cascada** | **0,690**, +0,4 sobre L3 |
+| escalado | 30,1 % |
+| AUROC del margen | 0,669 |
+
+| tarea | L2 | L3 | cascada | escalado |
+|---|---|---|---|---|
+| fakenews-es | 0,490 | 0,683 | 0,683 | 100 % (sin oro, el margen es 0) |
+| hatecheck-es | 0,712 | 0,832 | 0,748 | 15,8 % |
+| inyecciones | 0,876 | 0,759 | **0,891** | 4,3 % |
+| jailbreak | 0,909 | 0,913 | **0,918** | 5,7 % |
+| lexboe | 0,609 | 0,537 | **0,636** | 30,4 % |
+| massive-es | 0,568 | 0,637 | 0,631 | 37,6 % |
+| massive-esc | 0,718 | 0,711 | **0,741** | 17,8 % |
+| tuits-es | 0,530 | 0,644 | 0,608 | 35,9 % |
+
+Al sumar las tareas nuevas, la cascada **iguala o supera a L3 solo escalando el 30 %**: 0,690 frente a 0,687. En lexboe gana a los dos, porque L2 (el oro) acierta más que el LLM. Solo es descriptivo: el criterio CRIT8E se evaluó en §15.3, sobre la batería.
