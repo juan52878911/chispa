@@ -107,6 +107,23 @@ Campos de `l3`: `url`, `modelo`, `api_key_env` (nombre de la variable de entorno
 `timeout` (`"10s"` o segundos; por defecto 10 s), `max_por_peticion` (llamadas al LLM por petición HTTP; por defecto 8) y `tau` (si falta, el de la capa `L3`).
 **Los textos del cliente salen del servidor hacia ese endpoint**; L3 no los registra. Métrica: `chispa_l3_llamadas_total`.
 
+#### L3 por logprobs (`"modo": "logprobs"`)
+Alternativa al JSON pensada para vLLM con Qwen3-4B-Instruct-2507 (0,729 agrupada frente a 0,650 con JSON; 33 ms p50 con un hilo). Es el espejo en Go de
+`model/alt/llm_logprobs.py` (código en `decide/l3_logprobs.go`; test de paridad del prompt con el Python en `decide/testdata/l3_logprobs_paridad.json`).
+Sin `modo` (o `"json"`) todo sigue como arriba. Se activa en la config:
+```json
+{"l3": {"url": "http://vllm:8000/v1", "modo": "logprobs", "modelo": "qwen3-4b", "max_concurrente": 4, "timeout_fila": "2s", "max_extra": 4, "sin_pensar": false}}
+```
+Cada opción recibe una etiqueta de un carácter (A–Z, a–z, 0–9; en `score` con niveles de una cifra, el propio nivel) y se pide `max_tokens=1`, `logprobs=true`,
+`top_logprobs=20`. Las variantes `"A"` y `" A"` se suman. Las etiquetas que no salen en el top 20 se puntúan con `prompt_logprobs` (`add_generation_prompt=false`,
+`continue_final_message=true`) para las primeras `max_extra`; el resto recibe un piso (mínimo conocido − 1). probs = softmax sobre las opciones. Más de 62 opciones,
+o ninguna etiqueta puntuada, = respuesta inválida (L3 no opina y escala). El tipo `multi` sigue por JSON. El servidor vLLM debe tener `--max-logprobs` ≥ 20.
+- `max_concurrente`: filas puntuándose a la vez contra el LLM (semáforo; por defecto 4).
+- `timeout_fila`: tope de cada fila incluido el relleno (por defecto, el `timeout`). Si vence con algo puntuado se devuelven las probs parciales con piso; si no, error `ErrSinL3` y la pregunta escala.
+- `timeout`: tope de cada llamada HTTP; los errores de red y los 5xx se reintentan 1 vez.
+- `max_extra`: etiquetas fuera del top 20 que se puntúan por prefijo (por defecto 4; 0 = ninguna).
+- `sin_pensar`: manda `chat_template_kwargs: {"enable_thinking": false}`; solo se manda si es `true`.
+
 ### Flags de `chispa-server`
 | flag | por defecto | uso |
 |---|---|---|
