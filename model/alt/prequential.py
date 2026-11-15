@@ -308,7 +308,8 @@ def veredicto(informe, retraso=RETRASO, semillas=None):
 def cmd_medir(a):
     z = np.load(a.vec_fondo)
     varios = lambda r: [x for f in _lista(r) for x in leer(f)]  # noqa: E731  (fondo + fondo2, en el orden de fondo.npz)
-    tareas = cargar_tareas(_lista(a.bateria), a.vec, _lista(a.l3), varios(a.fondo), varios(a.l3_fondo), z)
+    fondo = varios(a.fondo)[:len(z["ids"])]   # una prueba en seco vectoriza solo el principio del fondo (como knn_soporte_llm)
+    tareas = cargar_tareas(_lista(a.bateria), a.vec, _lista(a.l3), fondo, varios(a.l3_fondo), z)
     out = {"criterio": CRIT_R6, "criterio_sha256": CRIT_R6_SHA, "parametros": {"alfa": ALFA, "s_oro": S_ORO, "retraso": a.retraso, "semillas": a.semillas,
            "vecinos": VECINOS, "temp": TEMP},
            "tareas": {c: {"flujo": t.n, "test": t.n_test, "oro": t.G, "fondo_llm": t.F, "llm_validas_en_flujo": int(t.llm_ok.sum())} for c, t in tareas.items()}}
