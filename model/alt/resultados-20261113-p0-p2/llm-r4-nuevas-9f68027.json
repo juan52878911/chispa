@@ -1,0 +1,22 @@
+{
+ "estricta/lexboe": [
+  0.067,
+  0.056,
+  0.078
+ ],
+ "estricta/fakenews-es": [
+  0.5594,
+  0.5175,
+  0.5997
+ ],
+ "permisiva/lexboe": [
+  0.2215,
+  0.204,
+  0.239
+ ],
+ "permisiva/fakenews-es": [
+  0.5594,
+  0.5175,
+  0.5997
+ ]
+}
