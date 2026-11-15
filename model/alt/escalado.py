@@ -153,6 +153,25 @@ def cascada(tareas, partes, senal, umbral):
     return out
 
 
+def aplicar(tareas, senal, f, semillas=10):
+    """La regla ya congelada (señal y fracción) en todas las semillas: umbral = cuantil f en la mitad de calibración, medida en la otra."""
+    pesos = {c: t["peso"] for c, t in tareas.items()}
+    res = []
+    for s in range(semillas):
+        cal, val = (dict((c, v[j]) for c, v in mitades(tareas, s).items()) for j in (0, 1))
+        u = float(np.quantile(np.concatenate([tareas[c]["sen"][senal][cal[c]] for c in tareas]), f))
+        cv = cascada(tareas, val, senal, u)
+        res.append({"semilla": s, "cascada": ponderada({c: v[0] for c, v in cv.items()}, pesos), "l2": ponderada({c: v[1] for c, v in cv.items()}, pesos),
+                    "l3": ponderada({c: v[2] for c, v in cv.items()}, pesos),
+                    "escalado": float(np.average([v[3] for v in cv.values()], weights=[len(val[c]) for c in cv])),
+                    "auroc": auroc(np.concatenate([tareas[c]["sen"][senal][val[c]] for c in tareas]), np.concatenate([tareas[c]["ok2"][val[c]] for c in tareas])),
+                    "por_tarea": {c: {"cascada": round(v[0], 4), "l2": round(v[1], 4), "l3": round(v[2], 4), "escalado": round(v[3], 4)} for c, v in cv.items()}})
+    m = {k: round(float(np.mean([r[k] for r in res if r[k] is not None])), 4) for k in ("cascada", "l2", "l3", "escalado", "auroc")}
+    m["cascada_menos_l3"] = round(m["cascada"] - m["l3"], 4)
+    pt = {c: {k: round(float(np.mean([r["por_tarea"][c][k] for r in res])), 4) for k in ("cascada", "l2", "l3", "escalado")} for c in tareas}
+    return {"regla": {"senal": senal, "fraccion": f}, "resumen": m, "por_tarea": pt, "semillas": res}
+
+
 def medir(tareas, semillas=10):
     pesos = {c: t["peso"] for c, t in tareas.items()}
     todos = lambda i_por, k: np.concatenate([tareas[c]["sen"][k][i_por[c]] for c in tareas])  # noqa: E731
@@ -206,6 +225,13 @@ def cmd_medir(a):
     tareas = cargar([d for d in a.bateria.split(",") if d], a.vec, fondo, varios(a.l3_fondo), varios(a.l3), z)
     out = {"criterio": CRIT8E, "criterio_sha256": CRIT8E_SHA, "semillas": a.semillas,
            "transformers_vectores": str(z["transformers"]) if "transformers" in z.files else None}
+    if a.regla:
+        senal, f = a.regla.split(":")
+        out["aplicada"] = aplicar(tareas, senal, float(f), a.semillas)
+        out["tareas"] = {c: {"n": t["n"], "oro": t["oro"], "fondo": t["fondo"], "l2": round(float(t["ok2"].mean()), 4), "l3": round(float(t["ok3"].mean()), 4)} for c, t in tareas.items()}
+        Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        print(json.dumps(out["aplicada"]["resumen"], ensure_ascii=False))
+        return
     out.update(medir(tareas, a.semillas))
     Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(out["veredicto"], ensure_ascii=False, indent=1))
@@ -218,6 +244,7 @@ def main(argv=None):
     for k in ("--bateria", "--vec", "--fondo", "--l3-fondo", "--l3", "--salida"):
         m.add_argument(k, required=True)
     m.add_argument("--semillas", type=int, default=10)
+    m.add_argument("--regla", help="señal:fracción ya congelada (R8b): se aplica sin seleccionar")
     sp.add_parser("criterio")
     a = ap.parse_args(argv)
     if a.cmd == "criterio":

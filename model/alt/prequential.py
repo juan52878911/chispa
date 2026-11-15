@@ -63,6 +63,11 @@ CRIT_R6 = {"variante": "preq_oro_fondo", "ref_nuevas": "oro_estatico", "ref_orig
            "nuevas": list(NUEVAS), "sube_min": 0.05, "perdida_max_original": 0.02, "refutado_si_dif_le": 0.0,
            "alfa": ALFA, "retraso": RETRASO, "vecinos": VECINOS, "temp": TEMP, "regla": "peso"}
 CRIT_R6_SHA = hashlib.sha256(json.dumps(CRIT_R6, sort_keys=True).encode()).hexdigest()
+# R8b: los mismos umbrales que CRIT_R6, pero con la regla «umbral» (s_oro 0,90) congelada y todo el soporte por logprobs donde lo haya
+CRIT_R8B = dict(CRIT_R6, variante="preq_oro_fondo_umbral", regla="umbral", s_oro=0.90,
+                soporte="fondo con logprobs (R7, R7b, R8) encima del JSON; flujos con L3 por logprobs (R5, R7)",
+                vectores="transformers 4.46.3 + torch 2.5.1+cpu (los de la regla de escalado)")
+CRIT_R8B_SHA = hashlib.sha256(json.dumps(CRIT_R8B, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
 def leer(p):
@@ -282,12 +287,13 @@ def medir(tareas, semillas=10, retraso=RETRASO, verbose=True):
     return informe
 
 
-def veredicto(informe, retraso=RETRASO, semillas=None):
-    """Aplica CRIT_R6 con las exactitudes medias entre semillas (estimaciones puntuales, como los criterios de R1)."""
-    v, V = CRIT_R6, informe["variantes"]
-    nuevas = [c for c in CRIT_R6["nuevas"] if c in V[v["variante"]]["por_tarea"]]
+def veredicto(informe, retraso=RETRASO, semillas=None, crit=None, sha=None):
+    """Aplica CRIT_R6 (o CRIT_R8B) con las exactitudes medias entre semillas (estimaciones puntuales, como los criterios de R1)."""
+    v, V = crit or CRIT_R6, informe["variantes"]
+    CRIT_SHA_V = sha or CRIT_R6_SHA
+    nuevas = [c for c in v["nuevas"] if c in V[v["variante"]]["por_tarea"]]
     if "nuevas" not in V[v["variante"]]["agrupada"]:
-        return {"criterio_sha256": CRIT_R6_SHA, "estado": "NO EVALUABLE", "motivo": "ninguna tarea nueva en la batería"}
+        return {"criterio_sha256": CRIT_SHA_V, "estado": "NO EVALUABLE", "motivo": "ninguna tarea nueva en la batería"}
     a4 = V[v["variante"]]["agrupada"]["nuevas"]["exactitud"][0]
     a1 = V[v["ref_nuevas"]]["agrupada"]["nuevas"]["exactitud"][0]
     dif = round(a4 - a1, 4)
@@ -298,7 +304,7 @@ def veredicto(informe, retraso=RETRASO, semillas=None):
         perd[c] = round(V[v["variante"]]["por_tarea"][c]["exactitud"][0] - V[v["ref_originales"]]["por_tarea"][c]["exactitud"][0], 4)
     c_sube = dif >= v["sube_min"] - 1e-9
     c_perdida = all(p >= -v["perdida_max_original"] - 1e-9 for p in perd.values())
-    out = {"criterio_sha256": CRIT_R6_SHA, "nuevas_presentes": nuevas, "nuevas_variante4": a4, "nuevas_oro_estatico": a1,
+    out = {"criterio_sha256": CRIT_SHA_V, "variante": v["variante"], "nuevas_presentes": nuevas, "nuevas_variante4": a4, "nuevas_oro_estatico": a1,
            "dif_nuevas": dif, "dif_originales_vs_oro_llm_estatico": perd, "c_sube": c_sube, "c_perdida": c_perdida,
            "parametros_coinciden": retraso == v["retraso"], "refutado": dif <= v["refutado_si_dif_le"]}
     out["estado"] = "REFUTADO" if out["refutado"] else ("PASA" if c_sube and c_perdida else "NO PASA")
@@ -315,8 +321,10 @@ def cmd_medir(a):
            "tareas": {c: {"flujo": t.n, "test": t.n_test, "oro": t.G, "fondo_llm": t.F, "llm_validas_en_flujo": int(t.llm_ok.sum())} for c, t in tareas.items()}}
     out.update(medir(tareas, a.semillas, a.retraso))
     out["veredicto"] = veredicto(out, a.retraso, a.semillas)
+    if a.criterio == "r8b":
+        out["veredicto_r8b"] = veredicto(out, a.retraso, a.semillas, CRIT_R8B, CRIT_R8B_SHA)
     Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(json.dumps(out["veredicto"], ensure_ascii=False, indent=1))
+    print(json.dumps(out.get("veredicto_r8b", out["veredicto"]), ensure_ascii=False, indent=1))
 
 
 def main(argv=None):
@@ -332,10 +340,12 @@ def main(argv=None):
     m.add_argument("--salida", required=True)
     m.add_argument("--semillas", type=int, default=10)
     m.add_argument("--retraso", type=int, default=RETRASO)
-    sp.add_parser("criterio")
+    m.add_argument("--criterio", choices=("r6", "r8b"), default="r6", help="r8b: además CRIT_R8B (regla umbral)")
+    c = sp.add_parser("criterio")
+    c.add_argument("--cual", choices=("r6", "r8b"), default="r6")
     a = ap.parse_args(argv)
     if a.cmd == "criterio":
-        print(CRIT_R6_SHA, json.dumps(CRIT_R6, sort_keys=True))
+        print(*((CRIT_R8B_SHA, json.dumps(CRIT_R8B, sort_keys=True, ensure_ascii=False)) if a.cual == "r8b" else (CRIT_R6_SHA, json.dumps(CRIT_R6, sort_keys=True))))
         return
     cmd_medir(a)
 
