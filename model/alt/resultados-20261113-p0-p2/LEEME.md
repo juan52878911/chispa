@@ -1137,3 +1137,34 @@ Datos:
 - `knn_soporte_llm vectores` exige `--transformers` (5.22.2 por defecto) y guarda la versión en cada `.npz`.
 - `medir` se niega a mezclar vectores de versiones distintas.
 - **Condición para R8b**, añadida antes de medir por orden de la sesión madre: R8b mide la cascada con la misma versión de vectores con la que se fija la regla, transformers 4.46.3 y torch 2.5.1+cpu. Su ud tiene que instalar esas versiones y llamar a `vectores --transformers 4.46.3`; el umbral se aplica sobre esos mismos vectores.
+
+### 15.3 Resultado de la regla de escalado (i7, 0 USD; código b61eb53): NO PASA, por poco en las dos condiciones
+
+Ficheros: `escalado-b61eb53.json`, solo cifras. Vectores calculados en el i7 con transformers 4.46.3, también los 26 137 del fondo. El fondo lleva logprobs de R7, R7b y R8 sobre el JSON.
+
+**Selección** (semillas 0–4): la señal elegida es el **margen**, con AUROC medio 0,690. Las demás quedaron así: pmax 0,674, sim_vecino 0,627, −entropía 0,577 y sim_oro 0,564. La fracción de escalado es **f = 0,30**: la cascada mejora de forma monótona con f, de 0,673 con f = 0,05 a 0,710 con f = 0,30.
+
+**Validación** (semillas 5–9) con CRIT8E (`81c88b31…`): NO PASA.
+
+| | valor | criterio |
+|---|---|---|
+| AUROC del margen | **0,6885** | ≥ 0,70: no |
+| escalado real | 30,3 % (los empates en el cuantil suben 0,3 puntos) | ≤ 30 % |
+| L2 solo | 0,660 | |
+| L3 solo | 0,7286 | |
+| **cascada** | **0,7082**, a −2,04 de L3 | ≥ −2: no, por 0,04 |
+
+| tarea | AUROC del margen | L2 | L3 | cascada | escalado |
+|---|---|---|---|---|---|
+| hatecheck-es | **0,513** | 0,709 | 0,828 | 0,752 | 22,6 % |
+| inyecciones | 0,906 | 0,886 | 0,738 | **0,897** | 6,6 % |
+| jailbreak | 0,866 | 0,911 | 0,906 | **0,925** | 6,8 % |
+| massive-es | 0,743 | 0,565 | 0,631 | 0,627 | 47,4 % |
+| massive-esc | 0,750 | 0,717 | 0,711 | **0,742** | 23,2 % |
+| tuits-es | 0,647 | 0,522 | 0,646 | 0,605 | 43,5 % |
+
+**Lectura:**
+- En cinco de las seis tareas el margen predice bien los fallos de L2, con AUROC de 0,65 a 0,91.
+- En inyecciones, jailbreak y massive-esc la cascada supera a L3 solo, porque L2 acierta más que el LLM.
+- Lo que tumba el agregado es hatecheck-es: su margen no informa (AUROC 0,51) y pesa 2 000 filas. Allí L3 es 12 puntos mejor que L2.
+- Una regla con umbral por tarea, o que escale siempre las tareas donde L3 domina, probablemente pasaría. Pero eso sería otra regla, y habría que congelarla aparte antes de medirla.
