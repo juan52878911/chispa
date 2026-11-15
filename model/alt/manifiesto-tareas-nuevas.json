@@ -3,33 +3,153 @@
  "_regla_de_licencia": "uso comercial y sin copyleft: CC0, CC BY, MIT, Apache-2.0, ODC-BY, CDLA-Permissive o declaración explícita de uso libre. Fuera: -SA, -NC, CDLA-Sharing, solo investigación, términos de Twitter/Amazon/Reuters y licencias sin verificar. Si la fuente del texto es más restrictiva que la tarjeta, manda la fuente.",
  "_verificado": "2026-11-15: tarjeta de HF por API (id, sha, licencia, ficheros) y la fuente original por web. La lectura de las fuentes la hizo un subagente; la revisión final es de la sesión madre o de Juan.",
  "propuestas": [
-  {"nombre": "lexboe", "repo": "BSC-LT/LexBOE", "rev": "d7263e2fe26a27be17dfa0908a2b61aff674ba45", "veredicto": "APTO",
-   "licencia_tarjeta": "cc-by-4.0", "licencia_fuente": "aviso legal del BOE: reutilización comercial con atribución («Fuente: Agencia Estatal Boletín Oficial del Estado»), sin desnaturalizar el sentido, indicando modificaciones y sin sugerir respaldo oficial",
-   "url_licencia": ["https://huggingface.co/datasets/BSC-LT/LexBOE", "https://www.boe.es/informacion/aviso_legal/"],
-   "tarea": "tema legal-administrativo", "clases": 12, "nota_clases": "la tarjeta dice 14 pero su tabla lista 12: contarlas al convertir",
-   "splits": {"train": 46762, "dev": 5845, "test": 5846}, "ficheros": ["train.jsonl", "dev.jsonl", "test.jsonl"], "variante": "España, texto original (2022-2024)",
-   "riesgos": "textos largos: e5 corta a 256 tokens; léxico jurídico; obligación de atribución en cualquier derivado"},
-  {"nombre": "multieurlex-es-n1", "repo": "coastalcph/multi_eurlex", "config": "es", "rev": "d0318b7f68f43f7d77797437ce172d899254cd0f", "veredicto": "APTO con reserva",
-   "licencia_tarjeta": "cc-by-4.0 («same licensing as the original EU data»)", "licencia_fuente": "EUR-Lex, Decisión 2011/833/UE: reutilización comercial o no comercial con atribución; metadatos CC0",
-   "url_licencia": ["https://huggingface.co/datasets/coastalcph/multi_eurlex", "https://eur-lex.europa.eu/content/legal-notice/legal-notice.html"],
-   "tarea": "tema EUROVOC de nivel 1", "clases": 21, "splits": {"train": 52785, "dev": 5000, "test": 5000}, "variante": "traducción humana oficial de la UE",
-   "riesgos": "multietiqueta: para el arnés de una etiqueta habría que quedarse con los documentos de un solo descriptor de nivel 1 o medir F1 por etiqueta; carga por script (multi_eurlex.py) con un tar.gz de todas las lenguas; documentos con condiciones propias de EUR-Lex no revisados uno a uno"},
-  {"nombre": "fakenews-es", "repo": "mariagrandury/fake_news_corpus_spanish", "rev": "d12e41747833a4ea41732bcd3660fd14e32e7138", "veredicto": "DUDOSO",
-   "licencia_tarjeta": "cc-by-4.0", "licencia_fuente": "github.com/jpposadas/FakeNewsCorpusSpanish: CC BY 4.0",
-   "tarea": "noticia falsa o verdadera", "clases": 2, "splits": {"test": 572}, "variante": "España y Latinoamérica (sobre todo México)",
-   "riesgos": "solo 572 filas y sin train (zero-shot sí, few-shot apenas); etiqueta booleana sin documentar; textos de prensa de terceros bajo la CC BY del corpus"}
+  {
+   "nombre": "lexboe",
+   "repo": "BSC-LT/LexBOE",
+   "rev": "d7263e2fe26a27be17dfa0908a2b61aff674ba45",
+   "veredicto": "APROBADA (solo medir)",
+   "licencia_tarjeta": "cc-by-4.0",
+   "licencia_fuente": "aviso legal del BOE: reutilización comercial con atribución («Fuente: Agencia Estatal Boletín Oficial del Estado»), sin desnaturalizar el sentido, indicando modificaciones y sin sugerir respaldo oficial",
+   "url_licencia": [
+    "https://huggingface.co/datasets/BSC-LT/LexBOE",
+    "https://www.boe.es/informacion/aviso_legal/"
+   ],
+   "tarea": "tema legal-administrativo",
+   "clases": 12,
+   "nota_clases": "la tarjeta dice 14 pero su tabla lista 12: contarlas al convertir",
+   "splits": {
+    "train": 46762,
+    "dev": 5845,
+    "test": 5846
+   },
+   "ficheros": [
+    "train.jsonl",
+    "dev.jsonl",
+    "test.jsonl"
+   ],
+   "variante": "España, texto original (2022-2024)",
+   "riesgos": "textos largos: e5 corta a 256 tokens; léxico jurídico; obligación de atribución en cualquier derivado",
+   "condiciones": "contar las clases al convertir (tarjeta 14, tabla 12)",
+   "atribucion": "Fuente de los datos: Agencia Estatal Boletín Oficial del Estado (BOE), vía BSC-LT/LexBOE (CC BY 4.0). Datos modificados: convertidos al formato de la batería."
+  },
+  {
+   "nombre": "multieurlex-es-n1",
+   "repo": "coastalcph/multi_eurlex",
+   "config": "es",
+   "rev": "d0318b7f68f43f7d77797437ce172d899254cd0f",
+   "veredicto": "APROBADA (solo medir)",
+   "licencia_tarjeta": "cc-by-4.0 («same licensing as the original EU data»)",
+   "licencia_fuente": "EUR-Lex, Decisión 2011/833/UE: reutilización comercial o no comercial con atribución; metadatos CC0",
+   "url_licencia": [
+    "https://huggingface.co/datasets/coastalcph/multi_eurlex",
+    "https://eur-lex.europa.eu/content/legal-notice/legal-notice.html"
+   ],
+   "tarea": "tema EUROVOC de nivel 1",
+   "clases": 21,
+   "splits": {
+    "train": 52785,
+    "dev": 5000,
+    "test": 5000
+   },
+   "variante": "traducción humana oficial de la UE",
+   "riesgos": "multietiqueta: para el arnés de una etiqueta habría que quedarse con los documentos de un solo descriptor de nivel 1 o medir F1 por etiqueta; carga por script (multi_eurlex.py) con un tar.gz de todas las lenguas; documentos con condiciones propias de EUR-Lex no revisados uno a uno",
+   "condiciones": "solo documentos con un único descriptor de nivel 1 (etiqueta única); anotar cuántos quedan por clase y descartar las clases con < 20",
+   "atribucion": "© Unión Europea, EUR-Lex (Decisión 2011/833/UE), vía coastalcph/multi_eurlex (CC BY 4.0)."
+  },
+  {
+   "nombre": "fakenews-es",
+   "repo": "mariagrandury/fake_news_corpus_spanish",
+   "rev": "d12e41747833a4ea41732bcd3660fd14e32e7138",
+   "veredicto": "APROBADA solo zero-shot (sin few-shot)",
+   "licencia_tarjeta": "cc-by-4.0",
+   "licencia_fuente": "github.com/jpposadas/FakeNewsCorpusSpanish: CC BY 4.0",
+   "tarea": "noticia falsa o verdadera",
+   "clases": 2,
+   "splits": {
+    "test": 572
+   },
+   "variante": "España y Latinoamérica (sobre todo México)",
+   "riesgos": "solo 572 filas y sin train (zero-shot sí, few-shot apenas); etiqueta booleana sin documentar; textos de prensa de terceros bajo la CC BY del corpus",
+   "atribucion": "Posadas-Durán et al., FakeNewsCorpusSpanish (CC BY 4.0), vía mariagrandury/fake_news_corpus_spanish."
+  }
  ],
  "descartadas": [
-  {"repo": "mteb/SpanishNewsClassification", "licencia": "mit en la tarjeta, origen MarcOrfilaCarreras/spanish-news inaccesible (401)", "motivo": "licencia sin respaldo en la fuente"},
-  {"repo": "google-research-datasets/paws-x (es)", "licencia": "«may be freely used for any purpose», texto de Wikipedia (CC BY-SA)", "motivo": "la fuente es -SA"},
-  {"repo": "fmplaza/EmoEvent", "licencia": "apache-2.0 en la tarjeta, tuits", "motivo": "términos de Twitter; solapa con tuits-es"},
-  {"repo": "PlanTL-GOB-ES/WikiCAT_esv2", "licencia": "cc-by-sa-3.0 en metadatos (contradictoria)", "motivo": "-SA"},
-  {"repo": "Davlan/sib200", "licencia": "cc-by-sa-4.0", "motivo": "-SA"},
-  {"repo": "PlanTL-GOB-ES/MLDoc", "licencia": "cc-by-nc-4.0, acceso restringido", "motivo": "-NC"},
-  {"repo": "facebook/xnli", "licencia": "sin campo en HF; CC BY-NC según su autor", "motivo": "-NC"},
-  {"repo": "PhilipMay/stsb_multi_mt", "licencia": "other, traducción con DeepL", "motivo": "sin verificar y regresión"},
-  {"repo": "mteb/mtop_domain", "licencia": "sin campo en HF", "motivo": "sin verificar y solapa con MASSIVE"},
-  {"repo": "PolyAI/banking77", "licencia": "cc-by-4.0", "motivo": "inglés"}
+  {
+   "repo": "mteb/SpanishNewsClassification",
+   "licencia": "mit en la tarjeta, origen MarcOrfilaCarreras/spanish-news inaccesible (401)",
+   "motivo": "licencia sin respaldo en la fuente"
+  },
+  {
+   "repo": "google-research-datasets/paws-x (es)",
+   "licencia": "«may be freely used for any purpose», texto de Wikipedia (CC BY-SA)",
+   "motivo": "la fuente es -SA"
+  },
+  {
+   "repo": "fmplaza/EmoEvent",
+   "licencia": "apache-2.0 en la tarjeta, tuits",
+   "motivo": "términos de Twitter; solapa con tuits-es"
+  },
+  {
+   "repo": "PlanTL-GOB-ES/WikiCAT_esv2",
+   "licencia": "cc-by-sa-3.0 en metadatos (contradictoria)",
+   "motivo": "-SA"
+  },
+  {
+   "repo": "Davlan/sib200",
+   "licencia": "cc-by-sa-4.0",
+   "motivo": "-SA"
+  },
+  {
+   "repo": "PlanTL-GOB-ES/MLDoc",
+   "licencia": "cc-by-nc-4.0, acceso restringido",
+   "motivo": "-NC"
+  },
+  {
+   "repo": "facebook/xnli",
+   "licencia": "sin campo en HF; CC BY-NC según su autor",
+   "motivo": "-NC"
+  },
+  {
+   "repo": "PhilipMay/stsb_multi_mt",
+   "licencia": "other, traducción con DeepL",
+   "motivo": "sin verificar y regresión"
+  },
+  {
+   "repo": "mteb/mtop_domain",
+   "licencia": "sin campo en HF",
+   "motivo": "sin verificar y solapa con MASSIVE"
+  },
+  {
+   "repo": "PolyAI/banking77",
+   "licencia": "cc-by-4.0",
+   "motivo": "inglés"
+  }
  ],
- "huecos": "No hay candidato apto en español para NLI, paráfrasis, emoción, quejas/atención al cliente ni médico; las dos aptas son de dominio legal."
+ "huecos": "No hay candidato apto en español para NLI, paráfrasis, emoción, quejas/atención al cliente ni médico; las dos aptas son de dominio legal.",
+ "_revision": "2026-11-15, sesión madre: las tres aprobadas SOLO PARA MEDIR (nunca para entrenar), con las condiciones de cada una; las dos aptas son legales, así que el veredicto del paso 4 debe llevar escrita la reserva de generalidad. Se busca una cuarta no legal.",
+ "cuarta_no_legal": {
+  "_busqueda": "2026-11-15, 12 candidatos (API de HF y web); ninguno APTO con la regla estricta",
+  "dudosa": {
+   "repo": "mrcsgh/horeca-spanish-reviews",
+   "rev": "4ee2a31541ee87cd296f422c4932158b24cb2f50",
+   "licencia": "MIT del autor; sintético generado con Gemini 3 (según su cuaderno), sin fuente humana",
+   "tarea": "reseñas de hostelería: 1-5 estrellas (mejor en 3 clases: negativa, neutra, positiva) o 9 estilos",
+   "tamano": "≈5 500 filas, un solo fichero, sin test",
+   "decide_juan": "si los términos de Gemini permiten usarlo para evaluar; habría que fijar un test con semilla y auditar ≈100 etiquetas a mano"
+  },
+  "no_aptas": {
+   "beltrewilton/punta-cana-spanish-reviews": "procedencia opaca, probable raspado",
+   "Cesar42/EmotionSpanish": "tarjeta vacía, sin fuente",
+   "mteb/SpanishSentimentClassification": "licencia unknown",
+   "Bitext en español (Faramir/…)": "CDLA-Sharing (copyleft)",
+   "lpsc-fiuba/melisa": "términos propios de Mercado Libre",
+   "SINAI/COAR": "cc-by-nc-sa-4.0",
+   "projecte-aina NLUCat/CaSET/CaSERa": "cc-by-4.0 pero en catalán",
+   "us-lsi/muchocine": "sin licencia",
+   "amazon_reviews_multi (derivados)": "términos de Amazon",
+   "gplsi/INTENT-ES": "sin licencia",
+   "mtop/atis/massive es (DeepPavlov, SetFit)": "sin licencia; derivados"
+  },
+  "sin_revisar": "Rest-Mex en su web oficial (TripAdvisor), variantes oficiales de Bitext en español, quejas/PQRS públicas"
+ }
 }
