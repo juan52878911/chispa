@@ -30,6 +30,10 @@ Q4_DEF = {"hatecheck-es": 150, "inyecciones": 60, "jailbreak": 60, "massive-es":
 CRIT5 = {"pasa_agrupada_min": 0.62, "pasa_hatecheck_min": 0.75, "refutado_agrupada_bajo": 0.58}   # paso 5 (R2), congelado
 CRIT5L = {"metodo": "logprobs: etiqueta de un carácter, max_tokens=1, top_logprobs=20, relleno por prompt_logprobs (max_extra 4)",
           "pasa_agrupada_min": 0.62, "pasa_hatecheck_min": 0.75, "refutado_agrupada_bajo": 0.58}   # R5, congelado (sha en el LEEME)
+CRIT7 = {"metodo": "logprobs (CRIT5L, mismo código que R5), Qwen3-4B-Instruct-2507",
+         "filas": "test de la batería fuera de la muestra del paso 2, en orden aleatorio por tarea; se mide sobre las respondidas",
+         "agrupada": "ponderada por el tamaño de cada tarea en la batería, solo tareas presentes",
+         "pasa_agrupada_min": 0.70, "pasa_hatecheck_min": 0.80, "hatecheck_solo_si_presente": True, "refutado_agrupada_bajo": 0.66}   # R7
 CRIT = {"agrupada_min": 0.65, "hatecheck_sobre_knn": 0.05, "q4_perdida_max": 0.02, "refutado_bajo": 0.610}
 
 
@@ -425,6 +429,41 @@ def cmd_pequeno(a):
     print(json.dumps({k: v["veredicto"] for k, v in out["modelos"].items()}, ensure_ascii=False, indent=1))
 
 
+def cmd_resto(a):
+    """R7: el test de la batería que NO entró en la muestra del paso 2, en formato de cliente; barajado por tarea e intercalado."""
+    from model.alt.p0_medir import cargar_bateria
+    ya = {f["id"] for f in leer(Path(a.muestra) / "filas.jsonl")}
+    filas = []
+    for c, (_, ev) in sorted(cargar_bateria(a.bateria).items()):
+        v = [a_fila(r, c) for r in ev if r["id"] not in ya]
+        random.Random("llm-resto-%s" % c).shuffle(v)
+        filas += v
+    escribir(Path(a.salida), intercalar(filas))
+    print(json.dumps({c: sum(1 for f in filas if f["conjunto"] == c) for c in sorted({f["conjunto"] for f in filas})}))
+
+
+def cmd_confirmar(a):
+    """R7: exactitud del LLM en el resto de la batería (solo las filas respondidas), con CRIT7."""
+    from model.alt.p0_medir import cargar_bateria
+    pesos = {c: len(ev) for c, (_, ev) in cargar_bateria(a.bateria).items()}
+    hechas = {r["id"] for r in leer(a.l3)}
+    filas = [f for f in leer(a.filas) if f["id"] in hechas]
+    pred = llm_pred(a.l3, filas)
+    tareas = sorted({f["conjunto"] for f in filas})
+    ok = {c: [1.0 if pred[f["id"]][0] == f["etiqueta"] else 0.0 for f in filas if f["conjunto"] == c] for c in tareas}
+    g = boot(ok, {c: pesos[c] for c in tareas})
+    h = ok.get("hatecheck-es")
+    hc = round(sum(h) / len(h), 4) if h else None
+    v = {"agrupada": g[0], "hatecheck": hc, "respondidas": len(filas), "en_fichero": len(leer(a.filas))}
+    v["estado"] = ("REFUTADO" if g[0] < CRIT7["refutado_agrupada_bajo"] else
+                   "PASA" if g[0] >= CRIT7["pasa_agrupada_min"] and (hc is None or hc >= CRIT7["pasa_hatecheck_min"]) else "NO PASA")
+    out = {"criterios": CRIT7, "criterio_sha256": hashlib.sha256(json.dumps(CRIT7, sort_keys=True).encode()).hexdigest(), "agrupada": g,
+           "por_tarea": {c: {"n": len(ok[c]), "estricta": boot({c: ok[c]}, {c: 1}), "invalidas": sum(1 for f in filas if f["conjunto"] == c and not pred[f["id"]][2])} for c in tareas},
+           "veredicto": v}
+    Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps(v, ensure_ascii=False))
+
+
 def cmd_fondo_resumen(a):
     from model.alt.llm_techo import top1
     fuente = {r["id"]: r for r in leer(Path(a.fondo) / "fondo-fuente.jsonl")}
@@ -481,6 +520,16 @@ def main(argv=None):
     f2.add_argument("--massive-es", type=int, default=6000)
     f2.add_argument("--massive-esc", type=int, default=8000)
     f2.add_argument("--lexboe", type=int, default=4000)
+    rs = sp.add_parser("resto")
+    rs.add_argument("--bateria", required=True)
+    rs.add_argument("--muestra", required=True)
+    rs.add_argument("--salida", required=True)
+    cf = sp.add_parser("confirmar")
+    cf.add_argument("--bateria", required=True)
+    cf.add_argument("--filas", required=True)
+    cf.add_argument("--l3", required=True)
+    cf.add_argument("--salida", required=True)
+    sp.add_parser("criterio7")
     nv = sp.add_parser("nuevas")
     nv.add_argument("--nuevas", required=True)
     nv.add_argument("--salida", required=True)
@@ -492,7 +541,8 @@ def main(argv=None):
     q.add_argument("--salida", required=True)
     q.add_argument("--criterio", choices=("r2", "r5"), default="r2", help="r5: CRIT5L (método por logprobs, mismos umbrales)")
     a = ap.parse_args(argv)
-    {"muestra": cmd_muestra, "fondo": cmd_fondo, "medir": cmd_medir, "fondo-resumen": cmd_fondo_resumen, "pequeno": cmd_pequeno, "fondo2": cmd_fondo2, "nuevas": cmd_nuevas}[a.cmd](a)
+    {"muestra": cmd_muestra, "fondo": cmd_fondo, "medir": cmd_medir, "fondo-resumen": cmd_fondo_resumen, "pequeno": cmd_pequeno, "fondo2": cmd_fondo2, "nuevas": cmd_nuevas, "resto": cmd_resto, "confirmar": cmd_confirmar,
+     "criterio7": lambda _: print(hashlib.sha256(json.dumps(CRIT7, sort_keys=True).encode()).hexdigest(), json.dumps(CRIT7, sort_keys=True, ensure_ascii=False))}[a.cmd](a)
 
 
 if __name__ == "__main__":
