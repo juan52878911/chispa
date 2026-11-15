@@ -982,3 +982,39 @@ Lectura:
 - L0 sale omitido: el perfil movil-int8 trae el L0 de kindling v2.
 - Es el cómputo con los mismos grafos, no el servidor Go. El frío no incluye la descarga de la imagen que haría Lambda.
 - La instancia tenía una carga de 2,4–3,7 por los pasos anteriores, aunque el contenedor iba fijado a un núcleo. Puede inflar algo las colas.
+
+### 14.9 Resultado de R7 (EC2 inst-04, g5.xlarge, 2026-11-15): confirmación NO PASA por poco; logprobs arregla las tareas nuevas
+
+La instancia trabajó 38 min (2 294 s), unos 40 min en total con la espera, por ≈ 0,68 USD.
+Ficheros: `llm-r7-confirma-4747eb1.json` y `llm-r7-nuevas-4747eb1.json`, solo cifras.
+No hubo ninguna respuesta inválida en ninguna fila.
+
+**Confirmación fuera de la muestra (CRIT7 `90b2ad87…`): NO PASA.**
+Respondieron 2 961 de 3 535 filas en el tope de 24 min, intercaladas al azar por tarea.
+
+| tarea | n | 4B por logprobs, fuera de la muestra | 4B por logprobs, en la muestra (R5) |
+|---|---|---|---|
+| jailbreak | 150 | 0,907 [0,860, 0,947] | 0,916 |
+| massive-es | 932 | 0,637 [0,607, 0,667] | 0,656 |
+| massive-esc | 935 | 0,724 [0,695, 0,752] | 0,684 |
+| tuits-es | 944 | 0,646 [0,617, 0,677] | 0,640 |
+| **agrupada ponderada (estas 4 tareas)** | 2 961 | **0,691** [0,673, 0,707] | **0,684** (recalculada con las mismas 4 tareas y pesos) |
+
+La agrupada queda entre 0,66 y 0,70: NO PASA, pero no está refutada.
+
+**La ganancia se confirma.** Con las mismas cuatro tareas y los mismos pesos, el resultado fuera de la muestra (0,691) es igual o mejor que en la muestra (0,684). El 0,729 de R5 sale más alto porque incluye hatecheck-es (0,831, con peso 2 000) e inyecciones, que no tienen filas fuera de la muestra.
+
+Nota: el umbral de 0,70 de CRIT7 se fijó sin descontar ese efecto. Es un aviso para el siguiente criterio; el veredicto no cambia.
+
+**Reetiquetado (lo que llegó): 1 790 textos, todos del test nuevo.**
+Son las 572 filas de fakenews-es y 1 218 de las 2 000 de lexboe. No llegó ningún texto del fondo de R1 ni de fondo2, porque la confirmación se comió el tiempo.
+
+Mismas filas, 4B por logprobs frente a 4B en JSON (permisivo):
+
+| tarea | n | logprobs | JSON permisivo |
+|---|---|---|---|
+| lexboe | 1 218 | **0,530** [0,503, 0,560] | 0,236 |
+| fakenews-es | 572 | **0,682** [0,643, 0,720] | 0,559 |
+
+**R6b tal como se congeló no informaría.** Su CRIT6B compara el kNN con el fondo reetiquetado por logprobs frente al de JSON. Como no se reetiquetó ni un texto del fondo, las dos variantes serían idénticas y la diferencia daría 0 por construcción. No conviene lanzarlo así.
+Hace falta antes una ronda que reetiquete el fondo. Lo que tiene más ruido en JSON son lexboe, massive-esc e inyecciones; massive-es cuesta 1,17 s por texto.
