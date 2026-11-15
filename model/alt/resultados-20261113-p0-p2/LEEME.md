@@ -1168,3 +1168,21 @@ Ficheros: `escalado-b61eb53.json`, solo cifras. Vectores calculados en el i7 con
 - En inyecciones, jailbreak y massive-esc la cascada supera a L3 solo, porque L2 acierta más que el LLM.
 - Lo que tumba el agregado es hatecheck-es: su margen no informa (AUROC 0,51) y pesa 2 000 filas. Allí L3 es 12 puntos mejor que L2.
 - Una regla con umbral por tarea, o que escale siempre las tareas donde L3 domina, probablemente pasaría. Pero eso sería otra regla, y habría que congelarla aparte antes de medirla.
+
+### 15.4 Resultado de R8 y ud de R8b
+
+**R8**, en las EC2 inst-14 e inst-06, cerró con `verificado`; cada máquina tardó unos 23 min y costó ≈ 0,44 USD. No hubo ninguna respuesta inválida.
+- **Cola A:** etiquetó 2 943 textos, que cubren todo el lexboe de fondo2 (2 719) y 224 de massive-es.
+- **Cola B:** etiquetó 808 de massive-es, todos del fondo de R1; de fondo2 no llegó ninguno.
+- En total quedan 1 039 de los 2 000 massive-es del fondo de R1 etiquetados por logprobs.
+
+**R8b**, código cc82027, se lanza en una c7i.2xlarge con tope de 25 min (≈ 0,15 USD) y solo usa numpy.
+- Va con **los mismos vectores con los que se fijó la regla de escalado**: los del i7, transformers 4.46.3, `vec-i7.tgz`. El ud comprueba esa versión en el `.npz` antes de medir.
+- **Criterios congelados:** CRIT_R8B (sha256 `2d97fcc6f8e210d7a1be814ebae3eb740bfff91e6d897132b1dd40f4fbcf9a58`) usa los umbrales de CRIT_R6, pero con la variante `preq_oro_fondo_umbral`. CRIT8E (`81c88b31…`) se aplica con la regla congelada: margen, f = 0,30.
+- **Qué mide:**
+  1. El prequential con todo el soporte por logprobs (R7, R7b y R8 sobre el JSON). En los flujos, el L3 va por logprobs: R5, R7 y el test nuevo de R7/R7b.
+  2. La cascada L2→L3 en la batería y en las tareas nuevas.
+- **Datos:**
+  - User-data: `lanzados/ud-knn-r8b-cc82027.sh` (sha256 `de074711…`). Entradas en `s3://…/knn-r8b-cc82027/`.
+  - Prueba en seco en el i7, con las etiquetas L3 recortadas a 300 filas: pasó.
+  - `--dry-run`: DryRunOperation.
