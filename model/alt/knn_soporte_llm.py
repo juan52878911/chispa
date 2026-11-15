@@ -30,6 +30,10 @@ CRIT_SHA = hashlib.sha256(json.dumps(CRIT, sort_keys=True).encode()).hexdigest()
 # R4: el mismo kNN con el fondo ampliado (fondo + fondo2, todo lo válido del LLM); se mide en la batería original de 6 tareas
 CRIT4 = {"variante": "llm/todo", "fondo": "fondo+fondo2", "pasa_agrupada_min": 0.66, "refutado_si_agrupada_le": 0.638}
 CRIT4_SHA = hashlib.sha256(json.dumps(CRIT4, sort_keys=True).encode()).hexdigest()
+# R6b: el mismo soporte con las etiquetas por logprobs de R7 donde las haya (JSON donde no) frente a solo JSON, por pares, en esta máquina
+CRIT6B = {"variante": "llm_alt/todo (logprobs de R7 donde haya, JSON donde no)", "referencia": "llm/todo (solo JSON)", "bateria": "original, 6 tareas",
+          "pasa_dif_min": 0.02, "refutado_si_dif_le": 0.0}
+CRIT6B_SHA = hashlib.sha256(json.dumps(CRIT6B, sort_keys=True).encode()).hexdigest()
 KS_ORO = (1, 2, 4, 8)
 KS_LLM = (1, 2, 4, 8, 16, 32, 64, 128)
 KS_FUENTE = (8, 32, 128)
@@ -143,6 +147,8 @@ def medir(datos, Xf, sop, semillas=10):
 
     curvas, ok_todo = {}, {}
     plan = [("oro", KS_ORO), ("llm", KS_LLM), ("llm_p09", ()), ("oro+llm", ()), ("fuente", KS_FUENTE)]
+    if all("llm_alt" in sop[c] for c in tareas):
+        plan.append(("llm_alt", ()))
     for nombre, ks in plan:
         if nombre == "fuente" and not all(sop[c]["fuente"] for c in tareas):
             continue
@@ -172,6 +178,12 @@ def medir(datos, Xf, sop, semillas=10):
                               "llm_menos_oro": boot_dif({c: a[c]}, {c: b[c]}, [c]), "mcnemar": mcnemar(a[c], b[c])} for c in tareas}}
     if "fuente" in ok_todo:
         comp["llm_menos_fuente"] = boot_dif(a, ok_todo["fuente"], tareas)
+    if "llm_alt" in ok_todo:
+        x = ok_todo["llm_alt"]
+        comp["alt_menos_llm"] = boot_dif(x, a, tareas)
+        comp["alt_mcnemar"] = mcnemar([v for c in tareas for v in x[c]], [v for c in tareas for v in a[c]])
+        comp["alt_por_tarea"] = {c: {"alt": round(float(np.mean(x[c])), 4), "llm": round(float(np.mean(a[c])), 4),
+                                     "alt_menos_llm": boot_dif({c: x[c]}, {c: a[c]}, [c])} for c in tareas}
     return {"curvas": curvas, "comparacion": comp, "n_test": {c: int(len(datos[c]["y"])) for c in tareas},
             "soporte": {c: {"en_fondo": sop[c]["en_fondo"], "llm": len(sop[c]["llm"]), "llm_p09": len(sop[c]["llm_p09"]),
                             "fuente": len(sop[c]["fuente"]), "clases_llm": len(por_clase([t for _, t in sop[c]["llm"]])),
@@ -217,6 +229,13 @@ def cmd_medir(a):
         raise ValueError("fondo.npz no corresponde a fondo.jsonl")
     datos = cargar(a.bateria, a.vec)
     sop = soportes(fondo, leer_varios(a.l3), leer_varios(a.fuente) if a.fuente else None)
+    if a.l3_alt:   # las etiquetas alternativas pisan a las de --l3 en los ids que tengan (el último registro de un id manda)
+        alt = leer_varios(a.l3_alt)
+        sop2 = soportes(fondo, leer_varios(a.l3) + alt)
+        ids_alt = {r["id"] for r in alt}
+        for c in sop:
+            sop[c]["llm_alt"] = sop2[c]["llm"]
+            sop[c]["reetiquetados"] = sum(1 for f in fondo if f["conjunto"] == c and f["id"] in ids_alt)
     faltan = [c for c in datos if c not in sop or not sop[c]["llm"]]
     if faltan:
         raise ValueError("sin soporte del LLM en: %s" % faltan)
@@ -226,6 +245,14 @@ def cmd_medir(a):
         out["vectores_frente_a_paso1"] = {c: round(float(max(np.abs(datos[c]["Xte"] - d1[c]["Xte"]).max(), np.abs(datos[c]["Xtr"] - d1[c]["Xtr"]).max())), 6) for c in datos}
     out.update(medir(datos, z["X"], sop, a.semillas))
     out["veredicto"] = veredicto(out)
+    if a.l3_alt:
+        out["reetiquetados_por_tarea"] = {c: sop[c].get("reetiquetados", 0) for c in sorted(datos)}
+    if a.criterio == "r6b":
+        d = out["comparacion"]["alt_menos_llm"][0]
+        out["criterios_r6b"], out["criterio_r6b_sha256"] = CRIT6B, CRIT6B_SHA
+        out["veredicto_r6b"] = {"criterio_sha256": CRIT6B_SHA, "alt_menos_llm": out["comparacion"]["alt_menos_llm"],
+                                "estado": "REFUTADO" if d <= CRIT6B["refutado_si_dif_le"] else ("PASA" if d >= CRIT6B["pasa_dif_min"] else "NO PASA")}
+        print(json.dumps(out["veredicto_r6b"], ensure_ascii=False))
     if a.criterio == "r4":
         agr = out["curvas"]["llm"]["todo"]["agrupada"][0]
         out["criterios_r4"], out["criterio_r4_sha256"] = CRIT4, CRIT4_SHA
@@ -255,12 +282,14 @@ def main(argv=None):
     m.add_argument("--vec-oro")
     m.add_argument("--salida", required=True)
     m.add_argument("--semillas", type=int, default=10)
-    m.add_argument("--criterio", choices=("r1", "r4"), default="r1", help="r4: además el veredicto del fondo ampliado (CRIT4)")
+    m.add_argument("--criterio", choices=("r1", "r4", "r6b"), default="r1", help="r4: fondo ampliado (CRIT4); r6b: etiquetas alternativas (CRIT6B)")
+    m.add_argument("--l3-alt", help="etiquetas alternativas del fondo (p. ej. logprobs de R7), una o varias separadas por comas")
     c = sp.add_parser("criterio")
-    c.add_argument("--cual", choices=("r1", "r4"), default="r1")
+    c.add_argument("--cual", choices=("r1", "r4", "r6b"), default="r1")
     a = ap.parse_args(argv)
     if a.cmd == "criterio":
-        print(*((CRIT4_SHA, json.dumps(CRIT4, sort_keys=True)) if a.cual == "r4" else (CRIT_SHA, json.dumps(CRIT, sort_keys=True))))
+        print(*{"r1": (CRIT_SHA, json.dumps(CRIT, sort_keys=True)), "r4": (CRIT4_SHA, json.dumps(CRIT4, sort_keys=True)),
+                "r6b": (CRIT6B_SHA, json.dumps(CRIT6B, sort_keys=True, ensure_ascii=False))}[a.cual])
         return
     {"vectores": cmd_vectores, "medir": cmd_medir}[a.cmd](a)
 
