@@ -1,0 +1,384 @@
+{
+ "que_es": "latencia de L0-L2 de Chispa en contenedor con 1 vCPU y 1800 MB (sustituto de Lambda; no es Lambda)",
+ "contenedor": {
+  "flags": "--cpus=1 --memory=1800m --memory-swap=1800m --network none --read-only",
+  "cpuset": "7",
+  "imagen": "chispa-latencia-1vcpu:eecde54697ce",
+  "imagen_base": "python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b",
+  "digest_base": "python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b",
+  "onnxruntime_pin": "1.31.1",
+  "cache_de_paginas_vaciada_antes_de_cada_frio": true
+ },
+ "frio": {
+  "corridas": [
+   {
+    "rc": 0,
+    "docker_run_entero_ms": 5525,
+    "load1": 3.48,
+    "ok": true,
+    "desde_arranque_proceso_ms": 3670.0,
+    "carga_ms": {
+     "chispa_abrir_ms": 1.04,
+     "L0_ms": 0.0,
+     "L1_ms": 1199.98,
+     "L2_ms": 906.62,
+     "torres_ms": 791.8
+    },
+    "import_ms": 395.96,
+    "primera_peticion_ms": {
+     "L1": 13.517,
+     "L2": 13.878,
+     "cadena": 27.401,
+     "torres": 29.967,
+     "cadena_zero_shot": 57.362
+    },
+    "segunda_peticion_ms": {
+     "L1": 9.839,
+     "L2": 8.285,
+     "cadena": 18.128,
+     "torres": 27.621,
+     "cadena_zero_shot": 45.744
+    },
+    "rss_pico_mb": 1423.2,
+    "cgroup": {
+     "cpu_max": "100000 100000",
+     "memory_max": "1887436800",
+     "memory_swap_max": "0",
+     "memory_peak_bytes": "1553584128",
+     "memory_current_bytes": "1533636608"
+    },
+    "omitidos": {
+     "L0": "sin sección L0TF ni --l0tf; el .chispa trae la sección L0 de kindling v2 (modelo lineal), que este banco no sabe leer"
+    }
+   },
+   {
+    "rc": 0,
+    "docker_run_entero_ms": 4991,
+    "load1": 3.28,
+    "ok": true,
+    "desde_arranque_proceso_ms": 3490.0,
+    "carga_ms": {
+     "chispa_abrir_ms": 1.0,
+     "L0_ms": 0.0,
+     "L1_ms": 1169.14,
+     "L2_ms": 897.62,
+     "torres_ms": 790.65
+    },
+    "import_ms": 323.64,
+    "primera_peticion_ms": {
+     "L1": 13.658,
+     "L2": 13.884,
+     "cadena": 27.547,
+     "torres": 30.821,
+     "cadena_zero_shot": 58.363
+    },
+    "segunda_peticion_ms": {
+     "L1": 10.146,
+     "L2": 8.471,
+     "cadena": 18.622,
+     "torres": 28.454,
+     "cadena_zero_shot": 47.071
+    },
+    "rss_pico_mb": 1422.9,
+    "cgroup": {
+     "cpu_max": "100000 100000",
+     "memory_max": "1887436800",
+     "memory_swap_max": "0",
+     "memory_peak_bytes": "1553604608",
+     "memory_current_bytes": "1535229952"
+    },
+    "omitidos": {
+     "L0": "sin sección L0TF ni --l0tf; el .chispa trae la sección L0 de kindling v2 (modelo lineal), que este banco no sabe leer"
+    }
+   },
+   {
+    "rc": 0,
+    "docker_run_entero_ms": 5298,
+    "load1": 3.1,
+    "ok": true,
+    "desde_arranque_proceso_ms": 3800.0,
+    "carga_ms": {
+     "chispa_abrir_ms": 1.08,
+     "L0_ms": 0.0,
+     "L1_ms": 1208.88,
+     "L2_ms": 972.26,
+     "torres_ms": 856.68
+    },
+    "import_ms": 398.85,
+    "primera_peticion_ms": {
+     "L1": 17.025,
+     "L2": 15.981,
+     "cadena": 33.01,
+     "torres": 31.318,
+     "cadena_zero_shot": 64.323
+    },
+    "segunda_peticion_ms": {
+     "L1": 11.988,
+     "L2": 8.405,
+     "cadena": 20.398,
+     "torres": 28.298,
+     "cadena_zero_shot": 48.692
+    },
+    "rss_pico_mb": 1423.1,
+    "cgroup": {
+     "cpu_max": "100000 100000",
+     "memory_max": "1887436800",
+     "memory_swap_max": "0",
+     "memory_peak_bytes": "1553408000",
+     "memory_current_bytes": "1534771200"
+    },
+    "omitidos": {
+     "L0": "sin sección L0TF ni --l0tf; el .chispa trae la sección L0 de kindling v2 (modelo lineal), que este banco no sabe leer"
+    }
+   },
+   {
+    "rc": 0,
+    "docker_run_entero_ms": 5409,
+    "load1": 2.93,
+    "ok": true,
+    "desde_arranque_proceso_ms": 3820.0,
+    "carga_ms": {
+     "chispa_abrir_ms": 1.03,
+     "L0_ms": 0.0,
+     "L1_ms": 1232.14,
+     "L2_ms": 973.93,
+     "torres_ms": 850.58
+    },
+    "import_ms": 398.93,
+    "primera_peticion_ms": {
+     "L1": 17.095,
+     "L2": 15.906,
+     "cadena": 33.007,
+     "torres": 31.506,
+     "cadena_zero_shot": 64.507
+    },
+    "segunda_peticion_ms": {
+     "L1": 12.391,
+     "L2": 8.405,
+     "cadena": 20.801,
+     "torres": 28.91,
+     "cadena_zero_shot": 49.706
+    },
+    "rss_pico_mb": 1423.0,
+    "cgroup": {
+     "cpu_max": "100000 100000",
+     "memory_max": "1887436800",
+     "memory_swap_max": "0",
+     "memory_peak_bytes": "1553498112",
+     "memory_current_bytes": "1534599168"
+    },
+    "omitidos": {
+     "L0": "sin sección L0TF ni --l0tf; el .chispa trae la sección L0 de kindling v2 (modelo lineal), que este banco no sabe leer"
+    }
+   },
+   {
+    "rc": 0,
+    "docker_run_entero_ms": 5444,
+    "load1": 2.78,
+    "ok": true,
+    "desde_arranque_proceso_ms": 3790.0,
+    "carga_ms": {
+     "chispa_abrir_ms": 1.11,
+     "L0_ms": 0.0,
+     "L1_ms": 1229.05,
+     "L2_ms": 969.44,
+     "torres_ms": 830.94
+    },
+    "import_ms": 399.14,
+    "primera_peticion_ms": {
+     "L1": 16.561,
+     "L2": 15.956,
+     "cadena": 32.521,
+     "torres": 30.858,
+     "cadena_zero_shot": 63.375
+    },
+    "segunda_peticion_ms": {
+     "L1": 12.542,
+     "L2": 8.373,
+     "cadena": 20.92,
+     "torres": 28.508,
+     "cadena_zero_shot": 49.424
+    },
+    "rss_pico_mb": 1423.4,
+    "cgroup": {
+     "cpu_max": "100000 100000",
+     "memory_max": "1887436800",
+     "memory_swap_max": "0",
+     "memory_peak_bytes": "1553563648",
+     "memory_current_bytes": "1534664704"
+    },
+    "omitidos": {
+     "L0": "sin sección L0TF ni --l0tf; el .chispa trae la sección L0 de kindling v2 (modelo lineal), que este banco no sabe leer"
+    }
+   }
+  ],
+  "resumen_desde_arranque_proceso_ms": {
+   "n": 5,
+   "min": 3490.0,
+   "mediana": 3790.0,
+   "max": 3820.0
+  },
+  "resumen_docker_run_entero_ms": {
+   "n": 5,
+   "min": 4991,
+   "mediana": 5409.0,
+   "max": 5525
+  }
+ },
+ "caliente": {
+  "fase": "caliente",
+  "hilos": 1,
+  "max_tok": 128,
+  "opciones": 6,
+  "import_ms": 74.06,
+  "entorno": {
+   "cpu": "Intel(R) Xeon(R) Platinum 8488C",
+   "nucleos_visibles": 8,
+   "afinidad": 1,
+   "carga_1_5_15": [
+    2.79443359375,
+    5.2080078125,
+    3.93115234375
+   ],
+   "cgroup": {
+    "cpu_max": "100000 100000",
+    "memory_max": "1887436800",
+    "memory_swap_max": "0",
+    "memory_peak_bytes": "26165248",
+    "memory_current_bytes": "26165248"
+   },
+   "python": "3.12.16",
+   "numpy": "2.5.4",
+   "onnxruntime": "1.31.1",
+   "tokenizers": "0.23.3"
+  },
+  "carga_ms": {
+   "chispa_abrir_ms": 0.05,
+   "L0_ms": 0.0,
+   "L1_ms": 1088.35,
+   "L2_ms": 659.16,
+   "torres_ms": 680.39
+  },
+  "artefactos": {
+   "chispa": {
+    "ruta": "/artefactos/modelo-int8.chispa",
+    "bytes": 249716640,
+    "secciones": [
+     "CALIB",
+     "ESQUEMAS",
+     "L0",
+     "L1",
+     "L2",
+     "META",
+     "SOPL1",
+     "TORR"
+    ]
+   }
+  },
+  "omitidos": {
+   "L0": "sin sección L0TF ni --l0tf; el .chispa trae la sección L0 de kindling v2 (modelo lineal), que este banco no sabe leer"
+  },
+  "capas_medidas": [
+   "L1",
+   "L2",
+   "torres"
+  ],
+  "textos": {
+   "origen": "/entrada/textos.jsonl",
+   "n": 400,
+   "calentamiento": 20,
+   "filas_distintas_en_la_fuente": 1218
+  },
+  "caliente": {
+   "L1": {
+    "n": 400,
+    "p50_ms": 1.462,
+    "p95_ms": 4.49,
+    "p99_ms": 6.912,
+    "media_ms": 1.843,
+    "max_ms": 8.382
+   },
+   "L2": {
+    "n": 400,
+    "p50_ms": 6.644,
+    "p95_ms": 9.112,
+    "p99_ms": 9.712,
+    "media_ms": 6.871,
+    "max_ms": 10.86
+   },
+   "torres": {
+    "n": 400,
+    "p50_ms": 27.586,
+    "p95_ms": 32.49,
+    "p99_ms": 33.829,
+    "media_ms": 28.023,
+    "max_ms": 39.232
+   },
+   "cadena": {
+    "n": 400,
+    "p50_ms": 8.582,
+    "p95_ms": 12.969,
+    "p99_ms": 15.624,
+    "media_ms": 8.718,
+    "max_ms": 18.097
+   },
+   "cadena_zero_shot": {
+    "n": 400,
+    "p50_ms": 36.55,
+    "p95_ms": 42.11,
+    "p99_ms": 45.163,
+    "media_ms": 36.737,
+    "max_ms": 45.983
+   },
+   "L2_por_tokens": {
+    "<=16": {
+     "n": 55,
+     "p50_ms": 4.869,
+     "p95_ms": 5.2,
+     "p99_ms": 5.325,
+     "media_ms": 4.829,
+     "max_ms": 5.347
+    },
+    "<=32": {
+     "n": 203,
+     "p50_ms": 6.257,
+     "p95_ms": 6.982,
+     "p99_ms": 7.343,
+     "media_ms": 6.256,
+     "max_ms": 7.566
+    },
+    "<=64": {
+     "n": 142,
+     "p50_ms": 8.461,
+     "p95_ms": 9.548,
+     "p99_ms": 10.394,
+     "media_ms": 8.541,
+     "max_ms": 10.86
+    }
+   },
+   "tokens_l2": {
+    "p50": 28.0,
+    "p95": 42.0,
+    "max": 54
+   }
+  },
+  "rss_pico_mb": 1464.6,
+  "cgroup_al_final": {
+   "cpu_max": "100000 100000",
+   "memory_max": "1887436800",
+   "memory_swap_max": "0",
+   "memory_peak_bytes": "1424220160",
+   "memory_current_bytes": "1424220160"
+  }
+ },
+ "caliente_rc": 0,
+ "omitidos": {
+  "L0": "sin sección L0TF ni --l0tf; el .chispa trae la sección L0 de kindling v2 (modelo lineal), que este banco no sabe leer"
+ },
+ "advertencias": [],
+ "carga_instancia": [
+  "carga antes: 3.70 5.62 4.02 2/271 5635",
+  "docker: 25.0.18",
+  "carga después: 2.40 5.00 3.88 2/270 6283"
+ ]
+}
