@@ -38,7 +38,7 @@ CRIT8E_SHA = hashlib.sha256(json.dumps(CRIT8E, sort_keys=True, ensure_ascii=Fals
 # nunca usadas. Mismos umbrales que CRIT8E; `tope` dice cómo se cuenta el ≤ 30 %.
 CRIT9E = dict(CRIT8E, regla="por tarea: AUROC del margen < 0.55 en la selección -> escalar siempre; resto por margen con f global",
               auroc_siempre_lt=0.55, seleccion="semillas 0-9, mitad de calibración", validacion="semillas 10-19 (nuevas), mitad de validación",
-              tope="__TOPE__")
+              tope="__TOPE__", escalado_total_max=0.50)
 def crit9(tope):
     c = dict(CRIT9E, tope=tope)
     return c, hashlib.sha256(json.dumps(c, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
@@ -231,7 +231,8 @@ def medir_por_tarea(tareas, tope):
     esc = m["escalado_resto"] if tope == "sin_siempre" else m["escalado_todas"]
     v = {"criterio_sha256": sha, "tope": tope, "siempre": siempre, "fraccion": f_el, **m}
     v["c_auroc"] = bool(m["auroc_resto"] >= crit["pasa_auroc_min"])
-    v["c_cascada"] = bool(esc <= crit["escalado_max"] + 1e-9 and m["cascada_menos_l3"] >= -crit["pasa_dist_l3_max"])
+    v["c_cascada"] = bool(esc <= crit["escalado_max"] + 1e-9 and m["escalado_todas"] <= crit["escalado_total_max"] + 1e-9
+                          and m["cascada_menos_l3"] >= -crit["pasa_dist_l3_max"])
     v["estado"] = "REFUTADO" if m["auroc_resto"] < crit["refutado_si_auroc_lt"] else ("PASA" if v["c_auroc"] and v["c_cascada"] else "NO PASA")
     return {"criterio": crit, "seleccion": {"auroc_margen_por_tarea": {c: round(a, 4) for c, a in au_m.items()},
                                             "cascada_media": {"%.2f" % f: round(float(np.mean(x)), 4) for f, x in casc.items()}},
