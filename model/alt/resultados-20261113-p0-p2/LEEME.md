@@ -1186,3 +1186,4 @@ Ficheros: `escalado-b61eb53.json`, solo cifras. Vectores calculados en el i7 con
   - User-data: `lanzados/ud-knn-r8b-cc82027.sh` (sha256 `de074711…`). Entradas en `s3://…/knn-r8b-cc82027/`.
   - Prueba en seco en el i7, con las etiquetas L3 recortadas a 300 filas: pasó.
   - `--dry-run`: DryRunOperation.
+- **Siguiente hipótesis** (anotada; no se mide sobre estos datos): una señal propia para hatecheck-es, o escalar siempre las tareas cuyo margen tenga un AUROC < 0,55 en la selección. Se congela antes de medir y se valida en semillas nuevas.
