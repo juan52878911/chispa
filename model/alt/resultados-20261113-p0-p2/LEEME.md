@@ -567,3 +567,72 @@ Las 3 116 filas se hicieron en 824 s; 3 027 respuestas son válidas. Cifras en `
 
 - **Lectura para la arquitectura:** el LLM en producción (Q4) es muy bueno en hatecheck-es y jailbreak, pero no sirve como clasificador de muchas opciones (massive). Tampoco da una señal de escalado útil (AUROC de pmax 0,517 en hatecheck-es).
   Encaja más como etiquetador o como juez de casos de pocas opciones que como cascada general.
+
+
+## 13. Rondas R1, R2 y R3 hacia uso general (preparadas, sin lanzar; código 1208cd9)
+
+Objetivo: que Chispa sirva para tareas que no ha visto (zero-shot y few-shot). Rama `llm-rondas-r123`, sin push. Gasto antes de estas rondas ≈ 4,1 de 35 USD.
+
+### 13.1 R1, paso 3: kNN-e5 con soporte etiquetado por el LLM (c7i.2xlarge, ≤ 40 min, ≤ 0,4 USD)
+
+**Criterio congelado antes de medir** (`model/alt/knn_soporte_llm.py`, `CRIT`; el user-data aborta si el código trae otro):
+sha256 `5e0c38a679aed8f064cbc10e5df271075d2c5a0b22c8ad08ce8a99508aebafb9` de
+`{"agrupada_min": 0.55, "hatecheck_min": 0.6, "perdida_max": 0.03, "referencia": "oro/todo", "refutado_si_agrupada_le": 0.516, "variante": "llm/todo"}`.
+- Variante medida: kNN (32 vecinos, temperatura 0,05, como el paso 1) con soporte = los textos del fondo con respuesta válida de Qwen3-4B bf16 (7 372 de 8 137), etiqueta = top-1 del LLM, todo el soporte.
+- Referencia: kNN con soporte de oro (split train de la batería, ≤ 8 por clase), todo el soporte, con los vectores de la misma máquina.
+- **PASA** si pierde ≤ 3 puntos agrupados frente a la referencia, la agrupada da ≥ 0,55 y hatecheck-es ≥ 0,60. **REFUTADO** si la agrupada queda ≤ 0,516 (nivel de L2). Si no, NO PASA.
+- Agrupada = aciertos / casos en todo el test de las 6 tareas (6 651 filas), la misma medida que el 0,580 del paso 1. Diferencia con IC95 pareado (bootstrap por tarea) y McNemar.
+
+Curvas (descriptivas, no deciden): oro con k = 1, 2, 4, 8 por clase; LLM con k = 1, 2, 4, 8, 16, 32, 64, 128 por clase y todo (10 semillas); LLM solo con p ≥ 0,9;
+oro ∪ LLM; y el mismo fondo con la etiqueta de su fuente (k = 8, 32, 128 y todo), que separa el efecto del tamaño del soporte del ruido del LLM. Cada punto lleva el
+soporte medio por clase que hubo de verdad (hatecheck-es solo tiene 180 textos de fondo; massive-es, unos 33 por clase).
+
+- Instancia: c7i.2xlarge bajo demanda (0,357 USD/h), la misma DLAMI (arranca sin GPU), 100 GB gp3, terminate al apagar, `shutdown -h +40`, espera de `verificado` 6 min.
+- Pasos: transformers 5.22.2 → entradas por nombre exacto y recuentos → criterio (sha) → e5-small @ 614241f6 → vectores de batería y fondo → `knn_soporte_llm medir`.
+- Entradas en `s3://chispa-pruebas-cuenta-aws/knn-llm-1208cd9/` (sha256): codigo.tgz `f04d66d5…`, bateria.tgz `b1b2ca54…`, vec-paso1.tgz `19d903fc…`,
+  fondo.jsonl `5bb146ef…`, l3_fondo.jsonl `927e84d2…`, fondo-fuente.jsonl `9a4f7fd2…`. User-data: `lanzados/ud-knn-llm-1208cd9.sh`.
+- **Prueba en seco en el i7** (modo local, el ud sin sustituir, 300 textos de fondo y los vectores del paso 1): entradas, criterio, vectores (54 s) y medir (46 s)
+  pasaron en 158 s. El kNN de oro reproduce 0,5801. Las cifras del LLM con 300 textos no significan nada (unos 50 por tarea) y no se usan.
+
+### 13.2 R2, paso 5: Qwen3-1.7B y Qwen3-0.6B en la batería (g5.xlarge, ≤ 50 min, ≤ 0,9 USD)
+
+**Criterio congelado** (`model/alt/llm_bateria.py`, `CRIT5`): sha256 `767064e1fd6b805cafcd4aafc881cdee3de9f596b90e3905f11df7567555a971` de
+`{"pasa_agrupada_min": 0.62, "pasa_hatecheck_min": 0.75, "refutado_agrupada_bajo": 0.58}`. **PASA** (sirve como L3 barato) si la agrupada ponderada (la del paso 2)
+da ≥ 0,62 y hatecheck-es ≥ 0,75. **REFUTADO** si la agrupada da < 0,58. Si no, NO PASA. Se mide por modelo y por pares con el 4B bf16 en las mismas 3 116 filas.
+
+- Modelos: `Qwen/Qwen3-1.7B` @ 70d244cc y `Qwen/Qwen3-0.6B` @ c1899de2, Apache-2.0, bf16, vLLM 0.33.0, contexto 16 k, en ese orden, con un tope de 16 min por modelo.
+- Mismo arnés que el paso 2: `llm_jevbench.py`, el esquema con todos los ids, un reintento, 32 hilos y la misma `filas.jsonl` (sha256 `7ea97957…`).
+- **Única diferencia:** los dos son híbridos y el cliente manda `chat_template_kwargs: {"enable_thinking": false}` (`--sin-pensar`). Es el modo sin pensamiento de su plantilla y el prompt no cambia. Sin esa opción, la petición es idéntica a la del paso 2.
+- Latencia:
+  - p50 y p95 de la muestra entera con 32 hilos (`ms` de cada fila);
+  - p50 y p95 con UN hilo en `lat.jsonl` (10 filas por tarea), que es la cifra de L3.
+- Estimación en el i7 para el modelo que pase: hasta ahora solo hay una medida, Q4 de 4B en CPU (unos 65 s por fila de hatecheck y unos 6 min por fila de massive-es, §12.2). Escalar por parámetros (1,7/4) es una cota gruesa. Si pasa, conviene medir 20 filas en el i7 con el GGUF Q4 del 1.7B.
+- Medición fuera: `python -m model.alt.llm_bateria pequeno --muestra DIR --ref l3_bateria.jsonl --modelo qwen3-1.7b=l3-qwen3-1.7b.jsonl --lat qwen3-1.7b=lat-qwen3-1.7b.jsonl …`.
+  Sobre la salida del 4B contra sí mismo da 0,6497 y diferencia 0, lo que confirma la medida del paso 2.
+- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-pequeno-1208cd9/`: llm.tgz `e22e3395…`, filas.jsonl `7ea97957…`. User-data: `lanzados/ud-llm-pequeno-1208cd9.sh`.
+- **Prueba en seco en el i7**: el ud sin sustituir, contra un servidor OpenAI falso que devuelve probabilidades uniformes. Pasaron los dos modelos (autoprueba, latencia, muestra y resumen). Las 12 peticiones llevaron `enable_thinking: false`.
+
+### 13.3 R3: tareas nuevas en español (sin AWS)
+
+La propuesta está en `model/alt/manifiesto-tareas-nuevas.json` y la revisión es de la sesión madre:
+- **APTO**: BSC-LT/LexBOE (tema legal, 12 clases, test 5 846, CC BY 4.0 y reutilización del BOE).
+- **APTO con reserva**: MultiEURLEX es, nivel 1 (21 clases, multietiqueta, CC BY 4.0 y EUR-Lex).
+- **DUDOSO**: fake news en español (572 filas, CC BY 4.0).
+
+Las demás se descartaron por -SA, -NC, términos de Twitter o licencia sin verificar. Quedan huecos: no hay candidato apto para NLI, paráfrasis, emoción ni atención al cliente.
+
+### 13.4 Orden de lanzamiento (las dos caben a la vez: la c7i no cuenta en la cuota G de 8 vCPU)
+```
+aws ec2 run-instances --region us-east-1 --image-id ami-ejemplo --instance-type c7i.2xlarge --count 1 \
+  --subnet-id subnet-ejemplo --security-group-ids sg-ejemplo --iam-instance-profile Name=rol-ec2-pruebas \
+  --instance-initiated-shutdown-behavior terminate \
+  --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
+  --user-data file://model/alt/aws/lanzados/ud-knn-llm-1208cd9.sh \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-knn-llm-1208cd9}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-knn-llm-1208cd9}]'
+aws ec2 run-instances --region us-east-1 --image-id ami-ejemplo --instance-type g5.xlarge --count 1 \
+  --subnet-id subnet-ejemplo --security-group-ids sg-ejemplo --iam-instance-profile Name=rol-ec2-pruebas \
+  --instance-initiated-shutdown-behavior terminate \
+  --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
+  --user-data file://model/alt/aws/lanzados/ud-llm-pequeno-1208cd9.sh \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-1208cd9}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-1208cd9}]'
+```

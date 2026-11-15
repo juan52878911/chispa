@@ -1,0 +1,35 @@
+{
+ "_que": "R3: tareas en español que la batería no tiene, para el paso 4 (L3 asíncrono con banco de prototipos). Propuesta para revisar; nada descargado ni usado todavía.",
+ "_regla_de_licencia": "uso comercial y sin copyleft: CC0, CC BY, MIT, Apache-2.0, ODC-BY, CDLA-Permissive o declaración explícita de uso libre. Fuera: -SA, -NC, CDLA-Sharing, solo investigación, términos de Twitter/Amazon/Reuters y licencias sin verificar. Si la fuente del texto es más restrictiva que la tarjeta, manda la fuente.",
+ "_verificado": "2026-11-15: tarjeta de HF por API (id, sha, licencia, ficheros) y la fuente original por web. La lectura de las fuentes la hizo un subagente; la revisión final es de la sesión madre o de Juan.",
+ "propuestas": [
+  {"nombre": "lexboe", "repo": "BSC-LT/LexBOE", "rev": "d7263e2fe26a27be17dfa0908a2b61aff674ba45", "veredicto": "APTO",
+   "licencia_tarjeta": "cc-by-4.0", "licencia_fuente": "aviso legal del BOE: reutilización comercial con atribución («Fuente: Agencia Estatal Boletín Oficial del Estado»), sin desnaturalizar el sentido, indicando modificaciones y sin sugerir respaldo oficial",
+   "url_licencia": ["https://huggingface.co/datasets/BSC-LT/LexBOE", "https://www.boe.es/informacion/aviso_legal/"],
+   "tarea": "tema legal-administrativo", "clases": 12, "nota_clases": "la tarjeta dice 14 pero su tabla lista 12: contarlas al convertir",
+   "splits": {"train": 46762, "dev": 5845, "test": 5846}, "ficheros": ["train.jsonl", "dev.jsonl", "test.jsonl"], "variante": "España, texto original (2022-2024)",
+   "riesgos": "textos largos: e5 corta a 256 tokens; léxico jurídico; obligación de atribución en cualquier derivado"},
+  {"nombre": "multieurlex-es-n1", "repo": "coastalcph/multi_eurlex", "config": "es", "rev": "d0318b7f68f43f7d77797437ce172d899254cd0f", "veredicto": "APTO con reserva",
+   "licencia_tarjeta": "cc-by-4.0 («same licensing as the original EU data»)", "licencia_fuente": "EUR-Lex, Decisión 2011/833/UE: reutilización comercial o no comercial con atribución; metadatos CC0",
+   "url_licencia": ["https://huggingface.co/datasets/coastalcph/multi_eurlex", "https://eur-lex.europa.eu/content/legal-notice/legal-notice.html"],
+   "tarea": "tema EUROVOC de nivel 1", "clases": 21, "splits": {"train": 52785, "dev": 5000, "test": 5000}, "variante": "traducción humana oficial de la UE",
+   "riesgos": "multietiqueta: para el arnés de una etiqueta habría que quedarse con los documentos de un solo descriptor de nivel 1 o medir F1 por etiqueta; carga por script (multi_eurlex.py) con un tar.gz de todas las lenguas; documentos con condiciones propias de EUR-Lex no revisados uno a uno"},
+  {"nombre": "fakenews-es", "repo": "mariagrandury/fake_news_corpus_spanish", "rev": "d12e41747833a4ea41732bcd3660fd14e32e7138", "veredicto": "DUDOSO",
+   "licencia_tarjeta": "cc-by-4.0", "licencia_fuente": "github.com/jpposadas/FakeNewsCorpusSpanish: CC BY 4.0",
+   "tarea": "noticia falsa o verdadera", "clases": 2, "splits": {"test": 572}, "variante": "España y Latinoamérica (sobre todo México)",
+   "riesgos": "solo 572 filas y sin train (zero-shot sí, few-shot apenas); etiqueta booleana sin documentar; textos de prensa de terceros bajo la CC BY del corpus"}
+ ],
+ "descartadas": [
+  {"repo": "mteb/SpanishNewsClassification", "licencia": "mit en la tarjeta, origen MarcOrfilaCarreras/spanish-news inaccesible (401)", "motivo": "licencia sin respaldo en la fuente"},
+  {"repo": "google-research-datasets/paws-x (es)", "licencia": "«may be freely used for any purpose», texto de Wikipedia (CC BY-SA)", "motivo": "la fuente es -SA"},
+  {"repo": "fmplaza/EmoEvent", "licencia": "apache-2.0 en la tarjeta, tuits", "motivo": "términos de Twitter; solapa con tuits-es"},
+  {"repo": "PlanTL-GOB-ES/WikiCAT_esv2", "licencia": "cc-by-sa-3.0 en metadatos (contradictoria)", "motivo": "-SA"},
+  {"repo": "Davlan/sib200", "licencia": "cc-by-sa-4.0", "motivo": "-SA"},
+  {"repo": "PlanTL-GOB-ES/MLDoc", "licencia": "cc-by-nc-4.0, acceso restringido", "motivo": "-NC"},
+  {"repo": "facebook/xnli", "licencia": "sin campo en HF; CC BY-NC según su autor", "motivo": "-NC"},
+  {"repo": "PhilipMay/stsb_multi_mt", "licencia": "other, traducción con DeepL", "motivo": "sin verificar y regresión"},
+  {"repo": "mteb/mtop_domain", "licencia": "sin campo en HF", "motivo": "sin verificar y solapa con MASSIVE"},
+  {"repo": "PolyAI/banking77", "licencia": "cc-by-4.0", "motivo": "inglés"}
+ ],
+ "huecos": "No hay candidato apto en español para NLI, paráfrasis, emoción, quejas/atención al cliente ni médico; las dos aptas son de dominio legal."
+}
