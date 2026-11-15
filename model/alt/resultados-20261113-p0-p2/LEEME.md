@@ -497,3 +497,42 @@ El binario CUDA de llama.cpp no carga en AL2023 por glibc. Hay dos salidas sin c
 - **(b)** el GGUF en vLLM 0.33.0 (experimental; no es el runtime de producción).
 
 Una ronda solo de Q4 con el user-data de esta y las fases A y C desactivadas costaría ≈ 0,4 USD. La de esta ronda fue la primera falla.
+
+### 12.6 Ronda solo de Q4: llama.cpp en el contenedor oficial CUDA (preparada, sin lanzar)
+
+Juan eligió la opción (a), con tope de 0,6 USD. User-data: `model/alt/aws/llm_q4.sh` → `lanzados/ud-llm-q4-8deacf2.sh`
+(7 796 B, sha256 `4bdc197bc0855d56184989b8da6ee9db69aa61c357c6b96148c79eaeb3afd727`).
+
+- **Imagen fijada por digest:** `ghcr.io/ggml-org/llama.cpp@sha256:e110d1ae4a3572398950e7b64b5abd585a3eab678ae726484f743a12140bdc40`. Es el manifiesto linux/amd64 de
+  `server-cuda12` (índice `sha256:cabbb32a…`), 2,62 GB comprimida, `org.opencontainers.image.version` **b12375**, commit 9d25e00, CUDA 12.8.1, creada el 2026-11-14.
+  No hay imagen con versión para b12138: `server-cuda-b12138` y `server-cuda12-b12138` dan 404 en ghcr.io, y las etiquetas con versión de CUDA acaban en b11206.
+  Por eso el runtime es b12375, no el b12138 de la prueba en el i7. El GGUF es el mismo; solo cambia la versión de llama.cpp.
+- **Autoprueba antes del GGUF:** que existan `docker` y `docker info`, `docker pull` por digest, `docker run --rm --gpus all IMAGEN --version` y `--list-devices`, que debe listar `CUDA0`
+  (comprobado en el código de b12375: `common_print_available_devices`). Si algo falla, FALLO y cierre en ≈ 3 min.
+- **Lo mismo que la ronda bf16:**
+  - el GGUF `unsloth/…-GGUF` @ a06e946b, por URL fija de HF y sha256 `3605803b…`;
+  - `filas-q4.jsonl` (sha256 `757fcae0…`);
+  - `llm.tgz` (sha256 `9cae2eea…`, el mismo cliente);
+  - formato `json_schema` y un reintento;
+  - `-np 16 -c 98304`, `-fa on`, `--jinja`, 16 hilos de cliente.
+
+  Antes de las 3 116 filas hay una autoprueba de una fila por tarea.
+- **Tiempo y coste:** `shutdown -h +33` y el vigilante corta el cliente a los 22 min; el resto se mide en las filas con respuesta. Espera `verificado` hasta 6 min.
+  Coste máximo ≈ 0,57 USD (con el arranque), más el EBS de 100 GB.
+- **Claves en `llm-q4-8deacf2/`:**
+  - **Lee:** `llm.tgz` y `filas-q4.jsonl`. Subidas y vueltas a bajar con el mismo sha256.
+  - **Escribe:** `log.txt`, `listo` y `resultados.tgz`.
+  - **Espera:** `verificado`.
+
+  Las 6 estaban libres.
+- **Prueba en seco en el i7** (modo local, una fila, llama-server b12138 en CPU, el ud exacto): pasaron las entradas, la autoprueba, Q4 y la subida simulada, en 36 s. `medir --q4` produce las inválidas y la
+  diferencia por tarea y el McNemar agrupado. **No probado:** docker y el toolkit de NVIDIA en la DLAMI (no hay docker en el i7); por eso la autoprueba cierra en cuanto falla.
+- **Criterio:** el Q4 pierde ≤ 2 puntos frente al bf16 en las mismas filas (agrupada ponderada, IC95 por pares y McNemar), y se miran las inválidas por tarea, sobre todo en massive.
+- **Orden** (con `--dry-run` responde `DryRunOperation`):
+
+      aws ec2 run-instances --region us-east-1 --image-id ami-004851d2e6f24b4b4 --instance-type g5.xlarge --count 1 \
+        --subnet-id subnet-0b152606d6e4aedd2 --security-group-ids sg-0caaea4ac99da8ca1 --iam-instance-profile Name=chispa-pruebas-ec2 \
+        --instance-initiated-shutdown-behavior terminate \
+        --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
+        --user-data file://model/alt/aws/lanzados/ud-llm-q4-8deacf2.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-8deacf2}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-8deacf2}]'
