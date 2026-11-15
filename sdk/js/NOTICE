@@ -5,7 +5,7 @@ Licenciado bajo Apache-2.0 (ver LICENSE). Este producto incluye o deriva de lo s
 
 == Código ==
 - Go y su biblioteca estándar — BSD-3-Clause, Copyright The Go Authors. Incluye demo/wasm/wasm_exec.js y
-  wasm_exec_node.js (texto de la licencia en demo/wasm/LICENSE.go).
+  wasm_exec_node.js (texto de la licencia en demo/wasm/LICENSE).
 - github.com/juan52878911/kindling v0.17.0 — Apache-2.0, Copyright the kindling authors (enlazado en el servidor, el formato y los SDK móviles).
   Sin verificar: la titularidad de «the kindling authors».
 - github.com/yalue/onnxruntime_go — MIT, Copyright (c) 2023 Nathan Otterness.
