@@ -927,3 +927,58 @@ R6 se mide tal como se congeló, con estas etiquetas en JSON. En lexboe, el fluj
 - Entradas, todas en `s3://…/knn-r6-12ebb49/`: l3_fondo2 `a100a537…`, l3_nuevas `52874409…`, codigo.tgz `7a0f2884…`, latencia.tgz `cc6aeb84…`.
 - Latencia con `modelo-int8.chispa` de `movil-90e3263c/movil`; el sha256 se comprueba antes de medir.
 - `--dry-run` da DryRunOperation.
+
+### 14.8 Resultados de R6 en la c7i (EC2 inst-34, 2026-11-15): R4 NO PASA, R6 REFUTADO; versiones y latencia
+
+La instancia trabajó 995 s y terminó a los ≈ 19 min, por ≈ 0,11 USD. Ficheros (solo cifras): `knn-r4-12ebb49.json`, `prequential-r6-12ebb49.json`, `versiones-r6-12ebb49.jsonl` y `latencia-1vcpu-12ebb49.json`.
+
+**R4, kNN con el fondo ampliado (CRIT4 `a273e927…`): NO PASA.**
+- La agrupada da 0,6389, frente a 0,6381 en R1. No llega a 0,66, pero tampoco cae a ≤ 0,638.
+- El fondo2 solo creció en massive-esc: de 1 614 a 3 824 textos válidos. massive-esc pasó de 0,644 a 0,647; el resto no cambió.
+- Con los mismos textos y la etiqueta de la fuente, el kNN da 0,712, frente a 0,690 en R1. Más soporte limpio sí sube la curva; el del LLM en JSON, apenas.
+
+**R6, simulación prequential (CRIT_R6 `288d1260…`): REFUTADO.**
+- Las nuevas agrupadas con `preq_oro_fondo` dan 0,471, frente a 0,632 del estático de oro (−16,0 puntos).
+- Las originales no pierden frente a oro ∪ LLM estático. Con `preq_oro_fondo` dan 0,711, frente a 0,7105, y en ninguna tarea se pierden más de 2 puntos.
+
+| tarea | oro estático | oro ∪ LLM estático | preq oro | preq oro ∪ fondo | preq oro (umbral, descriptivo) | preq oro ∪ fondo (umbral, descriptivo) | LLM directo |
+|---|---|---|---|---|---|---|---|
+| hatecheck-es | 0,6925 | 0,7345 | 0,725 | 0,731 | 0,693 | 0,697 | 0,824 |
+| lexboe | 0,6085 | **0,2075** | 0,253 | **0,203** | 0,648 | 0,637 | 0,067 |
+| fakenews-es | 0,500 | 0,500 | 0,500 | 0,500 | 0,500 | 0,500 | 0,559 |
+| inyecciones | 0,767 | 0,569 | 0,745 | 0,573 | 0,695 | 0,585 | 0,569 |
+| jailbreak | 0,556 | 0,960 | 0,704 | 0,964 | 0,737 | 0,962 | 0,924 |
+| massive-es | 0,480 | 0,520 | 0,484 | 0,542 | 0,491 | 0,546 | 0,444 |
+| massive-esc | 0,580 | 0,664 | 0,607 | 0,674 | 0,610 | 0,650 | 0,564 |
+| tuits-es | 0,496 | 0,572 | 0,513 | 0,567 | 0,499 | 0,568 | 0,636 |
+| **nuevas agrupadas** | 0,632 | 0,475 | 0,490 | **0,471** | **0,649** | 0,646 | |
+| **originales agrupadas** | 0,6425 | 0,7105 | 0,678 | **0,711** | 0,658 | 0,688 | |
+
+Lectura:
+- **Lo refuta lexboe, y lexboe mide sobre todo el JSON** (reserva pedida por la sesión madre). Las etiquetas del 4B en JSON aciertan un 6,7 % en lexboe: el 45 % son inválidas y las válidas dan ≈ 0,15. El voto con α = 0,5 no frena ese ruido y hunde el kNN de 0,61 a 0,20.
+- **La regla del umbral** (si el oro más cercano tiene similitud ≥ 0,90, se usa solo el oro) sí protege lexboe: da 0,648 sin fondo y 0,637 con él. Con ella las nuevas suben 1,4–1,7 puntos sobre el oro, lejos de los 5 que pedía el criterio, y las originales ceden 2,3 puntos frente al estático oro ∪ LLM. Es descriptiva, no estaba congelada, y no cambia el veredicto.
+- **inyecciones** sigue cayendo con el LLM con cualquier regla de peso (0,767 → 0,57). Con umbral se queda en 0,695. «El oro manda» por peso no basta.
+- **fakenews-es** se queda en 0,500 con todas las variantes. Las etiquetas del LLM (0,559) no le dan al kNN nada mejor que el azar.
+- R7 y R6b repiten la medida con etiquetas por logprobs.
+
+**Diferencia de vectores frente al paso 1: cerrada.**
+- Con torch 2.5.1+cpu y transformers 4.46.3 (las versiones del paso 1), los vectores de esta c7i son **idénticos** a los del paso 1 en las 6 tareas (diferencia máxima 0,0). Frente a transformers 5.22.2 vuelven a salir 0,057 en hatecheck-es y 0,011 en jailbreak.
+- La causa es la versión de la biblioteca, no la máquina.
+- No se pudo separar torch de transformers: la variante con el torch de la AMI falló porque el venv no ve el torch de `/opt/pytorch`.
+- Para comparar entre rondas, los vectores van fijados a la versión de transformers que se use.
+
+**Latencia de L1, L2 y torres int8 con 1 vCPU y 1,8 GB** (`docker --cpus=1 --memory=1800m`, Xeon 8488C, `modelo-int8.chispa` con sha256 comprobado, 400 peticiones de tuits-es, 128 tokens, 6 opciones):
+
+| | p50 | p95 | p99 |
+|---|---|---|---|
+| L1 | 1,5 ms | 4,5 ms | 6,9 ms |
+| L2 | 6,6 ms | 9,1 ms | 9,7 ms |
+| cadena L1 + L2 | **8,6 ms** | 13,0 ms | 15,6 ms |
+| torres al vuelo | 27,6 ms | 32,5 ms | 33,8 ms |
+| cadena zero-shot (L1 + L2 + torres) | 36,6 ms | 42,1 ms | 45,2 ms |
+
+- **Frío:** desde que arranca el proceso hasta la primera respuesta pasan 3,5–3,8 s; con `docker run` entero, 5,0–5,5 s. La carga se reparte entre L1 (1,1–1,2 s) y L2/torres (0,7–0,9 s cada una).
+- **Memoria:** el pico es de 1 423 MB de RSS y 1 481 MB en el cgroup, dentro de 1,8 GB pero con poco margen.
+- L0 sale omitido: el perfil movil-int8 trae el L0 de kindling v2.
+- Es el cómputo con los mismos grafos, no el servidor Go. El frío no incluye la descarga de la imagen que haría Lambda.
+- La instancia tenía una carga de 2,4–3,7 por los pasos anteriores, aunque el contenedor iba fijado a un núcleo. Puede inflar algo las colas.
