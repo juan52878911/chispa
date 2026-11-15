@@ -1,0 +1,127 @@
+{
+ "lexboe": {
+  "repo": "BSC-LT/LexBOE",
+  "rev": "d7263e2fe26a27be17dfa0908a2b61aff674ba45",
+  "licencia": "cc-by-4.0",
+  "idioma": "es",
+  "clases_en_datos": 12,
+  "clases_sin_descripcion": [],
+  "n_eval": 2000,
+  "n_soporte": 96,
+  "k": 8,
+  "tope": 2000,
+  "tope_caracteres": 3000,
+  "cortados_eval": 988,
+  "clases": 12,
+  "eval_por_clase": {
+   "Funcionarios y Personal": 946,
+   "Administración": 268,
+   "Fuerzas de Seguridad del Estado": 15,
+   "Economía y Empleo": 85,
+   "Energía y Medio Ambiente": 90,
+   "Educación": 142,
+   "Normativas": 304,
+   "Judicial": 81,
+   "Vivienda": 7,
+   "Cultura": 20,
+   "Salud": 24,
+   "Transporte": 18
+  },
+  "atribucion": "Fuente de los datos: Agencia Estatal Boletín Oficial del Estado (BOE), vía BSC-LT/LexBOE (CC BY 4.0). Datos modificados: convertidos al formato de la batería y cortados a 3 000 caracteres.",
+  "uso": "solo medir, nunca entrenar"
+ },
+ "eurlex-n1": {
+  "repo": "coastalcph/multi_eurlex",
+  "rev": "d0318b7f68f43f7d77797437ce172d899254cd0f",
+  "licencia": "cc-by-4.0",
+  "idioma": "es",
+  "eurovoc": "nlpaueb/multi-eurlex@078092d62633ab1fc85065cc5937e60edd805095",
+  "docs_es": {
+   "dev": 5000,
+   "test": 5000,
+   "train": 52785
+  },
+  "docs_un_descriptor": {
+   "dev": 54,
+   "test": 61,
+   "train": 961
+  },
+  "test_por_clase": {
+   "UNIÓN EUROPEA": 20,
+   "medio ambiente": 9,
+   "asuntos financieros": 8,
+   "intercambios económicos y comerciales": 6,
+   "agricultura, silvicultura y pesca": 5,
+   "relaciones internacionales": 4,
+   "transportes": 4,
+   "educación y comunicación": 2,
+   "sector agroalimentario": 1,
+   "energía": 1,
+   "derecho": 1
+  },
+  "train_por_clase": {
+   "UNIÓN EUROPEA": 67,
+   "sector agroalimentario": 158,
+   "transportes": 60,
+   "asuntos financieros": 112,
+   "trabajo y empleo": 7,
+   "agricultura, silvicultura y pesca": 245,
+   "energía": 8,
+   "intercambios económicos y comerciales": 213,
+   "economía": 20,
+   "producción, tecnología e investigación": 13,
+   "relaciones internacionales": 3,
+   "industria": 2,
+   "empresa y competencia": 15,
+   "derecho": 5,
+   "educación y comunicación": 4,
+   "medio ambiente": 22,
+   "asuntos sociales": 6,
+   "geografía": 1
+  },
+  "clases_descartadas_menos_de_20_en_test": {
+   "sector agroalimentario": 1,
+   "relaciones internacionales": 4,
+   "asuntos financieros": 8,
+   "agricultura, silvicultura y pesca": 5,
+   "intercambios económicos y comerciales": 6,
+   "medio ambiente": 9,
+   "energía": 1,
+   "transportes": 4,
+   "educación y comunicación": 2,
+   "derecho": 1
+  },
+  "viable": false,
+  "motivo": "con un único descriptor de nivel 1 quedan menos de 3 clases con >= 20 documentos en test",
+  "atribucion": "© Unión Europea, EUR-Lex (Decisión 2011/833/UE), vía coastalcph/multi_eurlex (CC BY 4.0); descriptores EuroVoc © Unión Europea. Datos modificados: solo documentos de un descriptor de nivel 1, cortados a 3 000 caracteres."
+ },
+ "fakenews-es": {
+  "repo": "mariagrandury/fake_news_corpus_spanish",
+  "rev": "d12e41747833a4ea41732bcd3660fd14e32e7138",
+  "licencia": "cc-by-4.0",
+  "idioma": "es",
+  "solo_zero_shot": true,
+  "temas": {
+   "Covid-19": 237,
+   "Política": 107,
+   "Sociedad": 195,
+   "Internacional": 14,
+   "Ciencia": 13,
+   "Deporte": 2,
+   "Ambiental": 4
+  },
+  "n_eval": 572,
+  "n_soporte": 0,
+  "k": 0,
+  "tope": 2000,
+  "tope_caracteres": 3000,
+  "cortados_eval": 236,
+  "clases": 2,
+  "eval_por_clase": {
+   "false": 286,
+   "true": 286
+  },
+  "atribucion": "Posadas-Durán et al., FakeNewsCorpusSpanish (CC BY 4.0), vía mariagrandury/fake_news_corpus_spanish. Datos modificados: titular y texto unidos y cortados a 3 000 caracteres.",
+  "uso": "solo medir, nunca entrenar"
+ }
+}
