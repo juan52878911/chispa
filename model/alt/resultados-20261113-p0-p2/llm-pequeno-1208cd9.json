@@ -1,0 +1,422 @@
+{
+ "criterios": {
+  "pasa_agrupada_min": 0.62,
+  "pasa_hatecheck_min": 0.75,
+  "refutado_agrupada_bajo": 0.58
+ },
+ "referencia_4b": {
+  "agrupada": [
+   0.6497,
+   0.6268,
+   0.6728
+  ]
+ },
+ "modelos": {
+  "qwen3-1.7b": {
+   "respondidas": 3116,
+   "n": 3116,
+   "agrupada": [
+    0.3329,
+    0.3144,
+    0.3511
+   ],
+   "permisiva": [
+    0.3373,
+    0.3182,
+    0.3556
+   ],
+   "menos_4b": [
+    -0.3168,
+    -0.3428,
+    -0.291
+   ],
+   "mcnemar_4b": [
+    182,
+    1181,
+    1.6951055495622964e-179
+   ],
+   "acuerdo_top1_4b": 0.5087,
+   "por_tarea": {
+    "hatecheck-es": {
+     "n": 2000,
+     "estricta": [
+      0.478,
+      0.456,
+      0.4995
+     ],
+     "cuatro_b": 0.824,
+     "menos_4b": [
+      -0.346,
+      -0.372,
+      -0.319
+     ],
+     "mcnemar_4b": [
+      145,
+      837,
+      7.25283129654738e-119
+     ],
+     "invalidas": 0
+    },
+    "inyecciones": {
+     "n": 116,
+     "estricta": [
+      0.4741,
+      0.3793,
+      0.5603
+     ],
+     "cuatro_b": 0.569,
+     "menos_4b": [
+      -0.0948,
+      -0.1466,
+      -0.0431
+     ],
+     "mcnemar_4b": [
+      0,
+      11,
+      0.0009765625
+     ],
+     "invalidas": 0
+    },
+    "jailbreak": {
+     "n": 250,
+     "estricta": [
+      0.644,
+      0.58,
+      0.7
+     ],
+     "cuatro_b": 0.924,
+     "menos_4b": [
+      -0.28,
+      -0.34,
+      -0.228
+     ],
+     "mcnemar_4b": [
+      0,
+      70,
+      1.6940658945086007e-21
+     ],
+     "invalidas": 0
+    },
+    "massive-es": {
+     "n": 250,
+     "estricta": [
+      0.056,
+      0.028,
+      0.088
+     ],
+     "cuatro_b": 0.444,
+     "menos_4b": [
+      -0.388,
+      -0.448,
+      -0.324
+     ],
+     "mcnemar_4b": [
+      2,
+      99,
+      4.064211383698653e-27
+     ],
+     "invalidas": 224
+    },
+    "massive-esc": {
+     "n": 250,
+     "estricta": [
+      0.184,
+      0.136,
+      0.232
+     ],
+     "cuatro_b": 0.564,
+     "menos_4b": [
+      -0.38,
+      -0.444,
+      -0.312
+     ],
+     "mcnemar_4b": [
+      5,
+      100,
+      5.006007865146344e-24
+     ],
+     "invalidas": 176
+    },
+    "tuits-es": {
+     "n": 250,
+     "estricta": [
+      0.5,
+      0.44,
+      0.56
+     ],
+     "cuatro_b": 0.636,
+     "menos_4b": [
+      -0.136,
+      -0.208,
+      -0.064
+     ],
+     "mcnemar_4b": [
+      30,
+      64,
+      0.0005879022254125643
+     ],
+     "invalidas": 3
+    }
+   },
+   "latencia_concurrente": {
+    "n": 3116,
+    "p50_ms": 476,
+    "p95_ms": 27773,
+    "media_ms": 2914
+   },
+   "latencia_un_hilo": {
+    "n": 60,
+    "p50_ms": 283,
+    "p95_ms": 11025,
+    "media_ms": 2355
+   },
+   "latencia_un_hilo_por_tarea": {
+    "hatecheck-es": {
+     "n": 10,
+     "p50_ms": 281,
+     "p95_ms": 290,
+     "media_ms": 247
+    },
+    "inyecciones": {
+     "n": 10,
+     "p50_ms": 281,
+     "p95_ms": 289,
+     "media_ms": 282
+    },
+    "jailbreak": {
+     "n": 10,
+     "p50_ms": 202,
+     "p95_ms": 348,
+     "media_ms": 255
+    },
+    "massive-es": {
+     "n": 10,
+     "p50_ms": 11025,
+     "p95_ms": 12061,
+     "media_ms": 11124
+    },
+    "massive-esc": {
+     "n": 10,
+     "p50_ms": 2051,
+     "p95_ms": 2683,
+     "media_ms": 1931
+    },
+    "tuits-es": {
+     "n": 10,
+     "p50_ms": 264,
+     "p95_ms": 530,
+     "media_ms": 292
+    }
+   },
+   "veredicto": {
+    "agrupada": 0.3329,
+    "hatecheck": 0.478,
+    "completo": true,
+    "estado": "REFUTADO"
+   }
+  },
+  "qwen3-0.6b": {
+   "respondidas": 3116,
+   "n": 3116,
+   "agrupada": [
+    0.2069,
+    0.1928,
+    0.2205
+   ],
+   "permisiva": [
+    0.2078,
+    0.1939,
+    0.2214
+   ],
+   "menos_4b": [
+    -0.4428,
+    -0.4679,
+    -0.4179
+   ],
+   "mcnemar_4b": [
+    238,
+    1727,
+    2.0423609407690654e-278
+   ],
+   "acuerdo_top1_4b": 0.3113,
+   "por_tarea": {
+    "hatecheck-es": {
+     "n": 2000,
+     "estricta": [
+      0.274,
+      0.2545,
+      0.2935
+     ],
+     "cuatro_b": 0.824,
+     "menos_4b": [
+      -0.55,
+      -0.5795,
+      -0.5205
+     ],
+     "mcnemar_4b": [
+      210,
+      1310,
+      2.4767368770087872e-194
+     ],
+     "invalidas": 0
+    },
+    "inyecciones": {
+     "n": 116,
+     "estricta": [
+      0.4828,
+      0.3879,
+      0.569
+     ],
+     "cuatro_b": 0.569,
+     "menos_4b": [
+      -0.0862,
+      -0.1379,
+      -0.0345
+     ],
+     "mcnemar_4b": [
+      0,
+      10,
+      0.001953125
+     ],
+     "invalidas": 0
+    },
+    "jailbreak": {
+     "n": 250,
+     "estricta": [
+      0.624,
+      0.564,
+      0.68
+     ],
+     "cuatro_b": 0.924,
+     "menos_4b": [
+      -0.3,
+      -0.364,
+      -0.244
+     ],
+     "mcnemar_4b": [
+      1,
+      76,
+      1.0323214044661785e-21
+     ],
+     "invalidas": 2
+    },
+    "massive-es": {
+     "n": 250,
+     "estricta": [
+      0.012,
+      0.0,
+      0.028
+     ],
+     "cuatro_b": 0.444,
+     "menos_4b": [
+      -0.432,
+      -0.488,
+      -0.368
+     ],
+     "mcnemar_4b": [
+      0,
+      108,
+      6.162975822039155e-33
+     ],
+     "invalidas": 231
+    },
+    "massive-esc": {
+     "n": 250,
+     "estricta": [
+      0.032,
+      0.012,
+      0.056
+     ],
+     "cuatro_b": 0.564,
+     "menos_4b": [
+      -0.532,
+      -0.592,
+      -0.468
+     ],
+     "mcnemar_4b": [
+      2,
+      135,
+      1.0852659758470611e-37
+     ],
+     "invalidas": 239
+    },
+    "tuits-es": {
+     "n": 250,
+     "estricta": [
+      0.384,
+      0.328,
+      0.444
+     ],
+     "cuatro_b": 0.636,
+     "menos_4b": [
+      -0.252,
+      -0.328,
+      -0.172
+     ],
+     "mcnemar_4b": [
+      25,
+      88,
+      2.0619745952810333e-09
+     ],
+     "invalidas": 0
+    }
+   },
+   "latencia_concurrente": {
+    "n": 3116,
+    "p50_ms": 241,
+    "p95_ms": 22970,
+    "media_ms": 2254
+   },
+   "latencia_un_hilo": {
+    "n": 60,
+    "p50_ms": 123,
+    "p95_ms": 5721,
+    "media_ms": 1170
+   },
+   "latencia_un_hilo_por_tarea": {
+    "hatecheck-es": {
+     "n": 10,
+     "p50_ms": 92,
+     "p95_ms": 104,
+     "media_ms": 93
+    },
+    "inyecciones": {
+     "n": 10,
+     "p50_ms": 93,
+     "p95_ms": 94,
+     "media_ms": 93
+    },
+    "jailbreak": {
+     "n": 10,
+     "p50_ms": 93,
+     "p95_ms": 134,
+     "media_ms": 108
+    },
+    "massive-es": {
+     "n": 10,
+     "p50_ms": 5205,
+     "p95_ms": 5724,
+     "media_ms": 5460
+    },
+    "massive-esc": {
+     "n": 10,
+     "p50_ms": 1205,
+     "p95_ms": 1206,
+     "media_ms": 1144
+    },
+    "tuits-es": {
+     "n": 10,
+     "p50_ms": 123,
+     "p95_ms": 131,
+     "media_ms": 124
+    }
+   },
+   "veredicto": {
+    "agrupada": 0.2069,
+    "hatecheck": 0.274,
+    "completo": true,
+    "estado": "REFUTADO"
+   }
+  }
+ }
+}
