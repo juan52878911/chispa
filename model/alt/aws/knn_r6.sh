@@ -17,6 +17,7 @@ E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3; TRANSFORMERS=5.22.2
 CRIT4_SHA=a273e9271013035e5725af0fbec6580d4dcd6c995da3b98465b083fa0c0950ce
 CRIT6_SHA=__CRIT6_SHA__
 N_FONDO=__N_FONDO__; N_FONDO2=__N_FONDO2__; MOVIL_S3=__MOVIL_S3__   # vacío: la latencia queda en `omitidos`
+MOVIL_SHA=995dd6a7276a7026ce12ad3e04a5324714f62dc05a1c20b11141a580c30db6f4   # model/bench/movil/resultados-20261102-210131/manifiesto.json
 LOCAL=${CHISPA_LOCAL:-0}
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-r6-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
 set -uo pipefail
@@ -132,9 +133,15 @@ if [ "$LOCAL" = 1 ] || sin_tiempo 6; then estado latencia "OMITIDO"
 else
   systemctl start docker 2>/dev/null
   T1=$(date +%s)
-  # modelo-int8.chispa (perfil movil-int8, 249 716 640 bytes, sha256 995dd6a7…) de MOVIL_S3; si no está, correr.sh deja las capas en `omitidos`
+  # modelo-int8.chispa (perfil movil-int8) de MOVIL_S3, con el sha256 del manifiesto de model/bench/movil; si falta o no coincide, no se usa
+  # y correr.sh deja las capas en `omitidos`
+  mkdir -p "$BASE/lat/artefactos"
+  if [ -n "$MOVIL_S3" ] && aws s3 cp --only-show-errors "$MOVIL_S3/modelo-int8.chispa" "$BASE/modelo-int8.chispa"; then
+    if echo "$MOVIL_SHA  $BASE/modelo-int8.chispa" | sha256sum -c --quiet; then mv "$BASE/modelo-int8.chispa" "$BASE/lat/artefactos/"; estado latencia "modelo int8 OK sha256 ${MOVIL_SHA:0:12}"
+    else mv "$BASE/modelo-int8.chispa" "$BASE/modelo-int8.chispa.malo"; estado latencia "modelo int8 con otro sha256: no se usa"; fi
+  else estado latencia "sin modelo int8"; fi
   ( cd "$BASE/lat" && CHISPA_IMAGEN=python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b \
-      CHISPA_E5_REV=$E5_REV CHISPA_POTION_REV=73908c3438cf03b6a01bcb9611d62b23d0726f08 CHISPA_CPUSET=7 ${MOVIL_S3:+CHISPA_S3=$MOVIL_S3} \
+      CHISPA_E5_REV=$E5_REV CHISPA_POTION_REV=73908c3438cf03b6a01bcb9611d62b23d0726f08 CHISPA_CPUSET=7 \
       bash correr.sh -d "$BASE/lat/artefactos" -o "$OUT/latencia" -t "$BASE/bat/tuits-es.jsonl" -n 400 -r 5 -m 128 ) && estado latencia "OK en $(( $(date +%s) - T1 )) s" || { fallo "latencia"; estado latencia "FALLO"; }
 fi
 cierre
