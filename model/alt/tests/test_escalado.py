@@ -31,3 +31,21 @@ def test_regla_umbral_vota_solo_con_oro():
     Xte = np.array([[1.0, 0.0]])
     P, sen = es.l2(Xte, [["a", "b"]], np.array([[1.0, 0.0]]), ["a"], np.array([[1.0, 0.0]] * 5), ["b"] * 5)
     assert P[0, 0] == 1.0 and sen["sim_oro"][0] == 1.0     # el oro está a 1,0 ≥ 0,90: los 5 del LLM no votan
+
+
+def test_por_tarea_valida_en_semillas_nuevas(tmp_path):
+    bat, vec = _bateria(tmp_path)
+    for f in vec.glob("*.npz"):
+        z = dict(np.load(f))
+        z["transformers"] = np.array("x")
+        np.savez(f, **z)
+    filas = [json.loads(l) for c in ("hatecheck-es", "tuits-es") for l in open(bat / (c + ".jsonl"))]
+    l3 = tmp_path / "l3t.jsonl"
+    l3.write_text("".join(json.dumps({"id": r["id"], "valida": True, "probs": {r["etiqueta"]: 1.0, ("b" if r["etiqueta"] == "a" else "a"): 0.0}}) + "\n"
+                          for r in filas if r["split"] == "test"))
+    sal = tmp_path / "e9.json"
+    es.main(["medir", "--bateria", str(bat), "--vec", str(vec), "--fondo", str(tmp_path / "fondo.jsonl"), "--l3-fondo", str(tmp_path / "l3.jsonl"),
+             "--l3", str(l3), "--salida", str(sal), "--por-tarea", "sin_siempre"])
+    out = json.loads(sal.read_text())
+    assert [r["semilla"] for r in out["validacion"]] == list(range(10, 20))
+    assert out["veredicto"]["criterio_sha256"] == es.crit9("sin_siempre")[1] != es.crit9("todas")[1]
