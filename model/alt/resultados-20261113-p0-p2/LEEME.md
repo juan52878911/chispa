@@ -877,3 +877,26 @@ Veredicto con CRIT5L:
 
 **Lectura para L3:** el cambio que más gana no es un modelo más pequeño, sino el formato. El mismo 4B, pidiéndole una etiqueta y leyendo logprobs, es más exacto y mucho más rápido. Hay que confirmarlo con otra muestra antes de adoptarlo: la muestra es la del paso 2, que ya se miró, aunque el método se congeló antes de ver estas cifras.
 Las etiquetas del fondo de R1 y R4 están hechas en JSON; un fondo etiquetado por logprobs podría tener menos ruido (sin medir).
+
+### 14.6 R7: confirmación del 4B por logprobs y reetiquetado del soporte (g5.xlarge, ≤ 50 min, ≈ 0,84 USD; código 4747eb1)
+
+**Criterio congelado** (`llm_bateria.CRIT7`, `llm_bateria confirmar`): sha256 `90b2ad87440627d9780b4675ab7d129e272cb71f8a9878eba4f6f2e45d58ba12`.
+- Se mide el 4B con logprobs (el mismo código que R5) en el test de la batería que no entró en la muestra del paso 2: 3 535 filas (jailbreak 150, massive-es 1 253, massive-esc 1 188, tuits-es 944).
+- hatecheck-es e inyecciones no tienen filas fuera de la muestra, así que **decide solo la agrupada**, ponderada por el tamaño de cada tarea en la batería.
+- **PASA** si la agrupada da ≥ 0,70. **REFUTADO** si da < 0,66.
+- Se mide sobre las filas respondidas. El orden es aleatorio dentro de cada tarea y está intercalado, así que un corte deja una submuestra al azar de cada tarea.
+
+Tiempo, medido en R5: con logprobs una fila de massive-es cuesta 1,17 s de pared y una de massive-esc 0,37 s, porque se puntúan las etiquetas fuera del top 20. Las demás cuestan menos de 0,04 s.
+- La confirmación completa son ≈ 32 min. Lleva un tope de `CONF_MIN = 24` min, que deja ≈ 2 300–2 600 filas, para que quede tiempo de reetiquetar.
+- Después se reetiqueta `reetiqueta.jsonl` (28 709 textos) por prioridad:
+  1. el test de lexboe y fakenews-es (2 572, ≈ 9 min);
+  2. el fondo de R1, primero las tareas baratas (4 137), luego massive-esc (2 000) y luego massive-es (2 000);
+  3. fondo2.
+- En 50 min no llega a fondo2: el reetiquetado cubrirá el test nuevo, las tareas baratas del fondo y parte de massive-esc.
+
+Datos:
+- `llm.tgz` lleva el mismo `llm_logprobs.py` y `llm_jevbench.py` que R5, con los mismos sha256 de fichero, aunque el tarball cambie.
+- Entradas en `s3://…/llm-r7-4747eb1/`: llm.tgz `8df0eb7b…`, filas-confirma.jsonl `0b6b5eb1…`, reetiqueta.jsonl `fd7d00d0…`.
+- User-data: `lanzados/ud-llm-r7-4747eb1.sh`.
+
+Prueba en seco en el i7, con el ud sin sustituir y un servidor de logprobs falso: pasaron entradas, autoprueba, confirmación y reetiquetado. `--dry-run` da DryRunOperation.
