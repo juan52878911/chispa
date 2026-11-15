@@ -54,7 +54,10 @@ def cmd_vectores(a):
     enc = Codificador(device="cpu", max_tok=256)
     sal = Path(a.salida)
     sal.mkdir(parents=True, exist_ok=True)
-    for c, (sop, ev) in ({} if a.sin_bateria else cargar_bateria(a.bateria)).items():
+    bats = {}
+    for d in ([] if a.sin_bateria else [x for x in a.bateria.split(",") if x]):   # varias baterías: la original y la de tareas nuevas
+        bats.update(cargar_bateria(d))
+    for c, (sop, ev) in bats.items():
         Xtr = vectores(enc, [r["texto"] for r in sop]).numpy()
         Xte = vectores(enc, [r["texto"] for r in ev]).numpy()
         np.savez(sal / (c + ".npz"), Xtr=Xtr, Xte=Xte, idtr=np.array([r["id"] for r in sop]), idte=np.array([r["id"] for r in ev]))
