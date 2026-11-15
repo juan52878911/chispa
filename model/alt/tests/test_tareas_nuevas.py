@@ -48,8 +48,8 @@ def test_construir_respeta_reglas(tmp_path):
     assert all(len(r["texto"]) <= tn.TOPE_CAR for r in por["lexboe"]["test"])
     # eurlex: solo un descriptor; «rara» (1 en test) fuera por tener < 20
     assert set(meta["eurlex-n1"]["clases_descartadas_menos_de_20_en_test"]) == {"rara"}
-    assert {r["etiqueta"] for r in por["eurlex-n1"]["test"]} == {"asuntos sociales", "industria"}
     assert meta["eurlex-n1"]["docs_un_descriptor"]["test"] == 41
+    assert "eurlex-n1" not in por and meta["eurlex-n1"]["viable"] is False      # 2 clases válidas < 3: no hay tarea
     # fakenews: zero-shot, sin soporte; CATEGORY FALSE = noticia falsa = «true»
     assert meta["fakenews-es"]["n_soporte"] == 0 and meta["fakenews-es"]["n_eval"] == 10
     assert sum(r["etiqueta"] == "true" for r in por["fakenews-es"]["test"]) == 5
