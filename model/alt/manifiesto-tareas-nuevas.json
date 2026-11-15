@@ -37,7 +37,7 @@
    "repo": "coastalcph/multi_eurlex",
    "config": "es",
    "rev": "d0318b7f68f43f7d77797437ce172d899254cd0f",
-   "veredicto": "APROBADA (solo medir)",
+   "veredicto": "NO VIABLE tras convertir (2026-11-15)",
    "licencia_tarjeta": "cc-by-4.0 («same licensing as the original EU data»)",
    "licencia_fuente": "EUR-Lex, Decisión 2011/833/UE: reutilización comercial o no comercial con atribución; metadatos CC0",
    "url_licencia": [
@@ -54,7 +54,8 @@
    "variante": "traducción humana oficial de la UE",
    "riesgos": "multietiqueta: para el arnés de una etiqueta habría que quedarse con los documentos de un solo descriptor de nivel 1 o medir F1 por etiqueta; carga por script (multi_eurlex.py) con un tar.gz de todas las lenguas; documentos con condiciones propias de EUR-Lex no revisados uno a uno",
    "condiciones": "solo documentos con un único descriptor de nivel 1 (etiqueta única); anotar cuántos quedan por clase y descartar las clases con < 20",
-   "atribucion": "© Unión Europea, EUR-Lex (Decisión 2011/833/UE), vía coastalcph/multi_eurlex (CC BY 4.0)."
+   "atribucion": "© Unión Europea, EUR-Lex (Decisión 2011/833/UE), vía coastalcph/multi_eurlex (CC BY 4.0).",
+   "conversion": "de 5 000 documentos de test en español solo 61 tienen un único descriptor de nivel 1 (961 de 52 785 en train) y solo UNIÓN EUROPEA llega a 20 en test: con la condición de etiqueta única no queda tarea"
   },
   {
    "nombre": "fakenews-es",

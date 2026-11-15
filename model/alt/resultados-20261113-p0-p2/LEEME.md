@@ -709,3 +709,30 @@ Comprobado que no es un fallo del arnés:
 El mismo cliente da 0,6497 con el 4B. La latencia de un hilo es baja en las tareas binarias (90–280 ms), pero massive (60 opciones en JSON) dispara el p95.
 
 Reserva: el arnés pide probabilidades en JSON, que es exigente para un modelo pequeño. Otro formato, como logprobs sobre la etiqueta, podría dar más. Sería otro método, no una repetición, y habría que congelarlo aparte.
+
+### 13.7 R3 convertido en el i7 (código 912a77b): dos tareas, MultiEURLEX no viable
+
+**Uso: solo para medir, nunca para entrenar.**
+
+Las tres fuentes se bajaron a `/mnt/pve/nfs-ascci/chispa-audio/tareas-nuevas/hub` en sus revisiones fijadas. Se convirtieron con `python -m model.alt.tareas_nuevas`, que sigue las reglas de la batería no vista:
+- soporte de 8 por clase sacado de train;
+- test barajado con un tope de 2 000;
+- texto cortado a 3 000 caracteres.
+
+La batería nueva está en `tareas-nuevas/bat/` (sha256: lexboe.jsonl `2f2af9de…`, fakenews-es.jsonl `b28b5dae…`). El manifiesto, que solo lleva cifras, está en `tareas-nuevas-manifiesto-912a77b.json`.
+
+Ninguna de las tres fuentes aparece en los manifiestos de entrenamiento: `manifiesto-entrenamiento.json`, `manifiesto-l2x.json` y `model/datos`. tsjev no está en el i7, así que no se filtró contra tsjev. El riesgo es bajo, porque son dominios distintos.
+
+| tarea | test | soporte | clases | cortados a 3 000 car. | notas |
+|---|---|---|---|---|---|
+| lexboe | 2 000 | 96 (8 × 12) | 12 | 988 | muy desequilibrada: Funcionarios y Personal 946, Vivienda 7, Fuerzas de Seguridad 15. Los nombres reales de 3 clases no son los de la tarjeta (se cuentan en los datos) |
+| fakenews-es | 572 | 0 (solo zero-shot) | 2 | 236 | 286 / 286; «true» = noticia falsa |
+| eurlex-n1 | — | — | — | — | **no viable**: de 5 000 documentos de test, 61 tienen un único descriptor de nivel 1 y solo UNIÓN EUROPEA llega a 20 |
+
+**Atribución** (obligatoria en todo informe que use estas tareas):
+- LexBOE: «Fuente de los datos: Agencia Estatal Boletín Oficial del Estado (BOE), vía BSC-LT/LexBOE (CC BY 4.0). Datos modificados.»
+- Fake news: «Posadas-Durán et al., FakeNewsCorpusSpanish (CC BY 4.0), vía mariagrandury/fake_news_corpus_spanish.»
+- MultiEURLEX, aunque no se use: «© Unión Europea, EUR-Lex; descriptores EuroVoc © Unión Europea.»
+
+**Reserva para el veredicto del paso 4:** de las tres tareas nuevas solo quedan dos, y una es legal y la otra solo de zero-shot. Medirán poco la generalidad.
+No se encontró ninguna cuarta tarea apta que no sea legal. La única dudosa, horeca-spanish-reviews, es sintética de Gemini y la decide Juan.
