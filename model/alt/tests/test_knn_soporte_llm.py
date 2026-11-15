@@ -77,3 +77,16 @@ def test_criterio_r4_y_varios_fondos(tmp_path):
     out = json.loads(sal.read_text())
     assert out["criterio_r4_sha256"] == ks.CRIT4_SHA and out["veredicto_r4"]["estado"] in ("PASA", "NO PASA", "REFUTADO")
     assert out["soporte"]["tuits-es"]["en_fondo"] == 60
+
+
+def test_r6b_etiquetas_alternativas(tmp_path):
+    bat, vec = _bateria(tmp_path)
+    alt = tmp_path / "alt.jsonl"   # las alternativas corrigen todos los errores del LLM
+    fu = [json.loads(l) for l in open(tmp_path / "fuente.jsonl")]
+    alt.write_text("".join(json.dumps({"id": r["id"], "valida": True, "probs": {r["etiqueta"]: 1.0, ("b" if r["etiqueta"] == "a" else "a"): 0.0}}) + "\n" for r in fu))
+    sal = tmp_path / "inf.json"
+    ks.main(["medir", "--bateria", str(bat), "--vec", str(vec), "--fondo", str(tmp_path / "fondo.jsonl"), "--l3", str(tmp_path / "l3.jsonl"),
+             "--l3-alt", str(alt), "--salida", str(sal), "--semillas", "1", "--criterio", "r6b"])
+    out = json.loads(sal.read_text())
+    assert out["criterio_r6b_sha256"] == ks.CRIT6B_SHA and "llm_alt" in out["curvas"]
+    assert out["reetiquetados_por_tarea"]["tuits-es"] == 30 and out["veredicto_r6b"]["estado"] in ("PASA", "NO PASA", "REFUTADO")
