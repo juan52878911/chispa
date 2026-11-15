@@ -1,0 +1,230 @@
+"""R8, punto 1: regla de escalado L2→L3. ¿Las señales del kNN predicen cuándo falla L2, y una cascada que escala ≤ 30 % queda cerca de L3?
+
+    python -m model.alt.escalado medir --bateria DIR[,DIR2] --vec DIR_VEC --fondo f1.jsonl[,f2.jsonl] --l3-fondo a.jsonl[,b.jsonl,...] \
+        --l3 l3_test.jsonl[,...] --salida informe.json [--semillas 10]
+    python -m model.alt.escalado criterio
+
+L2 (fijado de antemano): kNN-e5 (32 vecinos, temperatura 0,05, solo opciones de la fila) sobre el banco oro (split train de la batería)
+∪ fondo con etiqueta del LLM (en --l3-fondo el último registro de un id manda: JSON de R1/R4 debajo, logprobs de R7/R7b/R8 encima), con
+la regla «umbral»: si el ejemplo de oro más cercano tiene similitud ≥ S_ORO = 0,90 se vota solo con el oro.
+L3: el 4B por logprobs (--l3: R5 en la muestra del paso 2 y R7 fuera de ella). Solo cuentan las filas de test que tienen L3.
+Señales de confianza de L2 (más alto = más seguro): pmax, margen (p1 − p2), −entropía normalizada, similitud al oro más cercano y
+similitud al vecino más cercano. Por semilla s se parten las filas de cada tarea al 50 % (calibración / validación).
+Selección (semillas 0–4, mitades de calibración): la señal con mejor AUROC medio y la fracción de escalado f ∈ {0,05 … 0,30} que da la
+mejor exactitud de la cascada; el umbral es el cuantil f de esa señal en la calibración (global, el mismo para todas las tareas).
+Validación (semillas 5–9, mitades de validación, con señal y f congeladas; el umbral se recalcula como cuantil f en la calibración de esa
+semilla): AUROC de la señal para el acierto de L2, fracción escalada real, exactitud de L2, L3 y la cascada.
+Exactitud agrupada = media ponderada por el tamaño de cada tarea en su batería (como el paso 2), sobre las filas con L3.
+"""
+import argparse
+import hashlib
+import json
+import random
+import sys
+from pathlib import Path
+
+import numpy as np
+
+VECINOS, TEMP, S_ORO = 32, 0.05, 0.90
+FRACS = [round(0.05 * i, 2) for i in range(1, 7)]
+SENALES = ("pmax", "margen", "neg_entropia", "sim_oro", "sim_vecino")
+CRIT8E = {"l2": "kNN oro ∪ fondo-LLM (logprobs donde haya), regla umbral s_oro 0.90, 32 vecinos, T 0.05", "senales": list(SENALES),
+          "seleccion": "semillas 0-4, mitad de calibración: mejor AUROC medio y f en 0.05..0.30 con mejor cascada",
+          "validacion": "semillas 5-9, mitad de validación", "escalado_max": 0.30, "pasa_auroc_min": 0.70, "pasa_dist_l3_max": 0.02,
+          "refutado_si_auroc_lt": 0.60, "agrupada": "ponderada por tamaño de tarea, filas con L3"}
+CRIT8E_SHA = hashlib.sha256(json.dumps(CRIT8E, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def leer(p):
+    return [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+
+
+def varios(rutas):
+    return [r for p in str(rutas).split(",") if p for r in leer(p)]
+
+
+def etiquetas(filas, registros):
+    """{id: top-1 o None (inválida)} para las filas con registro; el último registro de un id manda."""
+    from model.alt.llm_techo import top1
+    res = {}
+    for r in registros:
+        res[r["id"]] = r
+    out = {}
+    for f in filas:
+        r = res.get(f["id"])
+        if r is not None:
+            out[f["id"]] = top1(r["probs"], f["opciones"], f.get("tipo", "noul")) if r.get("valida") and r.get("probs") else None
+    return out
+
+
+def l2(Xte, ops, Xg, yg, Xf, yf):
+    """(P (n,m), señales {nombre: (n,)}) del kNN con la regla umbral."""
+    n, m = len(Xte), max(len(o) for o in ops)
+    Xb = np.vstack([Xg, Xf]) if len(Xf) else Xg
+    yb = list(yg) + list(yf)
+    G = len(yg)
+    S = Xte @ Xb.T if len(yb) else np.zeros((n, 0))
+    P = np.zeros((n, m))
+    sen = {k: np.zeros(n) for k in SENALES}
+    for i in range(n):
+        s = S[i]
+        so = float(s[:G].max()) if G else -1.0
+        cand = np.arange(G) if (G and so >= S_ORO) else np.arange(len(yb))
+        p = dict.fromkeys(ops[i], 0.0)
+        if len(cand):
+            sc = s[cand]
+            k = cand[np.argsort(-sc, kind="stable")[:VECINOS]]
+            w = np.exp((s[k] - s[k].max()) / TEMP)
+            for j, wj in zip(k, w):
+                if yb[j] in p:
+                    p[yb[j]] += float(wj)
+        tot = sum(p.values())
+        v = np.array([p[o] / tot for o in ops[i]]) if tot > 0 else np.full(len(ops[i]), 1.0 / len(ops[i]))
+        P[i, :len(v)] = v
+        q = np.sort(v)[::-1]
+        sen["pmax"][i] = q[0]
+        sen["margen"][i] = q[0] - (q[1] if len(q) > 1 else 0.0)
+        ent = -(v[v > 0] * np.log(v[v > 0])).sum() / max(np.log(len(v)), 1e-12)
+        sen["neg_entropia"][i] = -ent
+        sen["sim_oro"][i] = so
+        sen["sim_vecino"][i] = float(s.max()) if len(s) else -1.0
+    return P, sen
+
+
+def cargar(baterias, vec, fondo, l3_fondo, l3, z):
+    from model.alt.p0_medir import cargar_bateria
+    sop_ev = {}
+    for d in baterias:
+        sop_ev.update(cargar_bateria(d))
+    fo_et = etiquetas(fondo, l3_fondo)
+    pos = {i: k for k, i in enumerate(z["ids"])}
+    tareas = {}
+    for c in sorted(sop_ev):
+        sop, ev = sop_ev[c]
+        zz = np.load(Path(vec) / (c + ".npz"))
+        if list(zz["idte"]) != [r["id"] for r in ev]:
+            raise ValueError("%s: los vectores no corresponden a las filas" % c)
+        et3 = etiquetas(ev, l3)
+        sel = [k for k, r in enumerate(ev) if r["id"] in et3]
+        if not sel:
+            continue
+        fs = [f for f in fondo if f["conjunto"] == c and fo_et.get(f["id"]) is not None and f["id"] in pos]
+        Xf = z["X"][[pos[f["id"]] for f in fs]] if fs else np.zeros((0, zz["Xte"].shape[1]))
+        Xg = zz["Xtr"] if len(sop) else np.zeros((0, zz["Xte"].shape[1]))
+        ops = [ev[k]["opciones"] for k in sel]
+        P, sen = l2(zz["Xte"][sel], ops, Xg, [r["etiqueta"] for r in sop], Xf, [fo_et[f["id"]] for f in fs])
+        y = [ev[k]["etiqueta"] for k in sel]
+        ok2 = np.array([1.0 if ops[i][int(np.argmax(P[i, :len(ops[i])]))] == y[i] else 0.0 for i in range(len(sel))])
+        ok3 = np.array([1.0 if et3[ev[k]["id"]] == ev[k]["etiqueta"] else 0.0 for k in sel])
+        tareas[c] = {"ok2": ok2, "ok3": ok3, "sen": sen, "peso": len(ev), "n": len(sel), "oro": len(sop), "fondo": len(fs)}
+    return tareas
+
+
+def auroc(conf, ok):
+    from model.alt.p0_medir import auroc as a
+    r = a(list(map(float, conf)), list(map(float, ok)))
+    return None if r is None else float(r)
+
+
+def ponderada(vals, pesos):
+    return float(sum(pesos[c] * v for c, v in vals.items()) / sum(pesos[c] for c in vals))
+
+
+def mitades(tareas, semilla):
+    out = {}
+    for c, t in tareas.items():
+        idx = list(range(t["n"]))
+        random.Random("escalado-%s-%d" % (c, semilla)).shuffle(idx)
+        h = len(idx) // 2
+        out[c] = (np.array(sorted(idx[:h]), dtype=int), np.array(sorted(idx[h:]), dtype=int))
+    return out
+
+
+def cascada(tareas, partes, senal, umbral):
+    """{tarea: (exactitud cascada, L2, L3, fracción escalada)} en las filas `partes`."""
+    out = {}
+    for c, t in tareas.items():
+        i = partes[c]
+        if not len(i):
+            continue
+        esc = t["sen"][senal][i] < umbral
+        okc = np.where(esc, t["ok3"][i], t["ok2"][i])
+        out[c] = (float(okc.mean()), float(t["ok2"][i].mean()), float(t["ok3"][i].mean()), float(esc.mean()))
+    return out
+
+
+def medir(tareas, semillas=10):
+    pesos = {c: t["peso"] for c, t in tareas.items()}
+    todos = lambda i_por, k: np.concatenate([tareas[c]["sen"][k][i_por[c]] for c in tareas])  # noqa: E731
+    sel_s = [s for s in range(semillas) if s < semillas // 2]
+    val_s = [s for s in range(semillas) if s >= semillas // 2]
+    # selección
+    au = {k: [] for k in SENALES}
+    casc = {(k, f): [] for k in SENALES for f in FRACS}
+    for s in sel_s:
+        cal = {c: v[0] for c, v in mitades(tareas, s).items()}
+        ok2 = np.concatenate([tareas[c]["ok2"][cal[c]] for c in tareas])
+        for k in SENALES:
+            au[k].append(auroc(todos(cal, k), ok2))
+            for f in FRACS:
+                u = float(np.quantile(todos(cal, k), f))
+                casc[(k, f)].append(ponderada({c: v[0] for c, v in cascada(tareas, cal, k, u).items()}, pesos))
+    au_m = {k: (float(np.mean([x for x in au[k] if x is not None])) if any(x is not None for x in au[k]) else 0.5) for k in SENALES}
+    senal = max(SENALES, key=lambda k: au_m[k])
+    f_el = max(FRACS, key=lambda f: (np.mean(casc[(senal, f)]), -f))
+    # validación
+    res = []
+    for s in val_s:
+        cal, val = (dict((c, v[j]) for c, v in mitades(tareas, s).items()) for j in (0, 1))
+        u = float(np.quantile(todos(cal, senal), f_el))
+        cv = cascada(tareas, val, senal, u)
+        ok2v = np.concatenate([tareas[c]["ok2"][val[c]] for c in tareas])
+        res.append({"semilla": s, "umbral": round(u, 5), "auroc": auroc(todos(val, senal), ok2v),
+                    "auroc_por_tarea": {c: auroc(tareas[c]["sen"][senal][val[c]], tareas[c]["ok2"][val[c]]) for c in tareas},
+                    "cascada": ponderada({c: v[0] for c, v in cv.items()}, pesos), "l2": ponderada({c: v[1] for c, v in cv.items()}, pesos),
+                    "l3": ponderada({c: v[2] for c, v in cv.items()}, pesos),
+                    "escalado": float(np.average([v[3] for v in cv.values()], weights=[len(val[c]) for c in cv])),
+                    "por_tarea": {c: {"cascada": round(v[0], 4), "l2": round(v[1], 4), "l3": round(v[2], 4), "escalado": round(v[3], 4)} for c, v in cv.items()}})
+    def m(k):
+        v = [r[k] for r in res if r[k] is not None]
+        return float(np.mean(v)) if v else float("nan")
+    resumen = {k: round(m(k), 4) for k in ("auroc", "cascada", "l2", "l3", "escalado")}
+    resumen["cascada_menos_l3"] = round(resumen["cascada"] - resumen["l3"], 4)
+    v = {"criterio_sha256": CRIT8E_SHA, "senal": senal, "fraccion": f_el, **resumen}
+    v["c_auroc"] = bool(resumen["auroc"] >= CRIT8E["pasa_auroc_min"])   # nan (L2 nunca falla) no pasa
+    v["c_cascada"] = bool(resumen["escalado"] <= CRIT8E["escalado_max"] + 1e-9 and resumen["cascada_menos_l3"] >= -CRIT8E["pasa_dist_l3_max"])
+    v["estado"] = "REFUTADO" if resumen["auroc"] < CRIT8E["refutado_si_auroc_lt"] else ("PASA" if v["c_auroc"] and v["c_cascada"] else "NO PASA")
+    return {"seleccion": {"auroc_medio": {k: round(x, 4) for k, x in au_m.items()},
+                          "cascada_media": {"%s@%.2f" % kf: round(float(np.mean(x)), 4) for kf, x in casc.items()}},
+            "validacion": res, "veredicto": v,
+            "tareas": {c: {"n": t["n"], "oro": t["oro"], "fondo": t["fondo"], "l2": round(float(t["ok2"].mean()), 4), "l3": round(float(t["ok3"].mean()), 4)} for c, t in tareas.items()}}
+
+
+def cmd_medir(a):
+    z = np.load(Path(a.vec) / "fondo.npz")
+    fondo = varios(a.fondo)[:len(z["ids"])]
+    tareas = cargar([d for d in a.bateria.split(",") if d], a.vec, fondo, varios(a.l3_fondo), varios(a.l3), z)
+    out = {"criterio": CRIT8E, "criterio_sha256": CRIT8E_SHA, "semillas": a.semillas,
+           "transformers_vectores": str(z["transformers"]) if "transformers" in z.files else None}
+    out.update(medir(tareas, a.semillas))
+    Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps(out["veredicto"], ensure_ascii=False, indent=1))
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    sp = ap.add_subparsers(dest="cmd", required=True)
+    m = sp.add_parser("medir")
+    for k in ("--bateria", "--vec", "--fondo", "--l3-fondo", "--l3", "--salida"):
+        m.add_argument(k, required=True)
+    m.add_argument("--semillas", type=int, default=10)
+    sp.add_parser("criterio")
+    a = ap.parse_args(argv)
+    if a.cmd == "criterio":
+        print(CRIT8E_SHA, json.dumps(CRIT8E, sort_keys=True, ensure_ascii=False))
+        return
+    cmd_medir(a)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
