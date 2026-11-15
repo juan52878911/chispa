@@ -1,0 +1,28 @@
+{
+ "lexboe": {
+  "n": 1218,
+  "logprobs": [
+   0.5304,
+   0.5025,
+   0.5599
+  ],
+  "json_permisiva_mismas_filas": [
+   0.2356,
+   0.2126,
+   0.2603
+  ]
+ },
+ "fakenews-es": {
+  "n": 572,
+  "logprobs": [
+   0.6818,
+   0.6434,
+   0.7203
+  ],
+  "json_permisiva_mismas_filas": [
+   0.5594,
+   0.5175,
+   0.5997
+  ]
+ }
+}

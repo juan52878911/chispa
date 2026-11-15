@@ -1,0 +1,62 @@
+{
+ "criterios": {
+  "metodo": "logprobs (CRIT5L, mismo código que R5), Qwen3-4B-Instruct-2507",
+  "filas": "test de la batería fuera de la muestra del paso 2, en orden aleatorio por tarea; se mide sobre las respondidas",
+  "agrupada": "ponderada por el tamaño de cada tarea en la batería, solo tareas presentes",
+  "pasa_agrupada_min": 0.7,
+  "pasa_hatecheck_min": 0.8,
+  "hatecheck_solo_si_presente": true,
+  "refutado_agrupada_bajo": 0.66
+ },
+ "criterio_sha256": "90b2ad87440627d9780b4675ab7d129e272cb71f8a9878eba4f6f2e45d58ba12",
+ "agrupada": [
+  0.6909,
+  0.6734,
+  0.7071
+ ],
+ "por_tarea": {
+  "jailbreak": {
+   "n": 150,
+   "estricta": [
+    0.9067,
+    0.86,
+    0.9467
+   ],
+   "invalidas": 0
+  },
+  "massive-es": {
+   "n": 932,
+   "estricta": [
+    0.6373,
+    0.6073,
+    0.6674
+   ],
+   "invalidas": 0
+  },
+  "massive-esc": {
+   "n": 935,
+   "estricta": [
+    0.7241,
+    0.6952,
+    0.7519
+   ],
+   "invalidas": 0
+  },
+  "tuits-es": {
+   "n": 944,
+   "estricta": [
+    0.6462,
+    0.6165,
+    0.6769
+   ],
+   "invalidas": 0
+  }
+ },
+ "veredicto": {
+  "agrupada": 0.6909,
+  "hatecheck": null,
+  "respondidas": 2961,
+  "en_fichero": 3535,
+  "estado": "NO PASA"
+ }
+}
