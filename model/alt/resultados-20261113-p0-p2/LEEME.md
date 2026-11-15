@@ -1044,3 +1044,26 @@ Entradas:
   - las logprobs solo sustituyen etiquetas de textos que ya tenían etiqueta JSON.
 - Lo pidió la sesión madre después de ver que R7 no reetiquetó el fondo.
 - El informe lista las tareas incluidas y la fracción reetiquetada de cada una. Por la estimación, massive-es quedará fuera.
+
+### 14.11 Resultado de R7b (EC2 i-05406a3b01f7cb1eb e i-0d2de44bdf5ec87ea, 2026-11-15) y ud de R6b
+
+Las dos colas etiquetaron 16 min cada una y no hubo ninguna respuesta inválida. Las dos recibieron `verificado`.
+
+| cola | textos etiquetados | qué cubren |
+|---|---|---|
+| A | 6 887 de 9 638 | el test de lexboe que faltaba (782), todo el fondo de R1 de hatecheck-es, inyecciones, jailbreak y tuits-es (4 137) y 1 968 de los 2 000 de massive-esc del fondo de R1 |
+| B | 2 728 de 4 721 | todo massive-esc de fondo2 que tenía etiqueta de R4 (2 721) y solo 7 de massive-es |
+
+En lexboe de fondo2 no se reetiquetó ningún texto.
+
+Junto con R7, `lp_reetiqueta.jsonl` reúne 11 405 etiquetas por logprobs:
+- el test entero de lexboe (2 000) y de fakenews-es (572);
+- el soporte de 5 tareas de la batería, casi completo.
+
+**massive-es se queda prácticamente sin reetiquetar** (7 de 2 000). Por el alcance congelado (≥ 50 %), R6b la deja fuera.
+
+**R6b (código 4cb8cc7)** se ejecuta en una c7i.2xlarge con un tope de 40 min (≈ 0,24 USD):
+- User-data: `lanzados/ud-knn-r6b-4cb8cc7.sh` (sha256 `3774b223…`).
+- Entradas en `s3://…/knn-r6b-4cb8cc7/`: lp_reetiqueta `7d22bae3…` (R7 + A + B), lp_bateria `16274abf…` (el 4B por logprobs de R5), codigo.tgz `9716c83b…`. El resto, igual que en R6.
+- Criterios: CRIT6B `75922ecb…` y su alcance `7e885b2a…`. El prequential descriptivo reutiliza CRIT_R6 `288d1260…`.
+- `--dry-run` da DryRunOperation.
