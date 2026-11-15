@@ -900,3 +900,30 @@ Datos:
 - User-data: `lanzados/ud-llm-r7-4747eb1.sh`.
 
 Prueba en seco en el i7, con el ud sin sustituir y un servidor de logprobs falso: pasaron entradas, autoprueba, confirmación y reetiquetado. `--dry-run` da DryRunOperation.
+
+### 14.7 Resultado de la parte LLM de R4 (EC2 inst-20, 2026-11-15); la medida del kNN (CRIT4) va en R6
+
+La instancia corrió su tope de 60 min (≈ 1,0 USD), con `verificado` subido.
+
+**(a) Test de las tareas nuevas:** 2 572 de 2 572 filas respondidas, pero solo 1 477 válidas. fakenews-es tiene 572/572 válidas y **lexboe 905/2 000**.
+- En lexboe, el JSON del 4B no suma 1: pone 0,93 en dos clases a la vez.
+- Zero-shot del 4B en JSON (`llm-r4-nuevas-9f68027.json`, IC95 bootstrap):
+
+| tarea | estricta | permisiva |
+|---|---|---|
+| lexboe | **0,067** [0,056, 0,078] | 0,222 [0,204, 0,239] |
+| fakenews-es | 0,559 [0,518, 0,600] | 0,559 |
+
+- Incluso contando solo las respuestas válidas, lexboe da ≈ 0,15. El LLM no sirve en zero-shot para esa tarea con este prompt: 12 clases jurídicas, un 47 % de «Funcionarios y Personal» y el texto cortado a 3 000 caracteres.
+
+**(b) fondo2:** se etiquetaron 5 440 de 18 000 textos en 26 min, todos del bloque 1: 2 719 de lexboe (1 259 válidos) y 2 721 de massive-esc (2 210 válidos). massive-es no llegó.
+- El soporte del LLM queda en 7 372 + 3 469 = 10 841 textos válidos. En la batería original, el fondo2 solo añade massive-esc.
+- Así que CRIT4 (≥ 0,66) depende casi solo de cuánto suba massive-esc.
+
+R6 se mide tal como se congeló, con estas etiquetas en JSON. En lexboe, el flujo prequential solo añade al banco las 905 etiquetas válidas.
+
+**R6 con las etiquetas de R4** (código 12ebb49):
+- User-data: `lanzados/ud-knn-r6-12ebb49.sh` (sha256 `1df0d07f…`). Sustituye al de 805d1e0, que no tenía el modelo int8.
+- Entradas, todas en `s3://…/knn-r6-12ebb49/`: l3_fondo2 `a100a537…`, l3_nuevas `52874409…`, codigo.tgz `7a0f2884…`, latencia.tgz `cc6aeb84…`.
+- Latencia con `modelo-int8.chispa` de `movil-90e3263c/movil`; el sha256 se comprueba antes de medir.
+- `--dry-run` da DryRunOperation.
