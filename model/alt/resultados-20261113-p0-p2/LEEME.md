@@ -783,3 +783,35 @@ Fallos que ya estaban antes de la integración, comprobados en las ramas de orig
 - `demo/wasm/LICENSE.go` rompe `go vet` y `go build` de demo/wasm.
 - Varios tests de model/datos, cascada, l1, liston y l2 fallan en sus aserciones.
 - Los tests que necesitan torch o pyarrow, incluido model/audio, no se pueden ejecutar en el Mac.
+
+**Deuda anotada, no se arregla en esta tanda** (orden de la sesión madre):
+- `demo/wasm/LICENSE.go` rompe `go vet` y `go build` de demo/wasm;
+- hay aserciones que ya fallaban en model/datos (test_fuentes, test_libres, test_reglas), cascada (test_capas, test_informe), l1, liston y l2 (test_corpus_poda, test_aumento, test_w2);
+- los tests de torch y pyarrow sin ejecutar en el Mac, entre ellos model/audio.
+
+### 14.3 R5: el paso 5 con logprobs en vez de JSON (g5.xlarge, ≤ 52 min, ≈ 0,87 USD; código 0bcbd78)
+
+**Criterio congelado** (`llm_bateria.CRIT5L`, `pequeno --criterio r5`): sha256 `17c1ea124ed0a2f9f1221f339b964af3a25dffca4f2bee509f4e9a3a6d5c1576`. Mismos umbrales que CRIT5:
+- **PASA** con agrupada ≥ 0,62 y hatecheck-es ≥ 0,75;
+- **REFUTADO** con agrupada < 0,58;
+- el sha es propio porque el método es nuevo.
+Se mide en las mismas 3 116 filas del paso 2 y, por pares, frente al 4B en JSON (0,6497).
+
+Método (`model/alt/llm_logprobs.py`, que usa el prompt de `llm_jevbench`):
+- Cada opción lleva una etiqueta de un carácter (A–Z, a–z, 0–9; hasta 62). Se pide `max_tokens=1` con `logprobs` y `top_logprobs=20`.
+- Las etiquetas que no salen en el top se puntúan con `prompt_logprobs`, terminando la conversación en la etiqueta (`continue_final_message`). Es exacto para las 4 primeras; el resto recibe un piso igual al mínimo conocido menos 1.
+- probs = softmax sobre las opciones. Una fila es inválida solo si no se puntúa ninguna opción.
+- Los híbridos llevan `--sin-pensar`; el 4B-Instruct-2507 no.
+
+La g5 corre tres modelos en este orden: Qwen3-1.7B @ 70d244cc, Qwen3-0.6B @ c1899de2 y Qwen3-4B-Instruct-2507 @ cdbee75f. Es vLLM 0.33.0 con `--max-logprobs 20` y un tope de 12 min por modelo; los pesos se bajan en segundo plano.
+El 4B es la referencia del método: si en logprobs se queda muy por debajo de 0,6497, el fallo es del método y no de los modelos pequeños.
+
+Riesgos sin verificar contra un vLLM real:
+- el formato del campo `prompt_logprobs` en la respuesta de chat de 0.33.0. Si no es el esperado, el relleno cae al piso y se anota en `error`; la fila sigue siendo válida.
+- que un carácter ASCII suelto sea un único token en Qwen.
+- que el 4B, el último, quepa en el tope.
+
+Datos:
+- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-logprobs-0bcbd78/`: llm.tgz `af1c3c9a…` (llm_logprobs.py y llm_jevbench.py), filas.jsonl `7ea97957…`.
+- User-data: `lanzados/ud-llm-logprobs-0bcbd78.sh` (sha256 `d51132db…`).
+Prueba en seco: el subagente que lo escribió corrió el ud con LOCAL=1 contra un servidor falso de logprobs; pasaron los tres modelos y salieron resumen.json y resultados.tgz. pytest da 10 pruebas en verde y `run-instances --dry-run` da DryRunOperation.
