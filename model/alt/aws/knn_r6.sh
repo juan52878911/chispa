@@ -1,6 +1,6 @@
 #!/bin/bash
 CHISPA_S3=__CHISPA_S3__
-# R6 (y la medida de R4), en una c7i.2xlarge BAJO DEMANDA (solo CPU; tope duro CHISPA_MIN=45 min ≈ 0,27 USD). user-data (DLAMI GPU PyTorch
+# R6 (y la medida de R4), en una c7i.2xlarge BAJO DEMANDA (solo CPU; tope duro CHISPA_MIN=55 min ≈ 0,33 USD). user-data (DLAMI GPU PyTorch
 # AL2023, que arranca sin GPU; rol rol-ec2-pruebas sin ListBucket), --instance-initiated-shutdown-behavior terminate. Todo por nombre exacto.
 # Lee:     $CHISPA_S3/{codigo.tgz,bateria.tgz,nuevas.tgz,vec-paso1.tgz,fondo.jsonl,fondo2.jsonl,l3_fondo.jsonl,l3_fondo2.jsonl,
 #                      fondo-fuente.jsonl,fondo2-fuente.jsonl,l3_bateria.jsonl,l3_nuevas.jsonl,latencia.tgz}
@@ -12,7 +12,7 @@ CHISPA_S3=__CHISPA_S3__
 #  4. vectores de la batería con transformers 4.46.3 y tokenizers 0.20.3 (las versiones del paso 1), con el torch de la AMI y con
 #     torch 2.5.1+cpu, frente a los del paso 1: cierra la sospecha de R1 (hatecheck-es difería hasta 0,057);
 #  5. latencia de L0-L2 int8 con 1 vCPU y 1,8 GB (`docker run --cpus=1 --memory=1800m`, sustituto de Lambda; nada en Lambda ni IAM).
-MIN=${CHISPA_MIN:-45}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-8}
+MIN=${CHISPA_MIN:-55}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-8}
 E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3; TRANSFORMERS=5.22.2
 CRIT4_SHA=a273e9271013035e5725af0fbec6580d4dcd6c995da3b98465b083fa0c0950ce
 CRIT6_SHA=__CRIT6_SHA__
