@@ -34,6 +34,11 @@ CRIT4_SHA = hashlib.sha256(json.dumps(CRIT4, sort_keys=True).encode()).hexdigest
 CRIT6B = {"variante": "llm_alt/todo (logprobs de R7 donde haya, JSON donde no)", "referencia": "llm/todo (solo JSON)", "bateria": "original, 6 tareas",
           "pasa_dif_min": 0.02, "refutado_si_dif_le": 0.0}
 CRIT6B_SHA = hashlib.sha256(json.dumps(CRIT6B, sort_keys=True).encode()).hexdigest()
+# Alcance de R6b (fijado antes de medir, por orden de la sesión madre tras ver que R7 no reetiquetó el fondo): el veredicto se calcula solo
+# en las tareas con al menos la mitad de su soporte del LLM reetiquetado; las alternativas solo sustituyen etiquetas, no añaden textos.
+CRIT6B_ALCANCE = {"tareas": "batería original con >= min_frac del soporte JSON válido reetiquetado por logprobs", "min_frac": 0.5,
+                  "sustitucion": "logprobs solo en ids con registro JSON"}
+CRIT6B_ALCANCE_SHA = hashlib.sha256(json.dumps(CRIT6B_ALCANCE, sort_keys=True).encode()).hexdigest()
 KS_ORO = (1, 2, 4, 8)
 KS_LLM = (1, 2, 4, 8, 16, 32, 64, 128)
 KS_FUENTE = (8, 32, 128)
@@ -184,7 +189,7 @@ def medir(datos, Xf, sop, semillas=10):
         comp["alt_mcnemar"] = mcnemar([v for c in tareas for v in x[c]], [v for c in tareas for v in a[c]])
         comp["alt_por_tarea"] = {c: {"alt": round(float(np.mean(x[c])), 4), "llm": round(float(np.mean(a[c])), 4),
                                      "alt_menos_llm": boot_dif({c: x[c]}, {c: a[c]}, [c])} for c in tareas}
-    return {"curvas": curvas, "comparacion": comp, "n_test": {c: int(len(datos[c]["y"])) for c in tareas},
+    return {"_ok_alt": ok_todo.get("llm_alt"), "_ok_llm": ok_todo["llm"], "curvas": curvas, "comparacion": comp, "n_test": {c: int(len(datos[c]["y"])) for c in tareas},
             "soporte": {c: {"en_fondo": sop[c]["en_fondo"], "llm": len(sop[c]["llm"]), "llm_p09": len(sop[c]["llm_p09"]),
                             "fuente": len(sop[c]["fuente"]), "clases_llm": len(por_clase([t for _, t in sop[c]["llm"]])),
                             "acuerdo_llm_fuente": acuerdo(sop[c])} for c in tareas}}
@@ -230,12 +235,14 @@ def cmd_medir(a):
     datos = cargar(a.bateria, a.vec)
     sop = soportes(fondo, leer_varios(a.l3), leer_varios(a.fuente) if a.fuente else None)
     if a.l3_alt:   # las etiquetas alternativas pisan a las de --l3 en los ids que tengan (el último registro de un id manda)
-        alt = leer_varios(a.l3_alt)
-        sop2 = soportes(fondo, leer_varios(a.l3) + alt)
+        base = leer_varios(a.l3)
+        con_json = {r["id"] for r in base}
+        alt = [r for r in leer_varios(a.l3_alt) if r["id"] in con_json]   # solo sustituye: un texto sin etiqueta JSON no entra
+        sop2 = soportes(fondo, base + alt)
         ids_alt = {r["id"] for r in alt}
         for c in sop:
             sop[c]["llm_alt"] = sop2[c]["llm"]
-            sop[c]["reetiquetados"] = sum(1 for f in fondo if f["conjunto"] == c and f["id"] in ids_alt)
+            sop[c]["reetiquetados"] = sum(1 for i, _ in sop[c]["llm"] if fondo[i]["id"] in ids_alt)
     faltan = [c for c in datos if c not in sop or not sop[c]["llm"]]
     if faltan:
         raise ValueError("sin soporte del LLM en: %s" % faltan)
@@ -248,9 +255,15 @@ def cmd_medir(a):
     if a.l3_alt:
         out["reetiquetados_por_tarea"] = {c: sop[c].get("reetiquetados", 0) for c in sorted(datos)}
     if a.criterio == "r6b":
-        d = out["comparacion"]["alt_menos_llm"][0]
+        frac = {c: (sop[c]["reetiquetados"] / len(sop[c]["llm"]) if sop[c]["llm"] else 0.0) for c in sorted(datos)}
+        en = [c for c in sorted(datos) if frac[c] >= CRIT6B_ALCANCE["min_frac"]]
+        out["r6b_alcance"] = {"criterio": CRIT6B_ALCANCE, "sha256": CRIT6B_ALCANCE_SHA, "fraccion_reetiquetada": {c: round(v, 4) for c, v in frac.items()}, "tareas": en}
+        alt_ok, llm_ok = out["_ok_alt"], out["_ok_llm"]
+        out["comparacion"]["alt_menos_llm_alcance"] = boot_dif({c: alt_ok[c] for c in en}, {c: llm_ok[c] for c in en}, en) if en else None
+        d = out["comparacion"]["alt_menos_llm_alcance"][0] if en else 0.0
         out["criterios_r6b"], out["criterio_r6b_sha256"] = CRIT6B, CRIT6B_SHA
-        out["veredicto_r6b"] = {"criterio_sha256": CRIT6B_SHA, "alt_menos_llm": out["comparacion"]["alt_menos_llm"],
+        out["veredicto_r6b"] = {"criterio_sha256": CRIT6B_SHA, "alcance_sha256": CRIT6B_ALCANCE_SHA, "tareas": en,
+                                "alt_menos_llm": out["comparacion"]["alt_menos_llm_alcance"],
                                 "estado": "REFUTADO" if d <= CRIT6B["refutado_si_dif_le"] else ("PASA" if d >= CRIT6B["pasa_dif_min"] else "NO PASA")}
         print(json.dumps(out["veredicto_r6b"], ensure_ascii=False))
     if a.criterio == "r4":
@@ -259,6 +272,8 @@ def cmd_medir(a):
         out["veredicto_r4"] = {"criterio_sha256": CRIT4_SHA, "agrupada_llm": agr, "refutado": agr <= CRIT4["refutado_si_agrupada_le"],
                                "estado": "REFUTADO" if agr <= CRIT4["refutado_si_agrupada_le"] else ("PASA" if agr >= CRIT4["pasa_agrupada_min"] else "NO PASA")}
         print(json.dumps(out["veredicto_r4"], ensure_ascii=False))
+    out.pop("_ok_alt", None)
+    out.pop("_ok_llm", None)
     Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(out["veredicto"], ensure_ascii=False, indent=1))
 
@@ -285,11 +300,12 @@ def main(argv=None):
     m.add_argument("--criterio", choices=("r1", "r4", "r6b"), default="r1", help="r4: fondo ampliado (CRIT4); r6b: etiquetas alternativas (CRIT6B)")
     m.add_argument("--l3-alt", help="etiquetas alternativas del fondo (p. ej. logprobs de R7), una o varias separadas por comas")
     c = sp.add_parser("criterio")
-    c.add_argument("--cual", choices=("r1", "r4", "r6b"), default="r1")
+    c.add_argument("--cual", choices=("r1", "r4", "r6b", "r6b-alcance"), default="r1")
     a = ap.parse_args(argv)
     if a.cmd == "criterio":
         print(*{"r1": (CRIT_SHA, json.dumps(CRIT, sort_keys=True)), "r4": (CRIT4_SHA, json.dumps(CRIT4, sort_keys=True)),
-                "r6b": (CRIT6B_SHA, json.dumps(CRIT6B, sort_keys=True, ensure_ascii=False))}[a.cual])
+                "r6b": (CRIT6B_SHA, json.dumps(CRIT6B, sort_keys=True, ensure_ascii=False)),
+                "r6b-alcance": (CRIT6B_ALCANCE_SHA, json.dumps(CRIT6B_ALCANCE, sort_keys=True, ensure_ascii=False))}[a.cual])
         return
     {"vectores": cmd_vectores, "medir": cmd_medir}[a.cmd](a)
 
