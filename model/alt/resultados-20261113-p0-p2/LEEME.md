@@ -536,3 +536,34 @@ Juan eligió la opción (a), con tope de 0,6 USD. User-data: `model/alt/aws/llm_
         --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
         --user-data file://model/alt/aws/lanzados/ud-llm-q4-8deacf2.sh \
         --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-8deacf2}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-8deacf2}]'
+
+### 12.7 Resultado de la ronda de Q4 (EC2 i-0370ec5fbca0f1ec0, 2026-11-15): el Q4 pierde 3,05 puntos y no cumple ≤ 2
+
+Duró 999 s hasta `listo` y costó ≈ 0,31 USD (≈ 18 min). La autoprueba de docker y la GPU pasó: docker 25.0.14, la imagen en 50 s, `CUDA0: NVIDIA A10G`.
+El runtime es **llama.cpp b12375** (commit 9d25e00), no el b12138 de la prueba en el i7.
+Las 3 116 filas se hicieron en 824 s; 3 027 respuestas son válidas. Cifras en `llm-bateria-q4-8deacf2.json`.
+
+| tarea | n | bf16 | Q4_K_M | Q4 − bf16 [IC95 por pares] | McNemar (solo Q4 / solo bf16, p) | inválidas bf16 → Q4 |
+|---|---|---|---|---|---|---|
+| hatecheck-es | 2000 | 0,824 | 0,8165 | −0,0075 [−0,014, −0,0005] | 19 / 34, p = 0,053 | 0 → 0 |
+| inyecciones | 116 | 0,569 | 0,569 | 0 | 0 / 0 | 0 → 0 |
+| jailbreak | 250 | 0,924 | 0,904 | −0,020 [−0,040, −0,004] | 0 / 5, p = 0,063 | 0 → 0 |
+| massive-es | 250 | 0,444 | **0,344** | **−0,100** [−0,148, −0,052] | 8 / 33, p = 1e-4 | **45 → 54** |
+| massive-esc | 250 | 0,564 | 0,580 | +0,016 [−0,028, +0,060] | 18 / 14, p = 0,60 | 46 → 35 |
+| tuits-es | 250 | 0,636 | 0,592 | −0,044 [−0,084, −0,004] | 8 / 19, p = 0,052 | 0 → 0 |
+| agrupada ponderada | 3116 | 0,6497 | **0,6192** | **−0,0305** [−0,0472, −0,0141] | 53 / 105, p = 4e-5 | 91 → 89 |
+
+- **El criterio del Q4 no se cumple:** pierde 3,05 puntos y el IC entero queda por debajo de −1,4. La mayor parte viene de massive-es (−10 puntos con 60 opciones, y 9 inválidas más), con tuits-es y jailbreak detrás.
+  En hatecheck-es el Q4 pierde menos de 1 punto y sigue 11,8 puntos por encima de kNN (0,8165 frente a 0,6985).
+- El top-1 de Q4 y bf16 coincide en el 92,5 % de las filas.
+- **Veredicto del paso 2 frente al criterio congelado: NO PASA, sin refutar.**
+
+  | criterio | resultado |
+  |---|---|
+  | agrupada bf16 ≥ 0,65 | 0,6497: falla por 0,0003 |
+  | hatecheck-es ≥ kNN + 5 puntos | +12,6 puntos: se cumple |
+  | Q4 pierde ≤ 2 puntos | pierde 3,05: falla |
+  | refutado si queda bajo la fusión | 0,650 frente a 0,606 de la fusión: no está refutado |
+
+- **Lectura para la arquitectura:** el LLM en producción (Q4) es muy bueno en hatecheck-es y jailbreak, pero no sirve como clasificador de muchas opciones (massive). Tampoco da una señal de escalado útil (AUROC de pmax 0,517 en hatecheck-es).
+  Encaja más como etiquetador o como juez de casos de pocas opciones que como cascada general.
