@@ -815,3 +815,40 @@ Datos:
 - Entradas en `s3://chispa-pruebas-cuenta-aws/llm-logprobs-0bcbd78/`: llm.tgz `af1c3c9a…` (llm_logprobs.py y llm_jevbench.py), filas.jsonl `7ea97957…`.
 - User-data: `lanzados/ud-llm-logprobs-0bcbd78.sh` (sha256 `d51132db…`).
 Prueba en seco: el subagente que lo escribió corrió el ud con LOCAL=1 contra un servidor falso de logprobs; pasaron los tres modelos y salieron resumen.json y resultados.tgz. pytest da 10 pruebas en verde y `run-instances --dry-run` da DryRunOperation.
+
+### 14.4 R6: simulación del paso 4 en una c7i, más la medida de R4, las versiones y la latencia (≤ 55 min, ≈ 0,33 USD; código 805d1e0)
+
+**Criterio congelado** (`model/alt/prequential.py`, `CRIT_R6`): sha256 `288d1260f7bb5868218ec0c676e390710a42c642b2166aa2942fbea2acd8f064` de
+`{"alfa": 0.5, "nuevas": ["hatecheck-es", "lexboe", "fakenews-es"], "perdida_max_original": 0.02, "ref_nuevas": "oro_estatico", "ref_originales": "oro_llm_estatico", "refutado_si_dif_le": 0.0, "regla": "peso", "retraso": 50, "sube_min": 0.05, "temp": 0.05, "variante": "preq_oro_fondo", "vecinos": 32}`.
+- **PASA** si se cumplen las dos:
+  - Las nuevas agrupadas (aciertos / casos) con `preq_oro_fondo` suben ≥ 5 puntos sobre el kNN estático de oro.
+  - Ninguna tarea de la batería pierde más de 2 puntos frente a oro ∪ fondo-LLM estático (el 0,656 de R1).
+- **REFUTADO** si las nuevas no superan al estático de oro. En otro caso, NO PASA.
+
+Simulación:
+- Cada tarea es un flujo de las filas de test con etiqueta del LLM: hatecheck-es completa, unas 250 del resto, lexboe 2 000 y fakenews-es 572. Las etiquetas salen de l3_bateria del paso 2 y l3_nuevas de R4.
+- Cada fila se predice con kNN sobre el banco. La etiqueta del LLM de la fila t entra al banco tras predecir la fila t+50.
+- El banco empieza con 8 ejemplos de oro por clase; en fakenews-es empieza vacío.
+- **El oro manda:** en el voto, un vecino de oro pesa 1 y uno del LLM pesa α = 0,5. La variante con umbral (s ≥ 0,90: solo oro) es descriptiva y no entra en el criterio.
+- Variantes: oro estático, oro ∪ fondo-LLM estático, prequential sobre oro y prequential sobre oro ∪ fondo. Se usan 10 semillas de orden.
+
+Reservas, dichas antes de medir:
+- En fakenews-es el estático de oro no tiene banco: predice una constante, así que su 50 % es el de clases equilibradas. Lo que sube ahí mide tener banco frente a no tenerlo. Se da el desglose por tarea y el acierto directo del LLM.
+- hatecheck-es cuenta a la vez como nueva y como original.
+- Con unas 250 filas por tarea, una pérdida puntual de 2 puntos está dentro del ruido. Se da el IC pareado por tarea, pero el criterio es puntual.
+
+Otros pasos de la misma máquina, por prioridad:
+1. Vectores de e5-small con transformers 5.22.2 de la batería, las nuevas, el fondo y fondo2.
+2. R4 (CRIT4).
+3. R6.
+4. Vectores de la batería con transformers 4.46.3 y tokenizers 0.20.3, con el torch de la AMI y con torch 2.5.1+cpu, frente al paso 1 (i7: torch 2.5.1+cpu y transformers 4.46.3). Cierra la diferencia de R1.
+5. Latencia de L0–L2 int8 con 1 vCPU: `docker run --cpus=1 --memory=1800m`, sin Lambda ni IAM; `model/alt/aws/latencia_1vcpu/`, imagen `python:3.12-slim@sha256:5e2bdb1b…`, ORT 1.31.1, 400 peticiones y 5 arranques en frío.
+   - Hace falta `modelo-int8.chispa` (perfil movil-int8, 249 716 640 bytes, sha256 `995dd6a7…`), que sale de `model/bench/movil/aws/modelos.sh` en un prefijo `movil-AAAAMMDD`. Esa fecha no está en el repo ni en la bóveda.
+   - Sin el prefijo, la latencia queda en `omitidos`.
+   - L0 sale omitido de todos modos: el perfil movil-int8 trae el L0 de kindling v2, no L0TF.
+   - Las cifras son del cómputo (los mismos grafos), no del servidor Go.
+
+Prueba en seco en el i7 (el ud sin sustituir, 400 textos de fondo, etiquetas falsas de R4): entradas, criterios, vectores (645 s), R4 (48 s) y R6 (16 s) pasaron. Los veredictos de esa prueba no significan nada.
+
+Entradas: en `s3://chispa-pruebas-cuenta-aws/knn-r6-805d1e0/` ya están todas menos `l3_fondo2.jsonl` y `l3_nuevas.jsonl`, que se suben al verificar R4. User-data: `lanzados/ud-knn-r6-805d1e0.sh` (sha256 `8276b475…`). `--dry-run` da DryRunOperation.
+**Se lanza solo después de que yo suba las dos entradas de R4**: sin ellas el ud se para en el paso 2.
