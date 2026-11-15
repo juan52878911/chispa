@@ -1257,3 +1257,36 @@ Al sumar las tareas nuevas, la cascada **iguala o supera a L3 solo escalando el 
 - **Selección:** semillas 0–9, las de R8, ya vistas, en su mitad de calibración.
 - **Validación:** **solo en las semillas 10–19, que nunca se han usado**, en su mitad de validación.
 - **Datos:** los mismos que en §15.3. Vectores del i7 con transformers 4.46.3; fondo con logprobs de R7, R7b y R8; L3 de R5 y R7. Batería original.
+
+**Resultado (i7, 0 USD; `escalado-r9-03479c2.json`): NO PASA por los topes de escalado; la exactitud de la cascada iguala a L3**
+
+Selección (semillas 0–9):
+- AUROC del margen por tarea: hatecheck-es **0,520**, inyecciones 0,905, jailbreak 0,850, massive-es 0,755, massive-esc 0,748, tuits-es 0,643.
+- Solo hatecheck-es se escala siempre.
+- En el resto, f = 0,30: la cascada mejora de forma monótona con f, de 0,707 a 0,734.
+
+Validación (semillas 10–19, nuevas):
+
+| | valor | criterio |
+|---|---|---|
+| AUROC del margen, sin hatecheck-es | **0,753** | ≥ 0,70: sí |
+| cascada | **0,7328** | |
+| L3 solo | 0,7337 | cascada − L3 = −0,09 puntos (≥ −2): sí |
+| L2 solo | 0,662 | |
+| escalado sin hatecheck-es | 30,25 % | ≤ 30 %: **no**, por empates en el cuantil |
+| escalado total | **53,2 %** | ≤ 50 %: **no** |
+
+| tarea | L2 | L3 | cascada | escalado |
+|---|---|---|---|---|
+| hatecheck-es | 0,715 | 0,836 | 0,836 | 100 % |
+| inyecciones | 0,900 | 0,802 | **0,912** | 3,1 % |
+| jailbreak | 0,913 | 0,915 | 0,915 | 5,7 % |
+| massive-es | 0,560 | 0,634 | 0,625 | 41,9 % |
+| massive-esc | 0,722 | 0,710 | **0,745** | 20,1 % |
+| tuits-es | 0,520 | 0,648 | 0,601 | 39,6 % |
+
+**Lectura:**
+- Escalar siempre hatecheck-es y el resto por margen deja la cascada a 0,09 puntos de L3, con L3 usado solo en el 53 % de las filas.
+- El margen predice bien fuera de hatecheck-es: AUROC 0,753 en semillas nuevas.
+- Falla por el tope total del 50 %, que es aritmético: hatecheck-es pesa un 33 % de las filas y el 30 % del resto añade ≈ 20 %.
+- Con f = 0,25 el total quedaría por debajo del 50 %, con una cascada media de 0,732 en la selección. Pero la regla ya está congelada y no se vuelve a ajustar sobre estas semillas.

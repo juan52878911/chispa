@@ -1,0 +1,534 @@
+{
+ "criterio": {
+  "l2": "kNN oro ∪ fondo-LLM (logprobs donde haya), regla umbral s_oro 0.90, 32 vecinos, T 0.05",
+  "senales": [
+   "pmax",
+   "margen",
+   "neg_entropia",
+   "sim_oro",
+   "sim_vecino"
+  ],
+  "seleccion": "semillas 0-9, mitad de calibración",
+  "validacion": "semillas 10-19 (nuevas), mitad de validación",
+  "escalado_max": 0.3,
+  "pasa_auroc_min": 0.7,
+  "pasa_dist_l3_max": 0.02,
+  "refutado_si_auroc_lt": 0.6,
+  "agrupada": "ponderada por tamaño de tarea, filas con L3",
+  "regla": "por tarea: AUROC del margen < 0.55 en la selección -> escalar siempre; resto por margen con f global",
+  "auroc_siempre_lt": 0.55,
+  "tope": "sin_siempre",
+  "escalado_total_max": 0.5
+ },
+ "criterio_sha256": "81c88b3141c4d8a5a35858ab66b03f5ea8e59b5e7e9617586a37faa773416ae0",
+ "semillas": 10,
+ "transformers_vectores": "4.46.3",
+ "seleccion": {
+  "auroc_margen_por_tarea": {
+   "hatecheck-es": 0.5199,
+   "inyecciones": 0.9048,
+   "jailbreak": 0.8498,
+   "massive-es": 0.7551,
+   "massive-esc": 0.7484,
+   "tuits-es": 0.6428
+  },
+  "cascada_media": {
+   "0.05": 0.7071,
+   "0.10": 0.7138,
+   "0.15": 0.7209,
+   "0.20": 0.7276,
+   "0.25": 0.7318,
+   "0.30": 0.7338
+  }
+ },
+ "validacion": [
+  {
+   "semilla": 10,
+   "cascada": 0.7345741014080206,
+   "l2": 0.6629870262828075,
+   "l3": 0.7401020410050486,
+   "escalado_todas": 0.5182625863770978,
+   "escalado_resto": 0.2820009808729769,
+   "auroc_resto": 0.7562791244159381,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.839,
+     "l2": 0.707,
+     "l3": 0.839,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.9138,
+     "l2": 0.9138,
+     "l3": 0.8276,
+     "escalado": 0.0345
+    },
+    "jailbreak": {
+     "cascada": 0.92,
+     "l2": 0.935,
+     "l3": 0.93,
+     "escalado": 0.035
+    },
+    "massive-es": {
+     "cascada": 0.6244,
+     "l2": 0.5753,
+     "l3": 0.6328,
+     "escalado": 0.4061
+    },
+    "massive-esc": {
+     "cascada": 0.7589,
+     "l2": 0.7336,
+     "l3": 0.7352,
+     "escalado": 0.1804
+    },
+    "tuits-es": {
+     "cascada": 0.5896,
+     "l2": 0.4992,
+     "l3": 0.6432,
+     "escalado": 0.3668
+    }
+   }
+  },
+  {
+   "semilla": 11,
+   "cascada": 0.7299514993936026,
+   "l2": 0.6617217176966482,
+   "l3": 0.7301593859976746,
+   "escalado_todas": 0.5340572556762093,
+   "escalado_resto": 0.30554193231976456,
+   "auroc_resto": 0.7533510186845945,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.833,
+     "l2": 0.711,
+     "l3": 0.833,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.931,
+     "l2": 0.8966,
+     "l3": 0.8448,
+     "escalado": 0.069
+    },
+    "jailbreak": {
+     "cascada": 0.91,
+     "l2": 0.905,
+     "l3": 0.92,
+     "escalado": 0.055
+    },
+    "massive-es": {
+     "cascada": 0.6294,
+     "l2": 0.5668,
+     "l3": 0.6277,
+     "escalado": 0.4213
+    },
+    "massive-esc": {
+     "cascada": 0.7336,
+     "l2": 0.7268,
+     "l3": 0.7015,
+     "escalado": 0.1771
+    },
+    "tuits-es": {
+     "cascada": 0.5997,
+     "l2": 0.5159,
+     "l3": 0.6466,
+     "escalado": 0.4255
+    }
+   }
+  },
+  {
+   "semilla": 12,
+   "cascada": 0.7223665682921304,
+   "l2": 0.6562407409117027,
+   "l3": 0.7280352573250574,
+   "escalado_todas": 0.5231984205330701,
+   "escalado_resto": 0.2893575282000981,
+   "auroc_resto": 0.757471107906074,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.818,
+     "l2": 0.707,
+     "l3": 0.818,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.931,
+     "l2": 0.931,
+     "l3": 0.8276,
+     "escalado": 0.0
+    },
+    "jailbreak": {
+     "cascada": 0.92,
+     "l2": 0.915,
+     "l3": 0.9,
+     "escalado": 0.05
+    },
+    "massive-es": {
+     "cascada": 0.6041,
+     "l2": 0.5431,
+     "l3": 0.6345,
+     "escalado": 0.401
+    },
+    "massive-esc": {
+     "cascada": 0.7403,
+     "l2": 0.7234,
+     "l3": 0.7083,
+     "escalado": 0.2024
+    },
+    "tuits-es": {
+     "cascada": 0.603,
+     "l2": 0.5193,
+     "l3": 0.6516,
+     "escalado": 0.3735
+    }
+   }
+  },
+  {
+   "semilla": 13,
+   "cascada": 0.7327381114479077,
+   "l2": 0.6632895644017514,
+   "l3": 0.7325789933734043,
+   "escalado_todas": 0.5241855873642646,
+   "escalado_resto": 0.2908288376655223,
+   "auroc_resto": 0.7533440805499015,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.837,
+     "l2": 0.723,
+     "l3": 0.837,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.8966,
+     "l2": 0.8966,
+     "l3": 0.8276,
+     "escalado": 0.0172
+    },
+    "jailbreak": {
+     "cascada": 0.93,
+     "l2": 0.93,
+     "l3": 0.94,
+     "escalado": 0.055
+    },
+    "massive-es": {
+     "cascada": 0.6396,
+     "l2": 0.5601,
+     "l3": 0.6481,
+     "escalado": 0.3942
+    },
+    "massive-esc": {
+     "cascada": 0.7386,
+     "l2": 0.7133,
+     "l3": 0.6998,
+     "escalado": 0.2091
+    },
+    "tuits-es": {
+     "cascada": 0.5863,
+     "l2": 0.5209,
+     "l3": 0.6248,
+     "escalado": 0.3752
+    }
+   }
+  },
+  {
+   "semilla": 14,
+   "cascada": 0.7440857047523128,
+   "l2": 0.6581779707457833,
+   "l3": 0.7390244446668707,
+   "escalado_todas": 0.54820664692333,
+   "escalado_resto": 0.32663070132417854,
+   "auroc_resto": 0.7538490679619712,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.849,
+     "l2": 0.717,
+     "l3": 0.849,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.8966,
+     "l2": 0.8621,
+     "l3": 0.8103,
+     "escalado": 0.0517
+    },
+    "jailbreak": {
+     "cascada": 0.93,
+     "l2": 0.92,
+     "l3": 0.925,
+     "escalado": 0.09
+    },
+    "massive-es": {
+     "cascada": 0.6277,
+     "l2": 0.5533,
+     "l3": 0.6311,
+     "escalado": 0.4552
+    },
+    "massive-esc": {
+     "cascada": 0.7437,
+     "l2": 0.6981,
+     "l3": 0.6931,
+     "escalado": 0.231
+    },
+    "tuits-es": {
+     "cascada": 0.6382,
+     "l2": 0.536,
+     "l3": 0.6767,
+     "escalado": 0.4003
+    }
+   }
+  },
+  {
+   "semilla": 15,
+   "cascada": 0.7419755301702051,
+   "l2": 0.6653749094031447,
+   "l3": 0.7412423599633045,
+   "escalado_todas": 0.5370187561697927,
+   "escalado_resto": 0.30995586071603726,
+   "auroc_resto": 0.7577607548423871,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.842,
+     "l2": 0.711,
+     "l3": 0.842,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.931,
+     "l2": 0.931,
+     "l3": 0.8276,
+     "escalado": 0.0172
+    },
+    "jailbreak": {
+     "cascada": 0.91,
+     "l2": 0.895,
+     "l3": 0.925,
+     "escalado": 0.065
+    },
+    "massive-es": {
+     "cascada": 0.6548,
+     "l2": 0.5736,
+     "l3": 0.6616,
+     "escalado": 0.4196
+    },
+    "massive-esc": {
+     "cascada": 0.7487,
+     "l2": 0.7352,
+     "l3": 0.7049,
+     "escalado": 0.204
+    },
+    "tuits-es": {
+     "cascada": 0.6013,
+     "l2": 0.5176,
+     "l3": 0.6466,
+     "escalado": 0.4171
+    }
+   }
+  },
+  {
+   "semilla": 16,
+   "cascada": 0.7229006912874714,
+   "l2": 0.6591319893392241,
+   "l3": 0.7214652617196178,
+   "escalado_todas": 0.5343863112866074,
+   "escalado_resto": 0.3060323688082393,
+   "auroc_resto": 0.7399556948122729,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.834,
+     "l2": 0.721,
+     "l3": 0.834,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.931,
+     "l2": 0.9138,
+     "l3": 0.7759,
+     "escalado": 0.0172
+    },
+    "jailbreak": {
+     "cascada": 0.895,
+     "l2": 0.905,
+     "l3": 0.895,
+     "escalado": 0.055
+    },
+    "massive-es": {
+     "cascada": 0.6159,
+     "l2": 0.5668,
+     "l3": 0.6277,
+     "escalado": 0.4247
+    },
+    "massive-esc": {
+     "cascada": 0.7234,
+     "l2": 0.6981,
+     "l3": 0.6863,
+     "escalado": 0.2024
+    },
+    "tuits-es": {
+     "cascada": 0.593,
+     "l2": 0.5176,
+     "l3": 0.6298,
+     "escalado": 0.4037
+    }
+   }
+  },
+  {
+   "semilla": 17,
+   "cascada": 0.7419553815549196,
+   "l2": 0.6672372682441242,
+   "l3": 0.7426354819436998,
+   "escalado_todas": 0.5317538664034221,
+   "escalado_resto": 0.3021088769004414,
+   "auroc_resto": 0.7462330720638878,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.843,
+     "l2": 0.712,
+     "l3": 0.843,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.931,
+     "l2": 0.9138,
+     "l3": 0.7586,
+     "escalado": 0.0345
+    },
+    "jailbreak": {
+     "cascada": 0.91,
+     "l2": 0.91,
+     "l3": 0.915,
+     "escalado": 0.06
+    },
+    "massive-es": {
+     "cascada": 0.6261,
+     "l2": 0.5584,
+     "l3": 0.6328,
+     "escalado": 0.4112
+    },
+    "massive-esc": {
+     "cascada": 0.769,
+     "l2": 0.7403,
+     "l3": 0.7386,
+     "escalado": 0.204
+    },
+    "tuits-es": {
+     "cascada": 0.6114,
+     "l2": 0.536,
+     "l3": 0.6583,
+     "escalado": 0.3987
+    }
+   }
+  },
+  {
+   "semilla": 18,
+   "cascada": 0.719122688851668,
+   "l2": 0.66137151661572,
+   "l3": 0.726353030064922,
+   "escalado_todas": 0.5363606449489964,
+   "escalado_resto": 0.30897498773908777,
+   "auroc_resto": 0.7543486640058686,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.825,
+     "l2": 0.728,
+     "l3": 0.825,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.8621,
+     "l2": 0.8621,
+     "l3": 0.7586,
+     "escalado": 0.0345
+    },
+    "jailbreak": {
+     "cascada": 0.915,
+     "l2": 0.905,
+     "l3": 0.905,
+     "escalado": 0.055
+    },
+    "massive-es": {
+     "cascada": 0.6041,
+     "l2": 0.5431,
+     "l3": 0.6193,
+     "escalado": 0.4332
+    },
+    "massive-esc": {
+     "cascada": 0.742,
+     "l2": 0.7319,
+     "l3": 0.715,
+     "escalado": 0.199
+    },
+    "tuits-es": {
+     "cascada": 0.5796,
+     "l2": 0.5126,
+     "l3": 0.6466,
+     "escalado": 0.407
+    }
+   }
+  },
+  {
+   "semilla": 19,
+   "cascada": 0.738737870995324,
+   "l2": 0.6625435855701737,
+   "l3": 0.7355918606703857,
+   "escalado_todas": 0.5324119776242185,
+   "escalado_resto": 0.3030897498773909,
+   "auroc_resto": 0.7612807583492541,
+   "por_tarea": {
+    "hatecheck-es": {
+     "cascada": 0.845,
+     "l2": 0.718,
+     "l3": 0.845,
+     "escalado": 1.0
+    },
+    "inyecciones": {
+     "cascada": 0.8966,
+     "l2": 0.8793,
+     "l3": 0.7586,
+     "escalado": 0.0345
+    },
+    "jailbreak": {
+     "cascada": 0.91,
+     "l2": 0.91,
+     "l3": 0.895,
+     "escalado": 0.05
+    },
+    "massive-es": {
+     "cascada": 0.6261,
+     "l2": 0.5567,
+     "l3": 0.6261,
+     "escalado": 0.4213
+    },
+    "massive-esc": {
+     "cascada": 0.7555,
+     "l2": 0.7218,
+     "l3": 0.7201,
+     "escalado": 0.2024
+    },
+    "tuits-es": {
+     "cascada": 0.6097,
+     "l2": 0.5276,
+     "l3": 0.6533,
+     "escalado": 0.397
+    }
+   }
+  }
+ ],
+ "veredicto": {
+  "criterio_sha256": "3179f5b53d12d0b7dbd8a7e1e318299ca894b782d60be09289399755cccf8c52",
+  "tope": "sin_siempre",
+  "siempre": [
+   "hatecheck-es"
+  ],
+  "fraccion": 0.3,
+  "cascada": 0.7328,
+  "l2": 0.6618,
+  "l3": 0.7337,
+  "escalado_todas": 0.532,
+  "escalado_resto": 0.3025,
+  "auroc_resto": 0.7534,
+  "cascada_menos_l3": -0.0009,
+  "c_auroc": true,
+  "c_cascada": false,
+  "estado": "NO PASA"
+ }
+}
