@@ -39,6 +39,9 @@ CRIT6B_SHA = hashlib.sha256(json.dumps(CRIT6B, sort_keys=True).encode()).hexdige
 CRIT6B_ALCANCE = {"tareas": "batería original con >= min_frac del soporte JSON válido reetiquetado por logprobs", "min_frac": 0.5,
                   "sustitucion": "logprobs solo en ids con registro JSON"}
 CRIT6B_ALCANCE_SHA = hashlib.sha256(json.dumps(CRIT6B_ALCANCE, sort_keys=True).encode()).hexdigest()
+# Los vectores de e5 cambian con la versión de transformers (R6: 4.46.3 reproduce el paso 1 exacto; 5.22.2 difiere hasta 0,057 en
+# hatecheck-es): `vectores` exige la versión fijada y la guarda en cada .npz; `medir` no mezcla vectores de versiones distintas.
+TRANSFORMERS_VEC = "5.22.2"
 KS_ORO = (1, 2, 4, 8)
 KS_LLM = (1, 2, 4, 8, 16, 32, 64, 128)
 KS_FUENTE = (8, 32, 128)
@@ -54,8 +57,16 @@ def leer_varios(rutas):
 
 
 # ---------------------------------------------------------------- vectores (torch)
+def version_vec(z):
+    return str(z["transformers"]) if "transformers" in getattr(z, "files", ()) else None
+
+
 def cmd_vectores(a):
     import torch
+    import transformers
+    if transformers.__version__ != a.transformers:
+        raise SystemExit("transformers %s y los vectores van fijados a %s (--transformers)" % (transformers.__version__, a.transformers))
+    tv = np.array(transformers.__version__)
     torch.set_num_threads(a.hilos)
     from model.alt.p0_medir import cargar_bateria
     from model.l2.linea_base_knn_e5 import vectores
@@ -69,11 +80,11 @@ def cmd_vectores(a):
     for c, (sop, ev) in bats.items():
         Xtr = vectores(enc, [r["texto"] for r in sop]).numpy()
         Xte = vectores(enc, [r["texto"] for r in ev]).numpy()
-        np.savez(sal / (c + ".npz"), Xtr=Xtr, Xte=Xte, idtr=np.array([r["id"] for r in sop]), idte=np.array([r["id"] for r in ev]))
+        np.savez(sal / (c + ".npz"), Xtr=Xtr, Xte=Xte, idtr=np.array([r["id"] for r in sop]), idte=np.array([r["id"] for r in ev]), transformers=tv)
         print(c, Xtr.shape, Xte.shape, flush=True)
     fo = leer_varios(a.fondo)[:a.max_fondo]
     X = vectores(enc, [r["texto"] for r in fo]).numpy()
-    np.savez(sal / "fondo.npz", X=X, ids=np.array([r["id"] for r in fo]))
+    np.savez(sal / "fondo.npz", X=X, ids=np.array([r["id"] for r in fo]), transformers=tv)
     print("fondo", X.shape, flush=True)
 
 
@@ -233,6 +244,10 @@ def cmd_medir(a):
     if list(z["ids"]) != [r["id"] for r in fondo]:
         raise ValueError("fondo.npz no corresponde a fondo.jsonl")
     datos = cargar(a.bateria, a.vec)
+    vers = {version_vec(z)} | {version_vec(np.load(Path(a.vec) / (c + ".npz"))) for c in datos}
+    if len(vers) > 1:
+        raise ValueError("vectores de versiones de transformers distintas: %s" % sorted(map(str, vers)))
+    out_version = vers.pop()
     sop = soportes(fondo, leer_varios(a.l3), leer_varios(a.fuente) if a.fuente else None)
     if a.l3_alt:   # las etiquetas alternativas pisan a las de --l3 en los ids que tengan (el último registro de un id manda)
         base = leer_varios(a.l3)
@@ -246,7 +261,7 @@ def cmd_medir(a):
     faltan = [c for c in datos if c not in sop or not sop[c]["llm"]]
     if faltan:
         raise ValueError("sin soporte del LLM en: %s" % faltan)
-    out = {"criterios": CRIT, "criterio_sha256": CRIT_SHA, "semillas": a.semillas}
+    out = {"criterios": CRIT, "criterio_sha256": CRIT_SHA, "semillas": a.semillas, "transformers_vectores": out_version}
     if a.vec_oro:   # misma batería con los vectores del paso 1 (otra máquina): cuánto cambian
         d1 = cargar(a.bateria, a.vec_oro)
         out["vectores_frente_a_paso1"] = {c: round(float(max(np.abs(datos[c]["Xte"] - d1[c]["Xte"]).max(), np.abs(datos[c]["Xtr"] - d1[c]["Xtr"]).max())), 6) for c in datos}
@@ -288,6 +303,7 @@ def main(argv=None):
     v.add_argument("--hilos", type=int, default=8)
     v.add_argument("--max-fondo", type=int, help="solo los primeros N textos del fondo (prueba en seco)")
     v.add_argument("--sin-bateria", action="store_true", help="solo el fondo (prueba en seco con los vectores del paso 1)")
+    v.add_argument("--transformers", default=TRANSFORMERS_VEC, help="versión exigida (la del paso 1 era 4.46.3)")
     m = sp.add_parser("medir")
     m.add_argument("--bateria", required=True)
     m.add_argument("--vec", required=True)

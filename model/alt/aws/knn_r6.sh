@@ -110,7 +110,7 @@ else
     V=/opt/v-$var; "$PY" -m venv --system-site-packages "$V" && "$V/bin/pip" install -q --no-cache-dir transformers==4.46.3 tokenizers==0.20.3 numpy \
       || { estado versiones "$var FALLO pip"; continue; }
     if [ "$var" = torch251 ]; then "$V/bin/pip" install -q --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 || { estado versiones "$var FALLO torch"; continue; }; fi
-    ( cd "$REPO" && "$V/bin/python" -m model.alt.knn_soporte_llm vectores --bateria "$BASE/bat" --fondo "$BASE/fondo.jsonl" --max-fondo 1 --salida "$BASE/vec-$var" --hilos "$HILOS" ) \
+    ( cd "$REPO" && "$V/bin/python" -m model.alt.knn_soporte_llm vectores --bateria "$BASE/bat" --fondo "$BASE/fondo.jsonl" --max-fondo 1 --salida "$BASE/vec-$var" --hilos "$HILOS" --transformers 4.46.3 ) \
       || { estado versiones "$var FALLO vectores"; continue; }
     "$PY" - "$BASE/vec1" "$BASE/vec-$var" "$VEC" "$var" "$("$V/bin/python" -c 'import torch,transformers;print(torch.__version__, transformers.__version__)')" >> "$OUT/versiones.jsonl" <<'EOF'
 import json, sys, numpy as np
