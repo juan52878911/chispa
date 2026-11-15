@@ -1114,3 +1114,25 @@ Datos:
 - Entradas en `s3://…/llm-r8-a-d10bc5c/` (reetiqueta.jsonl `1b7b6a20…`) y en `s3://…/llm-r8-b-d10bc5c/` (reetiqueta.jsonl `59ad1b56…`).
 - User-data: `ud-llm-r8-a-d10bc5c.sh` y `ud-llm-r8-b-d10bc5c.sh`.
 - `--dry-run` da DryRunOperation.
+
+### 15.2 Regla de escalado L2→L3 (sin AWS, en el i7; código del commit siguiente a este texto)
+
+**Criterio congelado antes de medir** (`model/alt/escalado.py`, `CRIT8E`): sha256 `81c88b3141c4d8a5a35858ab66b03f5ea8e59b5e7e9617586a37faa773416ae0`.
+
+- **L2:** kNN-e5 sobre oro ∪ fondo-LLM, con 32 vecinos y T = 0,05. El fondo lleva etiqueta JSON de R1/R4, sustituida por logprobs donde la hay (R7 y R7b; R8 todavía no). Se aplica la regla de umbral: si el oro más cercano está a ≥ 0,90, decide solo el oro.
+- **L3:** el 4B por logprobs. En la muestra del paso 2 vale R5; fuera de ella, R7. Solo cuentan las filas de test con L3: 6 077 de 6 651.
+- **Señales:**
+  - pmax;
+  - margen;
+  - −entropía;
+  - similitud al oro más cercano;
+  - similitud al vecino más cercano.
+- **Selección:** con las semillas 0–4 (mitad de calibración) se elige la señal con mejor AUROC y la fracción de escalado f ∈ {0,05 … 0,30} con la mejor cascada.
+- **Validación:** con las semillas 5–9 (mitad de validación), con la señal y f congeladas.
+- **PASA** si el AUROC ≥ 0,70 y la cascada, escalando ≤ 30 %, queda a ≤ 2 puntos de L3 solo. **REFUTADO** si el AUROC < 0,60.
+- La agrupada se pondera por el tamaño de cada tarea.
+- Los vectores se calculan en el i7 con transformers 4.46.3, la versión del paso 1, que va guardada en cada `.npz`.
+
+**Fijado de transformers en los vectores:**
+- `knn_soporte_llm vectores` exige `--transformers` (5.22.2 por defecto) y guarda la versión en cada `.npz`.
+- `medir` se niega a mezclar vectores de versiones distintas.
