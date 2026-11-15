@@ -1136,3 +1136,4 @@ Datos:
 **Fijado de transformers en los vectores:**
 - `knn_soporte_llm vectores` exige `--transformers` (5.22.2 por defecto) y guarda la versión en cada `.npz`.
 - `medir` se niega a mezclar vectores de versiones distintas.
+- **Condición para R8b**, añadida antes de medir por orden de la sesión madre: R8b mide la cascada con la misma versión de vectores con la que se fija la regla, transformers 4.46.3 y torch 2.5.1+cpu. Su ud tiene que instalar esas versiones y llamar a `vectores --transformers 4.46.3`; el umbral se aplica sobre esos mismos vectores.
