@@ -34,9 +34,9 @@ ATRIBUCION = {
 DESC_LEXBOE = {
     "Funcionarios y Personal": "empleo público y función pública: oposiciones, nombramientos, plazas", "Normativas": "leyes y reglamentos",
     "Administración": "organización y procedimientos de la administración", "Educación": "sistema educativo, centros, universidades y políticas",
-    "Economía": "asuntos económicos y financieros", "Energía": "política e infraestructuras de energía", "Judicial": "tribunales, procesos y órganos judiciales",
+    "Economía y Empleo": "asuntos económicos, financieros y de empleo", "Energía y Medio Ambiente": "política e infraestructuras de energía y medio ambiente", "Judicial": "tribunales, procesos y órganos judiciales",
     "Cultura": "instituciones y actividades culturales", "Salud": "salud pública y sanidad", "Transporte": "sistemas e infraestructuras de transporte",
-    "Fuerzas": "fuerzas de seguridad y defensa", "Vivienda": "vivienda y urbanismo",
+    "Fuerzas de Seguridad del Estado": "fuerzas y cuerpos de seguridad y defensa", "Vivienda": "vivienda y urbanismo",
 }
 DESC_FAKE = {"false": "noticia verdadera, publicada por un medio fiable", "true": "noticia falsa o desinformación"}
 
@@ -109,6 +109,10 @@ def fakenews(hub):
 def construir(hub, eurovoc, tope=2000, k=8, semilla=0):
     por, meta = {}, {}
     for corto, (filas, m) in (("lexboe", lexboe(hub)), ("eurlex-n1", eurlex(hub, eurovoc)), ("fakenews-es", fakenews(hub))):
+        if corto == "eurlex-n1" and len({r["etiqueta"] for r in filas if r["split"] == "test"}) < 3:   # sin tarea: solo se anota
+            meta[corto] = dict(m, viable=False, motivo="con un único descriptor de nivel 1 quedan menos de 3 clases con >= %d documentos en test" % MIN_CLASE,
+                               atribucion=ATRIBUCION[corto])
+            continue
         kk = 0 if corto == "fakenews-es" else k
         rng = random.Random("%s-%d" % (corto, semilla))
         sop = []
