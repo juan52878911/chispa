@@ -1018,3 +1018,29 @@ Mismas filas, 4B por logprobs frente a 4B en JSON (permisivo):
 
 **R6b tal como se congeló no informaría.** Su CRIT6B compara el kNN con el fondo reetiquetado por logprobs frente al de JSON. Como no se reetiquetó ni un texto del fondo, las dos variantes serían idénticas y la diferencia daría 0 por construcción. No conviene lanzarlo así.
 Hace falta antes una ronda que reetiquete el fondo. Lo que tiene más ruido en JSON son lexboe, massive-esc e inyecciones; massive-es cuesta 1,17 s por texto.
+
+### 14.10 R7b: reetiquetado por logprobs en dos g5 a la vez y alcance de R6b (preparado, sin lanzar; código 540c8c1)
+
+El ud es el de R7 sin la confirmación (`llm_r7b.sh`), con el mismo cliente y el mismo modelo. Lleva un tope de 35 min por máquina (≈ 0,59 USD cada una).
+Solo se reetiquetan textos que ya tienen etiqueta JSON, para que R6b compare etiquetas y no tamaños de soporte.
+
+Colas, en orden de prioridad (estimación con los costes de R5 y R7):
+
+| cola | contenido | estimación |
+|---|---|---|
+| A, 9 638 textos | resto del test de lexboe (782); fondo de R1 de hatecheck-es, inyecciones, jailbreak y tuits-es (4 137); fondo de R1 de massive-esc (2 000); lexboe de fondo2 con etiqueta de R4 (2 719) | ≈ 31 min; lexboe de fondo2 se cortará en parte |
+| B, 4 721 textos | massive-esc de fondo2 con etiqueta de R4 (2 721); fondo de R1 de massive-es (2 000) | ≈ 17 min más massive-es a 1,17 s por texto; massive-es llegará a ≈ 500–600 |
+
+Entradas:
+- `s3://…/llm-r7b-a-540c8c1/`: reetiqueta.jsonl `1b08bac9…`.
+- `s3://…/llm-r7b-b-540c8c1/`: reetiqueta.jsonl `9da77e8b…`.
+- El llm.tgz es el mismo de R5 en contenido.
+- User-data: `ud-llm-r7b-a-540c8c1.sh` (sha256 `ee33bfd8…`) y `ud-llm-r7b-b-540c8c1.sh` (sha256 `b08000a3…`).
+- Prueba en seco en el i7 con el servidor falso: OK. Los `--dry-run` dan DryRunOperation.
+
+**Alcance de R6b**, fijado antes de medir (`knn_soporte_llm.CRIT6B_ALCANCE`, sha256 `7e885b2a04e36f42b295de8d66416871cbfe1df0696be859b574ce70af4feeed`).
+- CRIT6B sigue igual (sha `75922ecb…`: PASA con ≥ +2 puntos, REFUTADO con ≤ 0). Lo que se fija ahora es dónde se mide:
+  - solo en las tareas de la batería original con ≥ 50 % de su soporte JSON válido reetiquetado por logprobs;
+  - las logprobs solo sustituyen etiquetas de textos que ya tenían etiqueta JSON.
+- Lo pidió la sesión madre después de ver que R7 no reetiquetó el fondo.
+- El informe lista las tareas incluidas y la fracción reetiquetada de cada una. Por la estimación, massive-es quedará fuera.
