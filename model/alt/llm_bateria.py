@@ -26,6 +26,7 @@ from pathlib import Path
 
 CAMPOS = ("id", "conjunto", "tarea", "tipo", "pregunta", "opciones", "descripciones", "texto")
 Q4_DEF = {"hatecheck-es": 150, "inyecciones": 60, "jailbreak": 60, "massive-es": 40, "massive-esc": 60, "tuits-es": 60}
+CRIT5 = {"pasa_agrupada_min": 0.62, "pasa_hatecheck_min": 0.75, "refutado_agrupada_bajo": 0.58}   # paso 5 (R2), congelado
 CRIT = {"agrupada_min": 0.65, "hatecheck_sobre_knn": 0.05, "q4_perdida_max": 0.02, "refutado_bajo": 0.610}
 
 
@@ -306,6 +307,60 @@ def veredicto(out):
     return v
 
 
+def percentiles(ms):
+    v = sorted(ms)
+    if not v:
+        return None
+    q = lambda p: v[min(len(v) - 1, int(round(p * (len(v) - 1))))]  # noqa: E731
+    return {"n": len(v), "p50_ms": q(0.5), "p95_ms": q(0.95), "media_ms": round(sum(v) / len(v))}
+
+
+def cmd_pequeno(a):
+    """Paso 5: LLM más pequeño en la misma muestra que el paso 2, frente a Qwen3-4B bf16 (por pares) y con CRIT5."""
+    from model.alt.p0_medir import mcnemar
+    mu = Path(a.muestra)
+    filas = leer(mu / "filas.jsonl")
+    meta = json.loads((mu / "muestra.json").read_text(encoding="utf-8"))
+    pesos = {c: v["n_bateria"] for c, v in meta.items() if not c.startswith("_")}
+    tareas = sorted(pesos)
+    por = {c: [f for f in filas if f["conjunto"] == c] for c in tareas}
+    tarea_de = {f["id"]: f["conjunto"] for f in filas}
+
+    def oks(pred):
+        return {c: [1.0 if pred[f["id"]][0] == f["etiqueta"] else 0.0 for f in por[c]] for c in tareas}
+
+    ref = llm_pred(a.ref, filas)
+    ok_ref = oks(ref)
+    lat = dict(x.split("=", 1) for x in (a.lat or []))
+    out = {"criterios": CRIT5, "referencia_4b": {"agrupada": boot(ok_ref, pesos)}, "modelos": {}}
+    for nom, ruta in (x.split("=", 1) for x in a.modelo):
+        pr, prp = llm_pred(ruta, filas), llm_pred(ruta, filas, permisivo=True)
+        ok, okp = oks(pr), oks(prp)
+        res = leer(ruta)
+        m = {"respondidas": len({r["id"] for r in res} & set(tarea_de)), "n": len(filas),
+             "agrupada": boot(ok, pesos), "permisiva": boot(okp, pesos), "menos_4b": boot(ok, pesos, ref=ok_ref),
+             "mcnemar_4b": mcnemar([x for c in tareas for x in ok[c]], [x for c in tareas for x in ok_ref[c]]),
+             "acuerdo_top1_4b": round(sum(1 for f in filas if pr[f["id"]][0] == ref[f["id"]][0]) / len(filas), 4),
+             "por_tarea": {c: {"n": len(por[c]), "estricta": boot({c: ok[c]}, {c: 1}), "cuatro_b": round(sum(ok_ref[c]) / len(ok_ref[c]), 4),
+                               "menos_4b": boot({c: ok[c]}, {c: 1}, ref={c: ok_ref[c]}), "mcnemar_4b": mcnemar(ok[c], ok_ref[c]),
+                               "invalidas": sum(1 for f in por[c] if not pr[f["id"]][2])} for c in tareas},
+             "latencia_concurrente": percentiles([r["ms"] for r in res if r["id"] in tarea_de])}
+        if nom in lat:
+            lr = [r for r in leer(lat[nom]) if r["id"] in tarea_de]
+            m["latencia_un_hilo"] = percentiles([r["ms"] for r in lr])
+            m["latencia_un_hilo_por_tarea"] = {c: percentiles([r["ms"] for r in lr if tarea_de[r["id"]] == c]) for c in tareas}
+        g, h = m["agrupada"][0], m["por_tarea"].get("hatecheck-es", {}).get("estricta", [None])[0]
+        v = {"agrupada": g, "hatecheck": h, "completo": m["respondidas"] == m["n"]}
+        v["estado"] = ("REFUTADO" if g < CRIT5["refutado_agrupada_bajo"] else
+                       "PASA" if g >= CRIT5["pasa_agrupada_min"] and h is not None and h >= CRIT5["pasa_hatecheck_min"] else "NO PASA")
+        if not v["completo"] and v["estado"] != "PASA":
+            v["estado"] += " (INCOMPLETO: faltan %d filas, contadas como fallo)" % (m["n"] - m["respondidas"])
+        m["veredicto"] = v
+        out["modelos"][nom] = m
+    Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps({k: v["veredicto"] for k, v in out["modelos"].items()}, ensure_ascii=False, indent=1))
+
+
 def cmd_fondo_resumen(a):
     from model.alt.llm_techo import top1
     fuente = {r["id"]: r for r in leer(Path(a.fondo) / "fondo-fuente.jsonl")}
@@ -352,8 +407,14 @@ def main(argv=None):
     r.add_argument("--fondo", required=True)
     r.add_argument("--l3", required=True)
     r.add_argument("--salida", required=True)
+    q = sp.add_parser("pequeno")
+    q.add_argument("--muestra", required=True)
+    q.add_argument("--ref", required=True, help="l3_bateria.jsonl de Qwen3-4B bf16 (paso 2)")
+    q.add_argument("--modelo", action="append", required=True, help="nombre=l3_x.jsonl (la muestra entera, 32 hilos)")
+    q.add_argument("--lat", action="append", help="nombre=lat_x.jsonl (subconjunto con un hilo)")
+    q.add_argument("--salida", required=True)
     a = ap.parse_args(argv)
-    {"muestra": cmd_muestra, "fondo": cmd_fondo, "medir": cmd_medir, "fondo-resumen": cmd_fondo_resumen}[a.cmd](a)
+    {"muestra": cmd_muestra, "fondo": cmd_fondo, "medir": cmd_medir, "fondo-resumen": cmd_fondo_resumen, "pequeno": cmd_pequeno}[a.cmd](a)
 
 
 if __name__ == "__main__":

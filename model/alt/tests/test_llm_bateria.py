@@ -55,3 +55,27 @@ def test_veredicto():
     assert lb.veredicto(out)["estado"] == "REFUTADO"
     out["agrupada_ponderada"]["estricta"] = [0.63, 0, 0]
     assert lb.veredicto(out)["estado"] == "NO PASA"
+
+
+def test_pequeno_criterio_y_latencia(tmp_path):
+    mu = tmp_path / "mu"
+    mu.mkdir()
+    fil = [{"id": "h%d" % i, "conjunto": "hatecheck-es", "etiqueta": "true" if i % 2 else "false", "opciones": ["false", "true"], "tipo": "noul"}
+           for i in range(20)]
+    (mu / "filas.jsonl").write_text("".join(json.dumps(f) + "\n" for f in fil))
+    (mu / "muestra.json").write_text(json.dumps({"hatecheck-es": {"n_bateria": 2000}}))
+
+    def res(ruta, mal):
+        rs = [{"id": f["id"], "valida": True, "ms": 100 + i, "raw": "",
+               "probs": {f["etiqueta"]: 0.9, ("false" if f["etiqueta"] == "true" else "true"): 0.1} if i >= mal else
+                        {f["etiqueta"]: 0.1, ("false" if f["etiqueta"] == "true" else "true"): 0.9}} for i, f in enumerate(fil)]
+        ruta.write_text("".join(json.dumps(r) + "\n" for r in rs))
+        return str(ruta)
+
+    ref, chico = res(tmp_path / "ref.jsonl", 2), res(tmp_path / "chico.jsonl", 4)
+    sal = tmp_path / "out.json"
+    lb.main(["pequeno", "--muestra", str(mu), "--ref", ref, "--modelo", "1.7b=" + chico, "--lat", "1.7b=" + chico, "--salida", str(sal)])
+    m = json.loads(sal.read_text())["modelos"]["1.7b"]
+    assert m["agrupada"][0] == 0.8 and m["menos_4b"][0] == -0.1
+    assert m["veredicto"]["estado"] == "PASA" and m["veredicto"]["completo"]
+    assert m["latencia_un_hilo"]["p50_ms"] == 110 and m["latencia_un_hilo"]["p95_ms"] == 118

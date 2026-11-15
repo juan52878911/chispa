@@ -88,10 +88,12 @@ def formato(nombre, f):
     return {"type": "json_object"}
 
 
-def llamar(url, modelo, msgs, n_ops, timeout, fmt=None, temperatura=0.0):
+def llamar(url, modelo, msgs, n_ops, timeout, fmt=None, temperatura=0.0, sin_pensar=False):
     # con esquema el JSON ocupa más (llaves, comillas, ids): sin tope ajustado a la v1
     cuerpo = {"model": modelo, "messages": msgs, "temperature": temperatura, "max_tokens": (24 + 24 * n_ops) if fmt is None else (64 + 40 * n_ops), "stream": False,
               "response_format": fmt or {"type": "json_object"}}
+    if sin_pensar:   # modelos híbridos (Qwen3-1.7B/0.6B): el modo sin pensamiento de su plantilla; el prompt no cambia
+        cuerpo["chat_template_kwargs"] = {"enable_thinking": False}
     req = urllib.request.Request(url.rstrip("/") + "/v1/chat/completions", data=json.dumps(cuerpo).encode(), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())["choices"][0]["message"]["content"]
@@ -107,6 +109,7 @@ def main():
     ap.add_argument("--formato", choices=("llama", "vllm"), help="salida restringida por esquema con todos los ids; sin él, v1 libre")
     ap.add_argument("--reintentos", type=int, default=1)
     ap.add_argument("--max", type=int, help="solo los primeros N casos (pruebas)")
+    ap.add_argument("--sin-pensar", action="store_true", help="chat_template_kwargs enable_thinking=false (Qwen3 híbridos)")
     a = ap.parse_args()
     filas = [json.loads(l) for l in open(a.filas, encoding="utf-8") if l.strip()][:a.max]
     try:
@@ -130,7 +133,7 @@ def main():
                     m2 = msgs
                     if intentos > 1 and raw and suma_probs(raw) is not None:   # reintento con retroalimentación: dice lo que sumó
                         m2 = msgs + [{"role": "assistant", "content": raw}, {"role": "user", "content": "Tus probabilidades suman %.2f. Deben sumar exactamente 1. Responde de nuevo solo con el JSON corregido." % suma_probs(raw)}]
-                    raw = llamar(url, a.modelo, m2, n, a.timeout, formato(a.formato, f) if a.formato else None, 0.0)
+                    raw = llamar(url, a.modelo, m2, n, a.timeout, formato(a.formato, f) if a.formato else None, 0.0, a.sin_pensar)
                     probs, err = interpretar(raw, f), ""
                 except Exception as e:  # noqa: BLE001 - se anota y se sigue
                     err = str(e)[:120]
