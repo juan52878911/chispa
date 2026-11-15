@@ -736,3 +736,50 @@ Ninguna de las tres fuentes aparece en los manifiestos de entrenamiento: `manifi
 
 **Reserva para el veredicto del paso 4:** de las tres tareas nuevas solo quedan dos, y una es legal y la otra solo de zero-shot. Medirán poco la generalidad.
 No se encontró ninguna cuarta tarea apta que no sea legal. La única dudosa, horeca-spanish-reviews, es sintética de Gemini y la decide Juan.
+
+
+## 14. Rondas R4, R5 y R6 y la integración (preparadas, sin lanzar; rama `llm-rondas-r456`)
+
+### 14.1 R4: zero-shot del 4B en las tareas nuevas y fondo ampliado (g5.xlarge, ≤ 60 min, ≈ 1,0 USD; código 9f68027)
+
+**Criterio congelado antes de medir** (`knn_soporte_llm.CRIT4`, `--criterio r4`). Es el sha256 `a273e9271013035e5725af0fbec6580d4dcd6c995da3b98465b083fa0c0950ce` de
+`{"fondo": "fondo+fondo2", "pasa_agrupada_min": 0.66, "refutado_si_agrupada_le": 0.638, "variante": "llm/todo"}`.
+- La medida es el kNN de R1 con todo el soporte válido del LLM: fondo de R1 más fondo2, sobre la batería original de 6 tareas.
+- **PASA** si la agrupada da ≥ 0,66. **REFUTADO** si da ≤ 0,638, es decir, si no mejora R1. Si no, NO PASA.
+- Se mide en R6, en la c7i, con los vectores de esa máquina.
+
+Qué etiqueta el 4B (mismo arnés que el paso 2):
+- (a) `filas-nuevas.jsonl`: todo el test de lexboe (2 000) y de fakenews-es (572). Da el zero-shot del LLM y es la entrada de R6.
+- (b) `fondo2.jsonl`: 18 000 textos sin etiqueta (`llm_bateria fondo2`):
+  - 6 000 de massive-es, de 10 467 disponibles;
+  - 8 000 de massive-esc, de 10 456;
+  - 4 000 de LexBOE, de 52 158.
+  - Mismas exclusiones que el fondo: ningún texto de test ni de soporte, de la batería ni de las tareas nuevas, y ninguno ya usado en el fondo de esa tarea.
+- Las demás tareas del fondo (hatecheck-es, inyecciones, jailbreak, tuits-es) ya estaban agotadas en R1. Solo massive y LexBOE tienen más texto con licencia aprobada.
+
+**No se llega a 25–30 k.** En R1, un texto de massive-es costó 0,93 s de pared, el 74 % del tiempo del fondo, porque son 60 opciones en JSON. En 60 minutos caben el test nuevo y unos 8–10 k textos de fondo.
+- El orden va por prioridad: primero el test nuevo; luego el bloque 1 del fondo2 (LexBOE intercalado con la mitad de massive-esc, 8 000 textos); luego el bloque 2 (massive-es intercalado con el resto de massive-esc).
+- Lo etiquetado queda aunque se corte. Total esperado: unos 16–18 k textos con el fondo de R1.
+
+Datos:
+- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-r4-9f68027/`: llm.tgz `c8c0cdfd…`, filas-nuevas.jsonl `9dab2c69…`, fondo2.jsonl `b788b574…`.
+- User-data: `lanzados/ud-llm-r4-9f68027.sh` (sha256 `dfa4c847…`).
+
+Prueba en seco en el i7, con el ud sin sustituir y el servidor falso: pasaron entradas, autoprueba, nuevas y fondo2. `run-instances --dry-run` da DryRunOperation.
+Orden de lanzamiento: el de §13.4 para la g5, con `--user-data file://model/alt/aws/lanzados/ud-llm-r4-9f68027.sh` y Name `chispa-llm-r4-9f68027`.
+
+### 14.2 Integración (`integracion-uso-general` @ 4799323, sin push y sin tocar main)
+
+Se creó desde `llm-rondas-r123`:
+- Se fusionaron audio-experimento y servidor-p1-m1, sin conflictos.
+- arquitectura-p0-p2, servidor-p1-latencia, fusion-knn-l2 y llm-bateria ya estaban dentro.
+
+Verificación:
+- `make test`, `make smoke`, `go vet ./...` y `go build ./...` pasan en arena, server, runtime, sdk/go y format.
+- Pasan 45 tests de model/alt sin torch.
+- `delega scan` da limpio.
+
+Fallos que ya estaban antes de la integración, comprobados en las ramas de origen:
+- `demo/wasm/LICENSE.go` rompe `go vet` y `go build` de demo/wasm.
+- Varios tests de model/datos, cascada, l1, liston y l2 fallan en sus aserciones.
+- Los tests que necesitan torch o pyarrow, incluido model/audio, no se pueden ejecutar en el Mac.
