@@ -517,7 +517,7 @@ Juan eligió la opción (a), con tope de 0,6 USD. User-data: `model/alt/aws/llm_
   - `-np 16 -c 98304`, `-fa on`, `--jinja`, 16 hilos de cliente.
 
   Antes de las 3 116 filas hay una autoprueba de una fila por tarea.
-- **Tiempo y coste:** `shutdown -h +33` y el vigilante corta el cliente a los 22 min; el resto se mide en las filas con respuesta. Espera `verificado` hasta 6 min.
+- **Tiempo y coste:** `shutdown -h +33`; el cliente de las 3 116 filas no tiene tope propio: lo corta el vigilante cuando quedan 11 min (a los 22 min); el resto se mide en las filas con respuesta. Espera `verificado` hasta 6 min.
   Coste máximo ≈ 0,57 USD (con el arranque), más el EBS de 100 GB.
 - **Claves en `llm-q4-8deacf2/`:**
   - **Lee:** `llm.tgz` y `filas-q4.jsonl`. Subidas y vueltas a bajar con el mismo sha256.
