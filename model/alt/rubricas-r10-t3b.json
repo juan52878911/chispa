@@ -1,0 +1,126 @@
+{
+ "version": 1,
+ "descripcion": "Rúbricas de las tareas score de dev (horeca, jql, usajobs) escritas a partir del soporte de oro (split train) de dev; los ejemplos son la primera fila de cada nivel por id, recortada. No se leyó el test.",
+ "tareas": {
+  "horeca-resenas": {
+   "pregunta": "¿Cuántas estrellas (1 a 5) da el autor de esta reseña a un local de hostelería?",
+   "niveles": {
+    "1": {
+     "descripcion": "Reseña muy negativa: queja grave (higiene, estafa, mal trato, inseguridad) sin nada positivo. Nota baja aunque el tono sea irónico.",
+     "ejemplo": "Higiene deficiente tanto en barra como en mesas.",
+     "fuente_ejemplo": "horeca-resenas:train:0"
+    },
+    "2": {
+     "descripcion": "Reseña negativa: decepción, mal servicio o incumplimientos (horarios, expectativas), con algún matiz menor; no llega a escándalo.",
+     "ejemplo": "Vaya decepción de sitio, me lo habían vendido como lo más y se queda en un bareto del montón.",
+     "fuente_ejemplo": "horeca-resenas:train:10"
+    },
+    "3": {
+     "descripcion": "Reseña regular o mixta: aspectos buenos y malos equilibrados, o comentario neutro y descriptivo sin recomendación clara.",
+     "ejemplo": "El zumo de naranja presenta una acidez natural acorde con la temporada.",
+     "fuente_ejemplo": "horeca-resenas:train:16"
+    },
+    "4": {
+     "descripcion": "Reseña positiva: satisfecho en general, con alguna pega pequeña (ruido, espera, un detalle mejorable).",
+     "ejemplo": "Correcta selección de combinados. El tiempo de espera en barra es aceptable.",
+     "fuente_ejemplo": "horeca-resenas:train:24"
+    },
+    "5": {
+     "descripcion": "Reseña excelente: elogio claro de comida, trato o ambiente sin reservas; el elogio puede estar expresado con exageración o ironía de apariencia negativa.",
+     "ejemplo": "Comida riquísima y servicio muy profesional.",
+     "fuente_ejemplo": "horeca-resenas:train:32"
+    }
+   }
+  },
+  "jql-valor-educativo": {
+   "pregunta": "¿Qué valor educativo tiene este texto de la web para enseñar (0 nulo a 5 excelente; el id es la nota más uno)?",
+   "niveles": {
+    "1": {
+     "descripcion": "Etiqueta 1 = nota 0. Sin valor educativo (nota 0): foros, chats, ocio, anuncios o fichas de producto; no enseña nada ni explica conceptos.",
+     "ejemplo": "Días 4 y 5 - Jueves y viernes Mi única sesión programada para el jueves empezaba a las 14:00, así que no entré en la Uni hasta…",
+     "fuente_ejemplo": "jql-valor-educativo:train:0"
+    },
+    "2": {
+     "descripcion": "Etiqueta 2 = nota 1. Valor mínimo (nota 1): texto comercial o de marketing, noticia breve o pasos sueltos de soporte; algo de información pero sin enseñar.",
+     "ejemplo": "Lo que hay que saber - Una tercera causa posible de que un iPad air 3 no tenga pantalla es un problema de batería. - Una cuarta…",
+     "fuente_ejemplo": "jql-valor-educativo:train:10"
+    },
+    "3": {
+     "descripcion": "Etiqueta 3 = nota 2. Valor básico (nota 2): información práctica o divulgativa corriente (servicios, avisos, consejos) con poca profundidad ni estructura didáctica.",
+     "ejemplo": "¿Necesita un servicio rápido y eficaz de recogida y eliminación de residuos en King's End? ¿Necesita un servicio que pueda…",
+     "fuente_ejemplo": "jql-valor-educativo:train:16"
+    },
+    "4": {
+     "descripcion": "Etiqueta 4 = nota 3. Valor bueno (nota 3): explica un tema con claridad y orden, útil para aprender aunque general o con partes publicitarias.",
+     "ejemplo": "Tal vez sin darse cuenta, es probable que en algún momento de su vida se haya topado con la radiografía, ya sea porque le…",
+     "fuente_ejemplo": "jql-valor-educativo:train:24"
+    },
+    "5": {
+     "descripcion": "Etiqueta 5 = nota 4. Valor muy bueno (nota 4): explicación didáctica de conceptos con definiciones, datos o ejemplos, aprovechable tal cual en clase.",
+     "ejemplo": "Hay tantos animales salvajes que visitan o utilizan nuestras playas de los Outer Banks que es difícil saber por dónde empezar.…",
+     "fuente_ejemplo": "jql-valor-educativo:train:32"
+    }
+   }
+  },
+  "usajobs-nivel": {
+   "pregunta": "¿Qué nivel tiene este puesto de la administración federal de EE. UU. en la escala GS (1 = GS-5 ... 11 = GS-15), según su título y funciones?",
+   "niveles": {
+    "1": {
+     "descripcion": "GS-5, entrada: asistente o técnico que apoya con tareas de rutina bajo supervisión cercana.",
+     "ejemplo": "HUMAN RESOURCES ASSISTANT (MILITARY) Click on \"Learn more about this agency\" button below to view Eligibilities being considered…",
+     "fuente_ejemplo": "usajobs-nivel:train:0"
+    },
+    "2": {
+     "descripcion": "GS-6: asistente o coordinador con tareas de apoyo algo más variadas y cierta autonomía en procedimientos conocidos.",
+     "ejemplo": "UNIT PROGRAM COORDINATOR Click on \"Learn more about this agency\" button below to view Eligibilities being considered and other…",
+     "fuente_ejemplo": "usajobs-nivel:train:24"
+    },
+    "3": {
+     "descripcion": "GS-7: técnico o analista junior; aplica reglas y procedimientos establecidos, con revisión de su trabajo.",
+     "ejemplo": "Supply Technician About the Position: This position is located in Central Distribution Center Germersheim, Quality Control…",
+     "fuente_ejemplo": "usajobs-nivel:train:32"
+    },
+    "4": {
+     "descripcion": "GS-8: técnico experimentado o jefe de equipo operativo; tareas especializadas pero de alcance acotado.",
+     "ejemplo": "LEAD FIREFIGHTER (BASIC LIFE SUPPORT/HAZMAT TECH) Click on \"Learn more about this agency\" button below to view Eligibilities…",
+     "fuente_ejemplo": "usajobs-nivel:train:40"
+    },
+    "5": {
+     "descripcion": "GS-9: especialista en formación (nivel intermedio); trabajo profesional con orientación general del supervisor.",
+     "ejemplo": "TRAINING TECHNICIAN (TITLE 32) This National Guard position is for a TRAINING TECHNICIAN (TITLE 32), Position Description Number…",
+     "fuente_ejemplo": "usajobs-nivel:train:48"
+    },
+    "6": {
+     "descripcion": "GS-10: especialista o líder de pocos subordinados con tareas complejas; transición hacia el nivel pleno.",
+     "ejemplo": "Lead Peer Specialist This Lead Peer Specialist position is located in the Mental Health Department and may only be filled with a…",
+     "fuente_ejemplo": "usajobs-nivel:train:56"
+    },
+    "7": {
+     "descripcion": "GS-11: especialista de pleno rendimiento; planifica y ejecuta trabajo profesional con independencia.",
+     "ejemplo": "Logistics Management Specialist This is a military technician position with the United States Army Civil Affairs and…",
+     "fuente_ejemplo": "usajobs-nivel:train:64"
+    },
+    "8": {
+     "descripcion": "GS-12: especialista senior; resuelve problemas complejos, orienta a otros y coordina entre unidades.",
+     "ejemplo": "Human Resources Specialist (Classification/Recruitment & Placement) The mission of the Antitrust Division is to promote…",
+     "fuente_ejemplo": "usajobs-nivel:train:72"
+    },
+    "9": {
+     "descripcion": "GS-13: experto o responsable de un programa; liderazgo técnico, define métodos y asesora a la dirección.",
+     "ejemplo": "Security Specialist (Antiterrorism/Vulnerability Management) About the Position: This position is located on Fort Shafter,…",
+     "fuente_ejemplo": "usajobs-nivel:train:80"
+    },
+    "10": {
+     "descripcion": "GS-14: supervisor o jefe de rama; dirige equipos o programas y responde de resultados de una unidad.",
+     "ejemplo": "Supervisory Contract Specialist As a Supervisory Contract Specialist, you will serve as an Branch Chief under a designated Client…",
+     "fuente_ejemplo": "usajobs-nivel:train:10"
+    },
+    "11": {
+     "descripcion": "GS-15: directivo o asesor principal; fija política y estrategia, dirige programas grandes de la agencia.",
+     "ejemplo": "Program Manager (Veterans Affairs Support) About the Position: Serve as the Program Executive overseeing the execution of the…",
+     "fuente_ejemplo": "usajobs-nivel:train:16"
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,166 @@
+{
+ "ronda": "r10-t3b",
+ "descripcion": "Score ordinal calibrado (lectura congelada) y choice informativo, con el 4B (cdbee75f) en las 6 tareas de DESARROLLO de la batería v2. Congelada ANTES de medir.",
+ "datos": "Solo dev/: el ud solo recibe dev.tgz. Las selladas NO se abren en T3b. Solo el 4B Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554 (el 14B ya no entra).",
+ "tareas_dev": [
+  "finanzas-documentos",
+  "horeca-resenas",
+  "jql-valor-educativo",
+  "cfpb-quejas",
+  "usajobs-nivel",
+  "congreso-eeuu-partido"
+ ],
+ "sinteticas": [
+  "finanzas-documentos",
+  "horeca-resenas"
+ ],
+ "base": "El 4B zero-shot de T3 (t3pred/4b-zs, sha256 por fichero abajo; en score, mediana CORAL como en T3) en las 5 tareas completas y el 4B zero-shot con preselección top-k en finanzas. No se vuelve a medir el zero-shot de las otras 5: mismo cliente, servidor y modelo.",
+ "referencia": "base",
+ "entradas_t3_sha256": {
+  "4b-zs/cfpb-quejas.jsonl": "fd535849fa6ecc2ade071c8f033b319a9779367e9d2b35c2a1cd1df20d96a62d",
+  "4b-zs/congreso-eeuu-partido.jsonl": "01c8cd564a591fb063b0816a9d98fc0286f2bcf155b5dc324023d6b7014b8483",
+  "4b-zs/finanzas-documentos.jsonl": "8c2b12c89009d52045730329e5d73bab370492e1ea24ce2e81bd9d6f3f8adcf7",
+  "4b-zs/horeca-resenas.jsonl": "9ef7aa744d0af7f35cf37129aafc575fc2d430b0168826329d5e2b85da954a6c",
+  "4b-zs/jql-valor-educativo.jsonl": "77e6d7550fc814216757749bb2ec87f018870173c55598d6a9f59c76f3d60711",
+  "4b-zs/usajobs-nivel.jsonl": "72635826f4264dcb5fb60c8720c9023018e9e7ffbe64a0b962444b228c68016c",
+  "4b-fs8/cfpb-quejas.jsonl": "358cf8e0b18b6a467e2fb64e7b1fe2448c3cf89dcc39406510920dbe1878715c",
+  "4b-fs8/congreso-eeuu-partido.jsonl": "15744cb43c705ab0ebed1b4676ff557a0e5a196a42a4f78826fbd6d6a86e0222",
+  "4b-fs8/horeca-resenas.jsonl": "4afe2bc2765dcf0863fc11ca36bf8124f13459e07a466d8d42555695149be009",
+  "4b-fs8/jql-valor-educativo.jsonl": "2fad8d6965c1bb0ab914782325b03b0c1d40810c942b38825e316e3435ddaace",
+  "4b-fs8/usajobs-nivel.jsonl": "ab95e8a7746ba7a050817eab895fe07e170f64c8430ed0096482e620202ac9a5"
+ },
+ "rubricas": "model/alt/rubricas-r10-t3b.json (escrita desde el soporte de oro de dev; sha256 en rubricas_sha256)",
+ "rubricas_sha256": "a89ec5b19f2d5dbe736a9556b646ef0f51111245d5de3b8efb4eacef01a94110",
+ "metricas_score": "exactitud, QWK (kappa ponderado cuadrático sobre las filas válidas), MAE en niveles y exactitud ±1; macro = media de las 3 tareas score (horeca, jql, usajobs), también sin la sintética (horeca)",
+ "variantes_score": {
+  "base": "mediana CORAL de T3 (el argmax coincide casi siempre); base-argmax: el argmax explícito",
+  "rub": "rúbrica por nivel: una descripción explícita con un ejemplo corto, del soporte de oro, en las descripciones de las opciones",
+  "esp": "esperanza ordinal: suma de nivel × p(nivel) sobre los logprobs de TODOS los niveles, al nivel más cercano (empate: el menor); se aplica a la base y a la rúbrica",
+  "cal": "esperanza ordinal con umbrales ajustados con las predicciones del 4B sobre el soporte de oro (8 por nivel): mediana de la esperanza por nivel, regresión isotónica (PAV) y puntos medios; en la rúbrica se excluyen del ajuste las filas usadas como ejemplo de la rúbrica"
+ },
+ "pasa": {
+  "acc_min": 0.05,
+  "qwk_min": 0.15,
+  "lectura": "una variante PASA (score) si la exactitud macro de las 3 tareas score sube al menos +5 puntos Y el QWK macro sube al menos +0,15 sobre la base (valores puntuales), SIN que ninguna tarea score quede por debajo de la clase mayoritaria (la del soporte de oro, medida en el test; empate: el menor id; el oráculo del test se informa aparte), con cobertura completa; si no, «no medido»; si no cumple, NO PASA. Las 3 tareas son pocas: el IC95 no se calcula sobre la macro de score, sí por tarea sobre filas (pareadas)"
+ },
+ "choice": "informativo en T3b (D lo medirá con criterio propio): fs8 de T3, finanzas con preselección top-k (k=10, kNN-e5 con 8 de oro por clase, orden alfabético; zs-topk y fs8-topk) y la comparación de zs-topk con el zero-shot de T3 en las filas que T3 puntuó",
+ "topk": {
+  "k": 10,
+  "kNN": "e5 614241f622f53c4eeff9890bdc4f31cfecc418b3, 8 de oro por clase (semilla 0), 32 vecinos, temperatura 0,05",
+  "orden": "las 10 opciones, por orden alfabético (sin pista de posición); desempate del ranking: similitud al centroide de la clase",
+  "oro": "en el test el oro puede faltar entre las 10 (cuenta como fallo; se informa recall@10 y la exactitud top-1 del kNN); en el soporte de los 8 ejemplos, kNN dejando fuera la propia fila y con el oro forzado dentro de las 10",
+  "transformers": "5.22.2"
+ },
+ "sistemas": {
+  "base": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk"
+  },
+  "base-argmax": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk",
+   "esperanza": "argmax"
+  },
+  "base+esp": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk",
+   "esperanza": true
+  },
+  "base+cal": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk",
+   "calibrar": "zs-sop"
+  },
+  "rub": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk",
+   "horeca-resenas": "rub",
+   "jql-valor-educativo": "rub",
+   "usajobs-nivel": "rub"
+  },
+  "rub+esp": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk",
+   "esperanza": true,
+   "horeca-resenas": "rub",
+   "jql-valor-educativo": "rub",
+   "usajobs-nivel": "rub"
+  },
+  "rub+cal": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk",
+   "calibrar": "rub-sop",
+   "excluir_ejemplos_rubrica": true,
+   "horeca-resenas": "rub",
+   "jql-valor-educativo": "rub",
+   "usajobs-nivel": "rub"
+  },
+  "fs8": {
+   "*": "t3:4b-fs8",
+   "finanzas-documentos": "fs8-topk"
+  },
+  "fs8rub": {
+   "*": "t3:4b-fs8",
+   "finanzas-documentos": "fs8-topk",
+   "horeca-resenas": "fs8rub",
+   "jql-valor-educativo": "fs8rub",
+   "usajobs-nivel": "fs8rub"
+  },
+  "mayoritaria": {
+   "*": "mayoritaria"
+  }
+ },
+ "candidatos": [
+  "rub",
+  "base+esp",
+  "rub+esp",
+  "base+cal",
+  "rub+cal"
+ ],
+ "pares_extra": [
+  [
+   "rub",
+   "base"
+  ],
+  [
+   "base+esp",
+   "base"
+  ],
+  [
+   "base+cal",
+   "base"
+  ],
+  [
+   "rub+esp",
+   "rub"
+  ],
+  [
+   "rub+cal",
+   "rub"
+  ],
+  [
+   "fs8",
+   "base"
+  ],
+  [
+   "fs8rub",
+   "fs8"
+  ]
+ ],
+ "v4": {
+  "tarea": "finanzas-documentos",
+  "t3": "4b-zs",
+  "nuevo": "zs-topk",
+  "sistema": "base"
+ },
+ "ic95": {
+  "tarea": "bootstrap sobre filas (2000, semilla 0)",
+  "macro_6_tareas_informativa": "bootstrap sobre tareas (2000, semilla 0)"
+ },
+ "semillas": {
+  "bootstrap": 0,
+  "ejemplos_fewshot": 20261115,
+  "knn": 0
+ },
+ "cobertura": "cada sistema se mide sobre todo el test; las filas sin predicción cuentan como fallo y la cobertura se informa"
+}

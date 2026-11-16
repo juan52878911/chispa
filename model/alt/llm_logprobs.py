@@ -203,6 +203,7 @@ def main(argv=None):
     ap.add_argument("--max-extra", type=int, default=4, help="etiquetas fuera del top 20 que se puntúan exactas por prefijo; el resto recibe el piso")
     ap.add_argument("--max", type=int, help="solo los primeros N casos (pruebas)")
     ap.add_argument("--ejemplos", help="few-shot: .jsonl con el soporte de oro de la tarea (split train); por defecto apagado (camino zero-shot intacto)")
+    ap.add_argument("--demos", help="D (apagado por defecto; con --ejemplos): .jsonl {id, ejemplos: [ids del soporte]} con las demostraciones de CADA fila (p. ej. las k más cercanas por kNN, calculadas aparte); sustituye a la elección fija")
     ap.add_argument("--k", type=int, default=8, help="nº de ejemplos con --ejemplos")
     ap.add_argument("--semilla", type=int, default=20261115, help="semilla de la elección de ejemplos")
     ap.add_argument("--ejemplo-max-chars", type=int, default=1200, help="tope de caracteres del texto de cada ejemplo")
@@ -217,7 +218,15 @@ def main(argv=None):
     turnos = None
     if a.ejemplos:
         sop = [json.loads(l) for l in open(a.ejemplos, encoding="utf-8") if l.strip()]
-        turnos = turnos_ejemplos(elegir_ejemplos(sop, a.k, a.semilla, {f["id"] for f in filas}), a.ejemplo_max_chars)
+        if a.demos:
+            por_id = {e["id"]: e for e in sop if e.get("split", "train") == "train"}
+            demos = {d["id"]: d["ejemplos"] for d in (json.loads(l) for l in open(a.demos, encoding="utf-8") if l.strip())}
+            falta = [f["id"] for f in filas if f["id"] not in demos]
+            if falta or any(i not in por_id for v in demos.values() for i in v) or any(i in por_id for i in demos):
+                raise SystemExit("--demos: faltan filas (%d), hay ids que no son del soporte de oro o una fila a puntuar es del soporte" % len(falta))
+            turnos = {k: turnos_ejemplos([por_id[i] for i in v], a.ejemplo_max_chars) for k, v in demos.items()}   # por fila
+        else:
+            turnos = turnos_ejemplos(elegir_ejemplos(sop, a.k, a.semilla, {f["id"] for f in filas}), a.ejemplo_max_chars)
     cerrojo, out = threading.Lock(), open(a.salida, "a", encoding="utf-8")
 
     def trabajo(url):
@@ -230,7 +239,7 @@ def main(argv=None):
             try:
                 msgs, etq = preparar(f)
                 if turnos is not None:
-                    msgs = con_ejemplos(msgs, turnos)
+                    msgs = con_ejemplos(msgs, turnos[f["id"]] if isinstance(turnos, dict) else turnos)
             except ValueError as e:
                 msgs, etq, err, intentos = None, None, str(e)[:120], 1
             while msgs is not None and intentos <= a.reintentos and probs is None:

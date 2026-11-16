@@ -243,3 +243,21 @@ def test_con_ejemplos_turnos_previos_con_la_etiqueta_correcta(tmp_path):
         gold = ent["texto"].split()[1]   # «‹dato›texto opN i›»
         assert a["content"] == {"op0": "A", "op1": "B", "op2": "C"}[gold]
     assert m[0]["content"].startswith(lg.preparar(fila())[0][0]["content"])
+
+
+def test_demos_por_fila_apagado_por_defecto_y_estrictas(tmp_path):
+    sop = soporte()
+    p = tmp_path / "sop.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in sop), encoding="utf-8")
+    d = tmp_path / "demos.jsonl"
+    d.write_text(json.dumps({"id": "f1", "ejemplos": ["s-op2-1", "s-op0-3"]}) + "\n", encoding="utf-8")
+    srv = Falso([("A", -0.5), ("B", -1.5)])
+    try:
+        correr(tmp_path, [fila()], srv, "--ejemplos", str(p), "--demos", str(d))
+        m = srv.cuerpos[0]["messages"]
+    finally:
+        srv.cerrar()
+    assert len(m) == 1 + 4 + 1 and [x["content"] for x in m[2:-1:2]] == ["C", "A"]   # las dos demostraciones pedidas, en ese orden, con su etiqueta
+    d.write_text(json.dumps({"id": "otra", "ejemplos": ["s-op2-1"]}) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        correr(tmp_path, [dict(fila(), id="f2")], Falso([("A", -1.0)]), "--ejemplos", str(p), "--demos", str(d))
