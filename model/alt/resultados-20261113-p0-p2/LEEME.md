@@ -2182,3 +2182,5 @@ Por tarea, exactitud del zs → final:
 - **Global:** el sistema final supera a la mayoritaria por +37 [+24, +51] y al kNN por +10. Frente al 4B zs el IC incluye el 0, porque score resta.
 
 Las selladas quedan abiertas: no se vuelven a usar como medida ciega.
+
+**Las selladas de la batería v2 quedan gastadas** (apertura única del 2026-11-16, registrada en `bateria-v2-aperturas.jsonl`). Ya no sirven como medida ciega. Cualquier afirmación futura de uso general necesita una **batería v3 sellada nueva**, con sus tareas, licencias y partición fijadas antes de mirar ningún resultado.

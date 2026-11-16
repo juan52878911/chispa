@@ -32,7 +32,7 @@ type Resultado struct {
 	UnkPct *float64 `json:"unk_pct,omitempty"`
 	Ms     float64  `json:"ms"`
 	Nonce  string   `json:"nonce,omitempty"`
-	// Experimental: pregunta score SIN umbrales calibrados en el banco (sin calibrar, la exactitud medida está cerca del azar: T3, jql 0,15 y usajobs 0,15). Solo sale con true.
+	// Experimental: el tipo de la pregunta (score) no es estable: la exactitud medida está cerca del azar (T3: jql 0,15 y usajobs 0,15). Solo sale con true.
 	Experimental bool `json:"experimental,omitempty"`
 	// Incompleto: una capa falló o el ctx se canceló; no debe guardarse bajo un nonce.
 	Incompleto bool `json:"-"`
@@ -96,12 +96,7 @@ type Cascada struct {
 	saltadas map[string]bool
 	// soloL3: prueba (config forzar_l3): se saltan las demás capas y L3 contesta con τ = 0. Ver SoloL3.
 	soloL3 bool
-	// calibrado: la tarea score tiene umbrales del banco (score calibrado, T3b); entonces la respuesta ya no lleva «experimental».
-	calibrado func(pregunta string) bool
 }
-
-// ConScoreCalibrado hace que las preguntas score de tareas con umbrales calibrados salgan sin «experimental».
-func (c *Cascada) ConScoreCalibrado(f func(pregunta string) bool) { c.calibrado = f }
 
 // Saltar hace que la cascada no corra las capas dadas (config knn: L2(kNN)→L3 sin L0 ni L1).
 func (c *Cascada) Saltar(nombres ...string) *Cascada {
@@ -251,7 +246,7 @@ func (c *Cascada) publicaTaus(cfg []Capa) {
 // confianza vista (pista para quien reciba la escalada).
 func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 	t0 := time.Now()
-	res := Resultado{ID: p.ID, Kind: p.Kind, Nonce: p.Nonce, Probs: map[string]float64{}, Experimental: p.Kind == KindScore && (c.calibrado == nil || !c.calibrado(p.Texto))}
+	res := Resultado{ID: p.ID, Kind: p.Kind, Nonce: p.Nonce, Probs: map[string]float64{}, Experimental: p.Kind == KindScore}
 	var mejor Respuesta
 	ninguna := len(c.capas) > 0 // sigue true mientras todas las capas vistas devuelvan «sin opinión» limpia (sin error ni Incompleto)
 	sinPres := false            // alguna capa quedó sin presupuesto de torres nuevas
