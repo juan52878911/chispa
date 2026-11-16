@@ -125,7 +125,8 @@ def cargar(baterias, vec, fondo, l3_fondo, l3, z):
         y = [ev[k]["etiqueta"] for k in sel]
         ok2 = np.array([1.0 if ops[i][int(np.argmax(P[i, :len(ops[i])]))] == y[i] else 0.0 for i in range(len(sel))])
         ok3 = np.array([1.0 if et3[ev[k]["id"]] == ev[k]["etiqueta"] else 0.0 for k in sel])
-        tareas[c] = {"ok2": ok2, "ok3": ok3, "sen": sen, "peso": len(ev), "n": len(sel), "oro": len(sop), "fondo": len(fs)}
+        tareas[c] = {"ok2": ok2, "ok3": ok3, "sen": sen, "peso": len(ev), "n": len(sel), "oro": len(sop), "fondo": len(fs),
+                     "ids": [ev[k]["id"] for k in sel], "plantilla": [ev[k].get("plantilla") for k in sel]}
     return tareas
 
 
