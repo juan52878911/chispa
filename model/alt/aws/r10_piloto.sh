@@ -2,18 +2,19 @@
 CHISPA_S3=__CHISPA_S3__
 CRIT_SHA=__CRIT_SHA__
 # R10, PILOTO de destilación 4B -> biencoder de Chispa (L2). UNA g5.xlarge BAJO DEMANDA (DLAMI GPU PyTorch AL2023), root, rol con s3:Get/PutObject
-# por nombre exacto (sin ListBucket). Tope duro CHISPA_MIN=88 min (shutdown -h +88 al arrancar, instancia con terminate): ~1,5 USD.
-# Lee: $CHISPA_S3/{codigo.tgz,dev.tgz (las 6 *.jsonl DEV de v2)} · $PARTIDA_S3 (ajuste-80ab8ef/ckpt/mejor.pt) · $META_S3/tsjev/{train,dev}-* (nombres de
+# por nombre exacto (sin ListBucket). Tope duro CHISPA_MIN=110 min (shutdown -h +110 al arrancar, instancia con terminate): ~1,85 USD.
+# Lee: $CHISPA_S3/{codigo.tgz,dev.tgz (las 6 *.jsonl DEV de v2)} · $META_S3/tsjev/{train,dev}-* (nombres de
 #   model/meta/resultados/conversion-20261027.json) · $BL_S3/{blandas.jsonl.gz,destilacion.json} (blandas de Qwen3-4B ya hechas; sin vLLM ni synzs).
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz,ckpt/final.pt}; espera $CHISPA_S3/verificado (<= ESPERA_MIN) antes de apagar.
+# Partida: e5-small PURO @614241f6 (ranuras, torre y cabezas con init); base de la comparación: e5 puro sin L2 (coseno / prototipos).
 # Fases: 1 entorno · 2 código, imports y sha del criterio · 3 datos (e5 @614241f6, fuentes HF, tsjev, blandas aplicadas, DEV, partida) · 4 base int8 en CPU
 #   (en segundo plano) · 5 entrenar en GPU hasta agotar el tiempo · 6 destilado int8 en CPU y veredicto. Todo en int8 (perfil movil-int8 de model/l2/exportar.py).
 # CHISPA_LOCAL=1: sin pip, descargas ni shutdown; datos, e5 y checkpoint sintéticos diminutos, CPU, 12 pasos. CHISPA_LOCAL_S3 = carpeta con codigo.tgz.
 LOCAL=${CHISPA_LOCAL:-0}
-MIN=${CHISPA_MIN:-88}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-5}; MAX_ENTRENAR=${CHISPA_MIN_ENTRENAR:-50}
+MIN=${CHISPA_MIN:-110}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-5}; MAX_ENTRENAR=${CHISPA_MIN_ENTRENAR:-75}
 S3=s3://chispa-pruebas-879381269751
 META_S3=${CHISPA_META_S3:-$S3/meta-20261027/meta}; BL_S3=${CHISPA_BLANDAS_S3:-$S3/blandas/e2deac55256e3314}
-PARTIDA_S3=${CHISPA_PARTIDA_S3:-$S3/ajuste-80ab8ef/ckpt/mejor.pt}; E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3
+E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=${CHISPA_LOCAL_S3:?CHISPA_LOCAL_S3 = carpeta con codigo.tgz};; esac; case $CRIT_SHA in __*) CRIT_SHA=${CHISPA_CRIT_SHA:?};; esac
 else shutdown -h +$MIN; fi
 set -uo pipefail
@@ -22,7 +23,7 @@ BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/c
 mkdir -p "$BASE"; exec > >(tee -a "$BASE/log.txt") 2>&1
 echo "== arranque r10-piloto $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min"
 export HF_HOME="${HF_HOME:-$HOME/hf}"; mkdir -p "$HF_HOME"
-REPO=$BASE/repo; OUT=$BASE/resultados; CK=$BASE/ck; RAIZ=$BASE/raiz; DEV=$BASE/dev; PART=$BASE/partida.pt
+REPO=$BASE/repo; OUT=$BASE/resultados; CK=$BASE/ck; RAIZ=$BASE/raiz; DEV=$BASE/dev
 mkdir -p "$OUT" "$REPO" "$RAIZ/datos" "$DEV" "$CK"; FALLO=""; BASEPID=""
 quedan_min() { echo $(( MIN - ($(date +%s) - T0) / 60 )); }
 s3cp() { if [ "$LOCAL" = 1 ]; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; else aws s3 cp --only-show-errors "$1" "$2"; fi; }
@@ -70,13 +71,13 @@ estado codigo "OK imports; criterio sha256 $CRIT_SHA"
 
 # --- 3. datos
 echo "== 3. datos $(date -u +%T)"
-VOC=(); TRAIN_EXTRA=()
+VOC=(); TRAIN_EXTRA=(); MAXTOK=()
 if [ "$LOCAL" = 1 ]; then
   "$PY" -m model.alt.destilar_biencoder sintetico --salida "$BASE/sint" > "$OUT/sintetico.log" 2>&1 || { fallo "sintético"; estado datos "FALLO"; cierre; }
   export CHISPA_E5=$BASE/sint/e5; export HF_HUB_OFFLINE=1
-  cp -R "$BASE/sint/raiz/." "$RAIZ/"; cp "$BASE/sint/dev/"*.jsonl "$DEV/"; cp "$BASE/sint/partida.pt" "$PART"; cp "$BASE/sint/blandas.jsonl.gz" "$BASE/blandas.jsonl.gz"
-  VOC=(--vocab "$BASE/sint/vocab-diminuto.json")
-  TRAIN_EXTRA=(--pasos 12 --lote 8 --tope-tarea 0 --dev-max 20 --vias 4 --umbral-dup 0.9999 --log-cada 4 --device cpu); MINS=0
+  cp -R "$BASE/sint/raiz/." "$RAIZ/"; cp "$BASE/sint/dev/"*.jsonl "$DEV/"; cp "$BASE/sint/blandas.jsonl.gz" "$BASE/blandas.jsonl.gz"
+  VOC=(--vocab "$BASE/sint/vocab-diminuto.json"); MAXTOK=(--max-tok 48)
+  TRAIN_EXTRA=(--max-tok 48 --pasos 12 --lote 8 --tope-tarea 0 --dev-max 20 --vias 4 --umbral-dup 0.9999 --log-cada 4 --device cpu); MINS=0
 else
   export CHISPA_E5=$("$PY" -I - <<PYEOF 2>"$OUT/hf-e5.log" | tail -1
 from huggingface_hub import snapshot_download
@@ -106,10 +107,9 @@ PYEOF
   s3cp "$BL_S3/blandas.jsonl.gz" "$BASE/blandas.jsonl.gz" && s3cp "$BL_S3/destilacion.json" "$OUT/destilacion-origen.json" || { fallo "blandas de S3"; estado blandas "FALLO"; cierre; }
   s3cp "$CHISPA_S3/dev.tgz" "$BASE/dev.tgz" && mkdir -p "$BASE/dev-raw" && tar -xzf "$BASE/dev.tgz" -C "$BASE/dev-raw" || { fallo "dev.tgz"; estado dev "FALLO"; cierre; }
   find "$BASE/dev-raw" -name '*.jsonl' -not -name '._*' -exec cp {} "$DEV/" \;
-  s3cp "$PARTIDA_S3" "$PART" || { fallo "checkpoint de partida"; estado partida "FALLO"; cierre; }
   export HF_HUB_OFFLINE=1; MINS=$(( $(quedan_min) - 35 )); [ "$MINS" -gt "$MAX_ENTRENAR" ] && MINS=$MAX_ENTRENAR
   [ "$MINS" -ge 10 ] || { fallo "sin tiempo para entrenar ($MINS min)"; estado entrenar "FALLO sin tiempo"; cierre; }
-  TRAIN_EXTRA=(--minutos "$MINS" --epocas 2 --lote 32)
+  TRAIN_EXTRA=(--minutos "$MINS" --epocas 3 --lote 32 --max-tok 256)
 fi
 "$PY" -m model.alt.manifiesto validar > /dev/null || { fallo "manifiesto"; estado manifiesto "FALLO"; cierre; }
 MAN=model/alt/manifiesto-entrenamiento.json
@@ -119,14 +119,15 @@ NDEV=$(ls "$DEV"/*.jsonl 2>/dev/null | wc -l | tr -d " "); [ "$NDEV" = 6 ] || { 
 estado datos "OK blandas $(cat "$OUT/blandas.json") · dev $NDEV tareas · quedan $(quedan_min) min"
 
 # --- 4. base en int8, en CPU y en segundo plano mientras la GPU entrena
-echo "== 4. base int8 $(date -u +%T)"
+echo "== 4. base e5 puro int8 $(date -u +%T)"
+LRS=(--lr 3e-4 --lr-torre 1e-4 --lr-enc 2e-5)   # desde cero: los de model/l2
 EV=(-m model.alt.eval_r10_piloto medir --dev "$DEV" --crit model/alt/crit-r10-piloto.json --sha-crit "$CRIT_SHA" ${VOC[@]+"${VOC[@]}"})
-nice "$PY" "${EV[@]}" --ckpt "$PART" --etiqueta base --salida "$OUT/res-base.json" --hilos 2 > "$OUT/eval-base.log" 2>&1 &
+nice "$PY" "${EV[@]}" --e5-puro ${MAXTOK[@]+"${MAXTOK[@]}"} --etiqueta base --salida "$OUT/res-base.json" --hilos 2 > "$OUT/eval-base.log" 2>&1 &
 BASEPID=$!
 
 # --- 5. entrenar (destilar_biencoder: KL(T=2)+CE oro+contrastivo, 20 % de episodios con prototipos de 8, penalidad a e5 original)
 echo "== 5. entrenar $(date -u +%T), quedan $(quedan_min) min"
-"$PY" -m model.alt.destilar_biencoder entrenar --datos "$RAIZ" --manifiesto "$MAN" --partida "$PART" --salida "$CK" --dev-dir "$DEV" "${TRAIN_EXTRA[@]}" \
+"$PY" -m model.alt.destilar_biencoder entrenar --datos "$RAIZ" --manifiesto "$MAN" --partida e5 --salida "$CK" --dev-dir "$DEV" "${LRS[@]}" "${TRAIN_EXTRA[@]}" \
   > "$OUT/entrenar.log" 2>&1; RC=$?
 tail -4 "$OUT/entrenar.log"; { [ "$RC" = 0 ] || [ "$RC" = 143 ]; } && [ -f "$CK/final.pt" ] || { fallo "entrenar (rc $RC)"; estado entrenar "FALLO"; cierre; }
 estado entrenar "OK rc=$RC (143 = tope de tiempo) $(grep -c '^paso' "$OUT/entrenar.log") líneas de paso · $(grep '^datos:' "$OUT/entrenar.log" | cut -c1-300)"

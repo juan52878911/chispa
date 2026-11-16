@@ -16,7 +16,7 @@ from model.l2.modelo import ModeloL2, prototipos
 from model.l2.tests.falso import CodificadorFalso, fila
 
 CRIT = Path(__file__).resolve().parents[1] / "crit-r10-piloto.json"
-CRIT_SHA = "dd2d102b001e1882f52d07b2ea60a34410332802dd530dfa6ac642a0a8f4bccb"
+CRIT_SHA = "d9ee43f584f54b6eb44bf3e0ab542cf0495fc24ccea1a2a0b78e667d2df00299"
 
 
 def con_blanda(r, p=None):
@@ -251,7 +251,7 @@ class DeExtremoAExtremo(unittest.TestCase):
         destilar.aplicar(cargar(), cls.d / "raiz", str(cls.d / "blandas.jsonl.gz"), str(cls.d / "blandas.json"))
         cls.env = {k: os.environ.get(k) for k in ("CHISPA_E5", "HF_HUB_OFFLINE")}
         os.environ["CHISPA_E5"], os.environ["HF_HUB_OFFLINE"] = str(cls.d / "e5"), "1"
-        a = DB.parser().parse_args(["entrenar", "--datos", str(cls.d / "raiz"), "--partida", str(cls.d / "partida.pt"), "--salida", str(cls.d / "out"),
+        a = DB.parser().parse_args(["entrenar", "--datos", str(cls.d / "raiz"), "--partida", "e5", "--max-tok", "48", "--salida", str(cls.d / "out"),
                                     "--dev-dir", str(cls.d / "dev"), "--umbral-dup", "0.9999", "--pasos", "10", "--lote", "8", "--tope-tarea", "0",
                                     "--dev-max", "20", "--vias", "4", "--device", "cpu", "--descongelar", "1", "--log-cada", "5"])
         cls.logs = []
@@ -293,19 +293,21 @@ class DeExtremoAExtremo(unittest.TestCase):
         dev = EV.leer_dev(self.d / "dev")
         vocab = json.loads((self.d / "vocab-diminuto.json").read_text())
         rutas = sorted(str(p) for p in (self.d / "dev").glob("*.jsonl"))
-        res = {}
-        for nombre, ck in (("base", self.d / "partida.pt"), ("dest", self.d / "out" / "final.pt")):
-            res[nombre] = EV.evaluar(str(ck), dev, vocab, None, 1, rutas, log=lambda s: None)
-            self.assertEqual(sorted(res[nombre]["tareas"]), sorted(EV.tareas_dev_v2()))
-            for t in res[nombre]["tareas"].values():
+        res = {"base": EV.evaluar_e5(dev, vocab, None, 1, rutas, 48, log=lambda s: None),
+               "dest": EV.evaluar(str(self.d / "out" / "final.pt"), dev, vocab, None, 1, rutas, log=lambda s: None)}
+        self.assertGreater(res["base"]["info"]["onnx_mb"], 0)
+        self.assertGreater(res["dest"]["info"]["consulta_mb"], 0)
+        for r_ in res.values():
+            self.assertEqual(sorted(r_["tareas"]), sorted(EV.tareas_dev_v2()))
+            for t in r_["tareas"].values():
                 self.assertEqual(sorted(t), ["k8", "zeroshot"])
                 self.assertTrue(0.0 <= t["k8"]["macro_f1"] <= 1.0)
-            self.assertGreater(res[nombre]["info"]["consulta_mb"], 0)
         crit = json.loads(CRIT.read_text())
         r = EV.comparar(res["base"], res["dest"], crit, set(crit["sinteticas"]), CRIT_SHA)
         self.assertIn(r["veredicto"], ("SIGUE", "PARA", "ENTRE_MEDIAS"))
         self.assertEqual(r["sin_sinteticas"]["zeroshot"]["tareas"], 4)
         self.assertIn("| 6 tareas | zeroshot |", EV.markdown(r))
+        self.assertEqual(r["vs_l2_actual"]["fuente"], "T3")
 
     def test_leer_dev_rechaza_lo_que_no_es_dev(self):
         with tempfile.TemporaryDirectory() as t:
@@ -323,7 +325,7 @@ class DeExtremoAExtremo(unittest.TestCase):
 class Criterio(unittest.TestCase):
     def test_sha256_congelado(self):
         self.assertEqual(hashlib.sha256(CRIT.read_bytes()).hexdigest(), CRIT_SHA)
-        self.assertEqual(EV.comprobar_criterio(CRIT, CRIT_SHA)["id"], "r10-piloto-destilacion-4b-biencoder")
+        self.assertEqual(EV.comprobar_criterio(CRIT, CRIT_SHA)["id"], "r10-piloto-destilacion-4b-biencoder-v2")
         with self.assertRaises(SystemExit):
             EV.comprobar_criterio(CRIT, "0" * 64)
         with self.assertRaises(SystemExit):
