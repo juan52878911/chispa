@@ -5,7 +5,7 @@
     python -m model.alt.lineas_base_v2_pred knn --dev DIR_DEV --vec DIR_VEC --salida DIR_PRED/knn-e5-k8 [--k 8] [--max-filas N]
 
 Escriben DIR_SALIDA/<tarea>.jsonl con {id, probs, valida, ms}; `ms` es el tiempo por fila (NLI: todos sus pares de la fila; L2 y kNN: la media del lote).
-`nli`: zero-shot por implicación. Premisa = el texto (1500 caracteres, 320 tokens en total); hipótesis = la pregunta + «Respuesta:» + la descripción de la opción (o su id si no la tiene);
+`nli`: zero-shot por implicación. Premisa = el texto (800 caracteres, 192 tokens en total); hipótesis = la pregunta + «Respuesta:» + la descripción de la opción (o su id si no la tiene);
 puntuación de cada opción = logit de implicación − logit de contradicción; probs = softmax sobre las opciones de la fila.
 `knn`: kNN-e5 con k ejemplos de oro por clase (`fusion_knn_l2.muestrear`, semilla 0), 32 vecinos, temperatura 0,05 (`fusion_knn_l2.knn`), con los
 vectores de `knn_soporte_llm vectores` (media de tokens de e5, «query: », 256 tokens, transformers fijado). Los vectores se calculan con `vectores`.
@@ -19,8 +19,8 @@ from pathlib import Path
 import numpy as np
 
 HIPOTESIS_MAX = 400
-PREMISA_MAX = 1500
-MAX_TOK_NLI = 320
+PREMISA_MAX = 800
+MAX_TOK_NLI = 192
 
 
 def tareas(dev, max_filas):

@@ -7,7 +7,7 @@
 # Uso: bash model/alt/aws/empaquetar_r10_t3a.sh SHA DIR_DEV DIR_SALIDA
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-sha=${1:?SHA}; dev=${2:?DIR_DEV}; sal=${3:?DIR_SALIDA}; nli=${4:-150}
+sha=${1:?SHA}; dev=${2:?DIR_DEV}; sal=${3:?DIR_SALIDA}; nli=${4:-40}
 dev=$(cd "$dev" && pwd); mkdir -p "$sal"; sal=$(cd "$sal" && pwd)
 git cat-file -e "$sha:model/alt/aws/r10_t3a.sh" && git cat-file -e "$sha:model/alt/crit-r10-t3.json" || { echo "$sha no trae r10_t3a.sh y crit-r10-t3.json" >&2; exit 1; }
 esperadas="cfpb-quejas congreso-eeuu-partido finanzas-documentos horeca-resenas jql-valor-educativo usajobs-nivel"
