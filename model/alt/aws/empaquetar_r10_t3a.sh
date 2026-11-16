@@ -3,13 +3,13 @@
 #   DIR_SALIDA/codigo.tgz  el código de SHA (lo commiteado; mismo conjunto que R8b: model/alt, datos, meta, evaluacion, l2 mínimo, sdk/python), sin ._*
 #   DIR_SALIDA/dev.tgz     SOLO los 6 jsonl de DESARROLLO de DIR_DEV (bateria-v2/dev); las selladas no se abren ni se copian: si DIR_DEV trae algo más, falla
 #   model/alt/aws/lanzados/ud-r10-t3a-SHA.sh   r10_t3a.sh de SHA con __CHISPA_S3__=s3://chispa-pruebas-879381269751/r10-t3-SHA, el sha256 de
-#                          crit-r10-t3.json de SHA y los recuentos (filas de test y de soporte de dev).
+#                          crit-r10-t3a.json de SHA y los recuentos (filas de test y de soporte de dev).
 # Uso: bash model/alt/aws/empaquetar_r10_t3a.sh SHA DIR_DEV DIR_SALIDA
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 sha=${1:?SHA}; dev=${2:?DIR_DEV}; sal=${3:?DIR_SALIDA}; nli=${4:-40}
 dev=$(cd "$dev" && pwd); mkdir -p "$sal"; sal=$(cd "$sal" && pwd)
-git cat-file -e "$sha:model/alt/aws/r10_t3a.sh" && git cat-file -e "$sha:model/alt/crit-r10-t3.json" || { echo "$sha no trae r10_t3a.sh y crit-r10-t3.json" >&2; exit 1; }
+git cat-file -e "$sha:model/alt/aws/r10_t3a.sh" && git cat-file -e "$sha:model/alt/crit-r10-t3a.json" || { echo "$sha no trae r10_t3a.sh y crit-r10-t3a.json" >&2; exit 1; }
 esperadas="cfpb-quejas congreso-eeuu-partido finanzas-documentos horeca-resenas jql-valor-educativo usajobs-nivel"
 hay=$(cd "$dev" && ls | grep -v '^\._' | tr '\n' ' ')
 want=$(for t in $esperadas; do printf '%s.jsonl ' "$t"; done)
@@ -22,7 +22,7 @@ rm -f "$sal/dev.tgz"
 ( cd "$dev" && { tar --no-xattrs -czf "$sal/dev.tgz" $want 2>/dev/null || tar -czf "$sal/dev.tgz" $want; } )
 for x in codigo dev; do tar -tzf "$sal/$x.tgz" | grep -q '\._' && { echo "$x.tgz trae ._*" >&2; exit 1; }; done
 tar -tzf "$sal/dev.tgz" | grep -qi 'sellad' && { echo "dev.tgz trae algo sellado" >&2; exit 1; }
-crit=$(git show "$sha:model/alt/crit-r10-t3.json" | shasum -a 256 | cut -d' ' -f1)
+crit=$(git show "$sha:model/alt/crit-r10-t3a.json" | shasum -a 256 | cut -d' ' -f1)
 cuenta=$(python3 -I - "$dev" <<'PY'
 import glob, json, sys
 t = s = 0

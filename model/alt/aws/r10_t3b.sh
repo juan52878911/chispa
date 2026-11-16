@@ -4,13 +4,14 @@ CHISPA_S3=__CHISPA_S3__
 # las selladas no se abren), en UNA g5.xlarge BAJO DEMANDA (A10G 24 GB), tope duro CHISPA_MIN=45 min (≈ 0,76 USD). user-data (DLAMI GPU PyTorch AL2023, rol
 # chispa-pruebas-ec2 sin ListBucket), terminate. Lectura congelada: model/alt/crit-r10-t3b.json (su sha256 y el de la rúbrica y el de las predicciones de T3
 # se comprueban ANTES de medir). Corre, por orden de prioridad y cada una con su tope (lo hecho queda aunque se corte):
-#   zs-topk   4B zero-shot en finanzas con las 10 candidatas del kNN-e5 (la base de finanzas)      rub      zero-shot con la rúbrica en las 3 score
-#   fs8rub    8 ejemplos + rúbrica en las 3 score                                                  fs8-topk 8 ejemplos en finanzas con las 10 candidatas
-# La esperanza ordinal y la composición con las predicciones de T3 (4b-zs, 4b-fs8) se hacen al medir (lineas_base_v2b.py, solo numpy): no necesitan GPU.
+#   zs-sop / rub-sop  zero-shot sin y con rúbrica sobre el SOPORTE de oro de las 3 score (para ajustar los umbrales)    rub  zero-shot con la rúbrica en el test de las 3 score
+#   zs-topk   4B zero-shot en finanzas con las 10 candidatas del kNN-e5      fs8-topk  8 ejemplos en finanzas con las 10 candidatas      fs8rub  8 ejemplos + rúbrica en las 3 score
+# La esperanza ordinal, los umbrales (isotónica sobre el soporte), QWK/MAE y la composición con las predicciones de T3 (4b-zs, 4b-fs8) se hacen al medir
+# (lineas_base_v2b.py, solo numpy, sin GPU). Cada fila guarda las probabilidades de TODOS los niveles (probs de llm_logprobs.py).
 # Lee:     $CHISPA_S3/{codigo.tgz,dev.tgz,t3.tgz}   (t3.tgz = 4b-zs/ y 4b-fs8/ de la ronda T3)
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar. Cifras: res/cifras.json.
 MIN=${CHISPA_MIN:-45}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-32}; VLLM=${CHISPA_VLLM:-0.33.0}
-D1=${CHISPA_D1:-3}; D2=${CHISPA_D2:-6}; D3=${CHISPA_D3:-7}; D4=${CHISPA_D4:-3}   # minutos máximos de zs-topk, rub, fs8rub, fs8-topk
+DS=${CHISPA_DS:-2}; D2=${CHISPA_D2:-6}; D1=${CHISPA_D1:-3}; D4=${CHISPA_D4:-3}; D3=${CHISPA_D3:-6}   # minutos máximos de cada -sop, rub, zs-topk, fs8-topk, fs8rub
 REV4=cdbee75f17c01a7cc42f958dc650907174af0554; E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3; TORCH=2.7.1; TRANSFORMERS=5.22.2
 CRIT_SHA=__CRIT_SHA__; N_TEST=__N_TEST__; N_SOP=__N_SOP__
 SCORE="horeca-resenas jql-valor-educativo usajobs-nivel"; FIN=finanzas-documentos
@@ -149,10 +150,12 @@ fi
 if [ $OK4 = 1 ]; then
   for _ in $(seq 120); do [ -f "$BASE/topk.ok" ] && break; kill -0 $PP 2>/dev/null || break; sleep 5; done
   if [ -f "$BASE/topk.ok" ]; then estado preseleccion "OK $(cat "$BASE/t/topk/preseleccion.json" | tr -d '\n ')"; else tail -3 "$BASE/presel.log"; fallo "preselección top-k"; estado preseleccion "FALLO"; fi
-  [ -f "$BASE/topk.ok" ] && lp zs-topk "$D1" "$BASE/t/topk/test" $FIN
+  lp zs-sop "$DS" "$BASE/t/soporte" "$SCORE"
+  lp rub-sop "$DS" "$BASE/t/rub/soporte" "$SCORE"
   lp rub "$D2" "$BASE/t/rub/test" "$SCORE"
-  lp fs8rub "$D3" "$BASE/t/rub/test" "$SCORE" "$BASE/t/soporte"
+  [ -f "$BASE/topk.ok" ] && lp zs-topk "$D1" "$BASE/t/topk/test" $FIN
   [ -f "$BASE/topk.ok" ] && lp fs8-topk "$D4" "$BASE/t/topk/test" $FIN "$BASE/t/topk/soporte"
+  lp fs8rub "$D3" "$BASE/t/rub/test" "$SCORE" "$BASE/t/soporte"
 fi
 [ -n "$VP" ] && parar vllm.entrypoints
 cierre

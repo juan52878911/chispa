@@ -31,7 +31,7 @@ def dev_falso(tmp_path):
     return d
 
 
-def escribir_pred(dev, dest, sistema, tareas, acierto, sesgo_alto=False):
+def escribir_pred(dev, dest, sistema, tareas, acierto, sesgo_alto=False, salto=1):
     for t, (_, ev) in lb.cargar_dev(dev).items():
         if t not in tareas:
             continue
@@ -39,7 +39,7 @@ def escribir_pred(dev, dest, sistema, tareas, acierto, sesgo_alto=False):
         for i, r in enumerate(ev):
             ops = lb.orden(r)
             gold = ops.index(r["etiqueta"])
-            idx = gold if (i % 10) < acierto * 10 else (gold + 1) % len(ops)
+            idx = gold if (i % 10) < acierto * 10 else (gold + salto) % len(ops)
             probs = {o: (0.9 if j == idx else 0.1 / (len(ops) - 1)) for j, o in enumerate(ops)}
             if sesgo_alto and r["tipo"] == "score":   # masa repartida de forma bimodal: la esperanza cae en el centro, la mediana no
                 probs = {o: (0.45 if o in ("1", "5") else 0.0333) for o in ops}
@@ -76,29 +76,90 @@ def test_rubrica_real_cubre_los_niveles_del_soporte():
     assert all(n["descripcion"] and n["ejemplo"] and ":train:" in n["fuente_ejemplo"] for v in rub["tareas"].values() for n in v["niveles"].values())
 
 
-def test_medir_compuesto_veredictos(tmp_path):
+def test_qwk_pav_y_umbrales():
+    g = np.array([1, 2, 3, 4, 5, 1, 2, 3])
+    assert lb.qwk(g, g, list("12345")) == 1.0
+    assert lb.qwk(g, np.full(8, 3), list("12345")) == 0.0          # constante: nada mejor que el azar
+    assert lb.qwk(np.array([1, 5]), np.array([5, 1]), list("12345")) < 0
+    assert vb.pav([1, 3, 2, 4]) == [1, 2.5, 2.5, 4]
+    sop = [{"id": "s%d%d" % (n, i), "tipo": "score", "opciones": ["1", "2", "3"], "etiqueta": str(n)} for n in (1, 2, 3) for i in range(4)]
+    preds = {r["id"]: {"valida": True, "probs": {o: (0.8 if o == str(int(r["etiqueta"])) else 0.1) for o in "123"}} for r in sop}
+    u = vb.umbrales(sop, preds)
+    assert len(u) == 2 and u[0] < u[1] and 1 < u[0] < 2 and 2 < u[1] < 3
+    # un modelo sesgado hacia el 3: sus esperanzas suben, los umbrales se desplazan y la lectura calibrada recupera los niveles
+    sesgo = {r["id"]: {"valida": True, "probs": {o: (0.2 + 0.2 * int(o) * (1 + int(r["etiqueta"]) * 0.1)) for o in "123"}} for r in sop}
+    u2 = vb.umbrales(sop, sesgo)
+    assert u2 != u
+    assert vb.umbrales(sop, preds, excluir={"s11", "s12", "s13"}) is not None
+    assert lb.top1(preds[sop[0]["id"]]["probs"], sop[0], esp=u) == "1" and lb.top1(preds[sop[-1]["id"]]["probs"], sop[-1], esp=u) == "3"
+
+
+def test_mayoritaria_y_qwk_en_cifras(tmp_path):
+    dev = dev_falso(tmp_path)
+    pred = tmp_path / "pred"
+    escribir_pred(dev, pred, "x", set(CRIT["tareas_dev"]), 1.0)
+    c, _ = lb.cifras_sistema(lb.cargar_dev(dev), pred / "x", set(CRIT["sinteticas"]))
+    j = c["tareas"]["jql-valor-educativo"]
+    assert j["qwk"] == 1.0 and j["mayoritaria"]["clase"] == "1" and 0 < j["mayoritaria"]["exactitud_test"] <= 0.2 and j["mayoritaria"]["oraculo_test_exactitud"] >= j["mayoritaria"]["exactitud_test"]
+    assert c["tareas"]["cfpb-quejas"]["mayoritaria"]["clase"] == "a" and "qwk" not in c["tareas"]["cfpb-quejas"]
+
+
+def montar(tmp_path, rub_acc, sop_ok=True):
     dev = dev_falso(tmp_path)
     t3, pred = tmp_path / "t3", tmp_path / "pred"
     todas = set(CRIT["tareas_dev"])
-    escribir_pred(dev, t3, "4b-zs", todas, 0.5)
+    escribir_pred(dev, t3, "4b-zs", todas, 0.5, salto=2)
     escribir_pred(dev, t3, "4b-fs8", todas, 0.6)
-    escribir_pred(dev, pred, "zs-topk", {"finanzas-documentos"}, 0.5)
+    escribir_pred(dev, pred, "zs-topk", {"finanzas-documentos"}, 0.5, salto=2)
     escribir_pred(dev, pred, "fs8-topk", {"finanzas-documentos"}, 0.6)
-    escribir_pred(dev, pred, "rub", set(SCORE), 0.9)         # la rúbrica sube las score de 50 a 90: macro +0,2
+    escribir_pred(dev, pred, "rub", set(SCORE), rub_acc)
     escribir_pred(dev, pred, "fs8rub", set(SCORE), 0.5)
+    if sop_ok:   # predicciones del soporte (split train): nítidas, para ajustar los umbrales
+        for sistema in ("zs-sop", "rub-sop"):
+            for t in SCORE:
+                _, ev = lb.cargar_dev(dev)[t]
+                sop = [json.loads(l) for l in (dev / (t + ".jsonl")).read_text().splitlines() if json.loads(l)["split"] == "train"]
+                d = pred / sistema
+                d.mkdir(parents=True, exist_ok=True)
+                (d / (t + ".jsonl")).write_text("".join(json.dumps({"id": r["id"], "valida": True, "ms": 1.0, "probs": {o: (0.8 if o == r["etiqueta"] else 0.05) for o in lb.orden(r)}}) + "\n" for r in sop), encoding="utf-8")
+    return dev, t3, pred
+
+
+def test_medir_compuesto_veredictos(tmp_path):
+    dev, t3, pred = montar(tmp_path, 0.9)
     out = tmp_path / "c.json"
     vb.main(["medir", "--dev", str(dev), "--pred", str(pred), "--t3", str(t3), "--salida", str(out)])
     r = json.loads(out.read_text(encoding="utf-8"))
     assert r["criterio_sha256"] == hashlib.sha256((AQUI / "crit-r10-t3b.json").read_bytes()).hexdigest()
     v = r["veredictos"]
-    assert v["rub"]["veredicto"] == "PASA" and v["rub"]["macro_dif"] > 0.15 and v["rub"]["peor_choice"] == 0.0
-    assert all(v[c]["veredicto"] in ("PASA", "NO PASA") for c in CRIT["candidatos"])
-    assert v["base+esp"]["veredicto"] == "NO PASA"   # la esperanza no cambia nada con predicciones nítidas
+    assert set(v) == set(CRIT["candidatos"])
+    assert v["rub"]["macro_acc_dif"] > 0.3 and v["rub"]["macro_qwk_dif"] > 0.15 and v["rub"]["cobertura_score"] == 1.0
+    assert v["base+esp"]["veredicto"] == "NO PASA" and v["rub"]["veredicto"] in ("PASA", "NO PASA")
     assert r["sistemas"]["base"]["tareas"]["finanzas-documentos"]["sintetica"] and r["sistemas"]["base"]["macro_sin_sinteticas"]["n_tareas"] == 4
-    assert r["sistemas"]["rub"]["macro_score"]["n_tareas"] == 3 and "mae" in r["sistemas"]["rub"]["macro_score"]
+    ms = r["sistemas"]["rub"]["macro_score"]
+    assert ms["n_tareas"] == 3 and {"exactitud", "qwk", "mae", "exactitud_pm1", "exactitud_sin_sinteticas"} <= set(ms)
+    assert r["sistemas"]["base+cal"]["tareas"]["jql-valor-educativo"]["modo_score"] == "umbrales" and set(r["umbrales"]["base+cal"]) == set(SCORE)
+    assert len(r["umbrales"]["rub+cal"]["usajobs-nivel"]) == 4 and r["sistemas"]["mayoritaria"]["tareas"]["horeca-resenas"]["modo_score"] == "mediana"
+    assert r["sistemas"]["base-argmax"]["tareas"]["horeca-resenas"]["modo_score"] == "argmax"
     assert set(r["pareadas_extra"]) == {"%s_menos_%s" % tuple(p) for p in CRIT["pares_extra"]}
-    assert r["v4_topk"]["veredicto"] == "PASA" and r["v4_topk"]["filas_comunes"] == 40
+    assert r["v4_topk"]["veredicto"] == "informativo" and r["v4_topk"]["filas_comunes"] == 40
     assert "texto" not in out.read_text(encoding="utf-8")
+
+
+def test_pasa_exige_no_quedar_bajo_la_mayoritaria(tmp_path):
+    dev, t3, pred = montar(tmp_path, 0.9)
+    crit = dict(CRIT, pasa=dict(CRIT["pasa"]))
+    out = tmp_path / "c.json"
+    vb.main(["medir", "--dev", str(dev), "--pred", str(pred), "--t3", str(t3), "--salida", str(out)])
+    r = json.loads(out.read_text(encoding="utf-8"))
+    # con tareas equilibradas la mayoritaria es ≈ 0,2: una rúbrica de 0,9 la supera en las 3 y PASA; con 0,1 de acierto queda bajo la mayoritaria
+    assert r["veredictos"]["rub"]["bajo_mayoritaria"] == [] and r["veredictos"]["rub"]["veredicto"] == "PASA"
+    dev2, t32, pred2 = montar(tmp_path / "b", 0.1) if (tmp_path / "b").mkdir() is None else (None, None, None)
+    out2 = tmp_path / "c2.json"
+    vb.main(["medir", "--dev", str(dev2), "--pred", str(pred2), "--t3", str(t32), "--salida", str(out2)])
+    r2 = json.loads(out2.read_text(encoding="utf-8"))
+    assert r2["veredictos"]["rub"]["veredicto"] == "NO PASA" and r2["veredictos"]["rub"]["bajo_mayoritaria"]
+    assert crit["pasa"]["acc_min"] == 0.05 and crit["pasa"]["qwk_min"] == 0.15
 
 
 def test_medir_sin_cobertura_es_no_medido(tmp_path):
@@ -107,11 +168,11 @@ def test_medir_sin_cobertura_es_no_medido(tmp_path):
     escribir_pred(dev, t3, "4b-zs", set(CRIT["tareas_dev"]), 0.5)
     escribir_pred(dev, t3, "4b-fs8", set(CRIT["tareas_dev"]), 0.5)
     escribir_pred(dev, pred, "zs-topk", {"finanzas-documentos"}, 0.5)
-    escribir_pred(dev, pred, "rub", {"horeca-resenas"}, 0.9)   # faltan jql y usajobs
+    escribir_pred(dev, pred, "rub", {"horeca-resenas"}, 0.9)   # faltan jql y usajobs y todo el soporte
     out = tmp_path / "c.json"
     vb.main(["medir", "--dev", str(dev), "--pred", str(pred), "--t3", str(t3), "--salida", str(out)])
     r = json.loads(out.read_text(encoding="utf-8"))
-    assert r["veredictos"]["rub"]["veredicto"] == "no medido" and r["veredictos"]["fs8rub"]["veredicto"] == "no medido"
+    assert r["veredictos"]["rub"]["veredicto"] == "no medido" and r["veredictos"]["base+cal"]["veredicto"] in ("PASA", "NO PASA", "no medido")
     assert r["sistemas"]["rub"]["tareas"]["jql-valor-educativo"]["cobertura"] == 0.0
     assert r["sistemas"]["rub"]["tareas"]["horeca-resenas"]["exactitud_cubiertas"] > 0.8
 
@@ -166,4 +227,4 @@ def test_ud_t3a():
 
 def test_ud_t3b():
     ud = ud_ok("r10_t3b.sh", {"__CHISPA_S3__", "__CRIT_SHA__", "__N_TEST__", "__N_SOP__"}, ["MIN=${CHISPA_MIN:-45}", "t3.tgz", "entradas_t3_sha256", "rubricas_sha256", "--max-logprobs 20", "cdbee75f"])
-    assert "14b" not in ud.lower() and ud.index("lp zs-topk") < ud.index("lp rub") < ud.index("lp fs8rub") < ud.index("lp fs8-topk")
+    assert "14b" not in ud.lower() and ud.index("lp zs-sop") < ud.index("lp rub-sop") < ud.index("lp rub \"") < ud.index("lp zs-topk") < ud.index("lp fs8-topk") < ud.index("lp fs8rub")
