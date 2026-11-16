@@ -20,7 +20,7 @@ El cliente trae unos pocos ejemplos de oro por clase; el servidor responde con u
   **u hay que calibrarlo por cliente** (el 0,06641 del ejemplo es el de la batería de R10: el cuantil 0,25 del margen sin hatecheck). Una tarea se fuerza a L3 con `knn.siempre`.
 
 ## Qué sale
-`POST /v1/decide` con el contrato de siempre: `answer`, `probs` (una por opción), `layer` (`L2` o `L3`), `escalate`, `ms`. En `score` sale además `experimental: true`.
+`POST /v1/decide` con el contrato de siempre: `answer`, `probs` (una por opción), `layer` (`L2` o `L3`), `escalate`, `ms`. En `score` sale además `experimental: true` solo si la tarea no tiene umbrales calibrados (`<banco>.umbrales.json`).
 Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`, `X-Chispa-L3-Espera-Ms` y `X-Chispa-L3-Ms`. Métricas Prometheus: `chispa_knn_*` (filas y escaladas por tarea y motivo
 `margen`/`sin_oro`/`siempre`/`incompleta`), `chispa_l3_*` (semáforo, cola, circuito, reintentos, descartes, parciales).
 
@@ -34,21 +34,34 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
 
 ## Límites
 - **Máximo 62 opciones** por pregunta (etiquetas de un carácter A–Z, a–z, 0–9); con más, la fila es inválida y escala. En `score` con niveles de una cifra la etiqueta es el nivel.
-- **Con más de ~20 opciones, preseleccione con el kNN**: `l3.top_k` (p. ej. 20) hace que L3 vea solo las top_k opciones del kNN en las preguntas `choice` (más rápido y menos sesgo de posición).
-  Con `knn` y sin `l3.top_k` L3 ve TODAS las opciones (es la configuración medida y con la que hay paridad con Python); la preselección está implementada pero **no medida** con fs8.
+- **Con más de 20 opciones, L3 ve solo el top-10 del kNN** (`l3.top_k_knn`):
+  - Con `knn` el valor por defecto es 10; `0` lo apaga, y un `l3.top_k` explícito también lo deja apagado.
+  - El ranking va por probabilidad del kNN y, a igualdad, por similitud al centroide de oro.
+  - Las opciones se muestran en el orden de la pregunta.
+  - Cifra de T3b en finanzas (59 opciones): el 4B zero-shot pasa de 0,703 a **0,813** (+10,9 [+6,6, +15,6]) con cobertura del 100 %, y el recall@10 del kNN es 0,989.
+  - En Go el ranking solo está probado con datos sintéticos: no hay vectores e5 en el fixture.
+  - Las 10 candidatas de Python por fila están exportadas en el fixture de paridad.
 - Cada ejemplo del prompt se recorta a 1 200 caracteres; los ejemplos van solo con id y etiqueta (sin descripciones).
 - Una tarea sin oro (o sin `<banco>.ejemplos.jsonl`) contesta zero-shot; un banco vacío escala siempre (`sin_oro`).
 - El codificador carga una copia del e5 (≈ 470 MB) por sesión; `knn.e5_sesiones` (por defecto min(4, núcleos)).
 
 ## Estabilidad por tipo
 - **`choice` y `noul` (sí/no): estables.** Son los tipos de las baterías medidas.
-- **`score`: EXPERIMENTAL.** La respuesta lleva `experimental: true`. La exactitud en score medida en dev está cerca del azar (T3: jql 0,15 y usajobs 0,15); no la uses para decidir sin revisión.
+- **`score`: estable con calibración (requiere ≥ 8 de oro por nivel).** Se combinan dos cosas:
+  - La rúbrica por nivel va como descripción de cada opción, con un ejemplo corto.
+  - L3 lee la esperanza ordinal sobre los logprobs y la corta con los umbrales del banco (`<banco>.umbrales.json`).
+  - Los umbrales se ajustan con `cmd/ajustar-umbrales`, a partir del oro del soporte y las predicciones de L3 sobre él: mediana de la esperanza por nivel, PAV y puntos medios. Exige ≥ 8 de oro por nivel y deja fuera las filas que sirven de ejemplo en la rúbrica.
+  - Config: `knn.tareas.<t>.score_umbrales`. Sin la clave, los umbrales se usan si el fichero existe; con `true` se exigen; con `false` se ignoran.
+  - Cifras de T3b (4B, dev, rúbrica + umbrales frente a zero-shot): exactitud macro de las 3 score **+15,1** y QWK **+0,24**. Por tarea: jql 0,149 → 0,478 (QWK 0,07 → 0,66), usajobs 0,146 → 0,222 (QWK 0,55 → 0,67) y horeca (sintética) 0,506 → 0,556.
+  - Paridad Go = Python: 100 % del nivel en las 1 469 filas de test de las 3 tareas; umbrales idénticos y esperanza con diferencias < 4e-15.
+  - Una tarea score **sin** umbrales sigue siendo EXPERIMENTAL: lleva `experimental: true` y su exactitud está cerca del azar (T3: jql y usajobs, 0,15 las dos).
+  - En horeca, fs8 sin calibrar dio más (0,634).
 - **`multi`: extensión solo de Go.** Sí/no independiente por opción (una llamada por opción con etiquetas S/N); `llm_logprobs.py` no lo tiene. Sin medir.
 
 ## Pendiente para producción
 - Medir fs8 con vLLM real (exactitud y latencia: los 8 turnos de ejemplo alargan el prompt; con 60 opciones y prefijo común, `--enable-prefix-caching` debería amortizarlo, sin medir).
-- Medir la preselección top-k con kNN en tareas con más de 20 opciones.
+- Paridad fila a fila del top-k en Go con los vectores e5 reales de finanzas, que hoy solo está probado con datos sintéticos.
 - Calibrar u por cliente (hoy a mano); automatizarlo con un jsonl de validación.
 - Construir y probar la imagen `Dockerfile.producto` (aquí no hay demonio de Docker); firmar/versionar `e5.onnx` y los bancos; quitar `-pruebas` del arranque de cualquier ud (forzar_l3 es solo de pruebas).
-- Quedan sin cubrir: `score` (experimental), `multi` (sin medir), tokenizador de Go frente a HF con espacios finales (ya compensado en el codificador, `runtime/tok` sin tocar), autenticación por cliente en los bancos
+- Quedan sin cubrir: `score` sin umbrales (experimental), `multi` (sin medir), tokenizador de Go frente a HF con espacios finales (ya compensado en el codificador, `runtime/tok` sin tocar), autenticación por cliente en los bancos
   (hoy un banco por tarea, compartido por todas las claves), y el cuello del codificador (una consulta por llamada; sin agrupar en lotes).
