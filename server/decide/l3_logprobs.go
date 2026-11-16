@@ -372,6 +372,7 @@ func (l *L3LLM) entrarFila(ctx context.Context) (libera func(), err error) {
 		l.met.l3Uso(1)
 		return func() { <-l.sem; l.met.l3Uso(-1) }
 	}
+	pr := presupuestoDe(ctx)
 	select {
 	case l.sem <- struct{}{}:
 		l.met.l3EsperaCola(0)
@@ -389,6 +390,7 @@ func (l *L3LLM) entrarFila(ctx context.Context) (libera func(), err error) {
 	select {
 	case l.sem <- struct{}{}:
 		l.met.l3EsperaCola(time.Since(te))
+		pr.l3EsperaNs.Add(int64(time.Since(te)))
 		return entra(), nil
 	case <-ctx.Done():
 		return nil, fmt.Errorf("%w: %v", ErrSinL3, ctx.Err())
@@ -446,6 +448,7 @@ func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opc
 		}
 	}
 	l.met.l3Latencia(time.Since(t))
+	presupuestoDe(ctx).l3Ns.Add(int64(time.Since(t)))
 	l.circ.registra(err == nil, sonda, err != nil && ctx.Err() != nil)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err) {
