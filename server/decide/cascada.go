@@ -32,6 +32,8 @@ type Resultado struct {
 	UnkPct *float64 `json:"unk_pct,omitempty"`
 	Ms     float64  `json:"ms"`
 	Nonce  string   `json:"nonce,omitempty"`
+	// Experimental: el tipo de la pregunta (score) no es estable: la exactitud medida está cerca del azar (T3: jql 0,15 y usajobs 0,15). Solo sale con true.
+	Experimental bool `json:"experimental,omitempty"`
 	// Incompleto: una capa falló o el ctx se canceló; no debe guardarse bajo un nonce.
 	Incompleto bool `json:"-"`
 }
@@ -244,7 +246,7 @@ func (c *Cascada) publicaTaus(cfg []Capa) {
 // confianza vista (pista para quien reciba la escalada).
 func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 	t0 := time.Now()
-	res := Resultado{ID: p.ID, Kind: p.Kind, Nonce: p.Nonce, Probs: map[string]float64{}}
+	res := Resultado{ID: p.ID, Kind: p.Kind, Nonce: p.Nonce, Probs: map[string]float64{}, Experimental: p.Kind == KindScore}
 	var mejor Respuesta
 	ninguna := len(c.capas) > 0 // sigue true mientras todas las capas vistas devuelvan «sin opinión» limpia (sin error ni Incompleto)
 	sinPres := false            // alguna capa quedó sin presupuesto de torres nuevas

@@ -58,6 +58,9 @@ type ConfigL3 struct {
 	MaxCola *int `json:"max_cola,omitempty"`
 	// MultiMaxOpciones: máximo de opciones de una pregunta multi por logprobs (una llamada por opción); 0 = 16. Más = no opina.
 	MultiMaxOpciones int `json:"multi_max_opciones,omitempty"`
+	// Ejemplos: few-shot de L3 (fs8). nil = L3EjemplosPorDefecto (8) en las tareas con banco de oro y fichero <banco>.ejemplos.jsonl; 0 = apagado; N > 0 exige que el
+	// fichero traiga N ejemplos (los elige model/alt/generar_banco.py --k N). Ver l3_ejemplos.go.
+	Ejemplos *int `json:"ejemplos,omitempty"`
 	// Modo: "" o "json" (por defecto: se pide un JSON de probabilidades) o "logprobs" (una etiqueta por opción y se lee la
 	// distribución de su primer token; ver l3_logprobs.go). Los campos siguientes solo cuentan en modo logprobs.
 	Modo           string   `json:"modo,omitempty"`
@@ -129,6 +132,9 @@ func (c ConfigL3) validar() error {
 	if c.Modelo == "" {
 		return fmt.Errorf("config: l3.modelo es obligatorio")
 	}
+	if c.Ejemplos != nil && *c.Ejemplos < 0 {
+		return fmt.Errorf("config: l3.ejemplos no puede ser negativo")
+	}
 	if c.MinPorPeticion < 0 || c.MaxIntentos < 0 || c.EsperaBase < 0 || c.EsperaMax < 0 || c.CircuitoFallos < 0 || c.CircuitoEspera < 0 ||
 		c.CircuitoVentana < 0 || c.MultiMaxOpciones < 0 || (c.MaxCola != nil && *c.MaxCola < 0) {
 		return fmt.Errorf("config: l3.min_por_peticion, max_intentos, espera_*, circuito_*, multi_max_opciones y max_cola no pueden ser negativos")
@@ -186,19 +192,22 @@ func (c Config) DecisorL3() (Decisor, error) {
 
 // L3LLM es el decisor L3 contra un endpoint compatible con OpenAI.
 type L3LLM struct {
-	cfg    ConfigL3
-	url    string
-	clave  string
-	cli    *http.Client
-	max    int
-	min    int
-	cola   atomic.Int64 // filas esperando un hueco del semáforo
-	circ   *circuito
-	dormir func(ctx context.Context, d time.Duration) error // sustituibles en los tests
-	azar   func() float64
-	sem    chan struct{} // semáforo del modo logprobs (max_concurrente)
-	met    *Metricas
-	cuenta sync.Map // weak.Pointer[presupuestoTorres] (la petición) → *atomic.Int64 de llamadas; se limpia al recogerse la petición
+	cfg         ConfigL3
+	url         string
+	clave       string
+	cli         *http.Client
+	max         int
+	min         int
+	cola        atomic.Int64 // filas esperando un hueco del semáforo
+	mu          sync.Mutex   // protege turnosCache
+	ejemplosDe  func(pregunta string) []EjemploFS
+	turnosCache map[string][]msgL3
+	circ        *circuito
+	dormir      func(ctx context.Context, d time.Duration) error // sustituibles en los tests
+	azar        func() float64
+	sem         chan struct{} // semáforo del modo logprobs (max_concurrente)
+	met         *Metricas
+	cuenta      sync.Map // weak.Pointer[presupuestoTorres] (la petición) → *atomic.Int64 de llamadas; se limpia al recogerse la petición
 }
 
 // NuevoL3LLM crea L3. cli nil = un cliente propio con el timeout de la config. Si api_key_env está y la variable vacía, falla:

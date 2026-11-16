@@ -27,6 +27,7 @@ type filaPromptL3 struct {
 	Opciones    []string          `json:"opciones"`
 	Descripcion map[string]string `json:"descripciones"`
 	Mensajes    []msgL3           `json:"mensajes"`
+	MensajesFS  []msgL3           `json:"mensajes_fs"`
 	Etiquetas   []string          `json:"etiquetas"`
 }
 
@@ -72,7 +73,7 @@ func (escaladorKNN) Decidir(_ context.Context, p Pregunta) (Respuesta, error) {
 }
 
 // primerosCuerposPorFila sirve cada fila (en serie) por /v1/decide y devuelve el primer cuerpo que recibió el vLLM falso por fila.
-func primerosCuerposPorFila(t *testing.T, filas []filaPromptL3, cfg Config, conDescripciones, forzado bool) []struct{ Messages []msgL3 } {
+func primerosCuerposPorFila(t *testing.T, filas []filaPromptL3, cfg Config, conDescripciones, forzado bool, ej func(string) []EjemploFS) []struct{ Messages []msgL3 } {
 	t.Helper()
 	f := &srvLP{top: map[string]float64{"A": -1, "B": -2}}
 	s := f.arranca(t)
@@ -80,6 +81,9 @@ func primerosCuerposPorFila(t *testing.T, filas []filaPromptL3, cfg Config, conD
 	l3, err := cfg.DecisorL3()
 	if err != nil {
 		t.Fatal(err)
+	}
+	if ej != nil {
+		l3.(*L3LLM).ConEjemplos(ej)
 	}
 	m := NuevasMetricas()
 	casc, err := NuevaCascada([]Capa{{"L2", 0.5}, {"L3", 0.5}}, []Decisor{escaladorKNN{}, l3}, m)
@@ -137,7 +141,7 @@ func igualesMsgs(a, b []msgL3) bool {
 func TestL3PromptCascadaIdenticoAPython(t *testing.T) {
 	filas := leerPromptsL3(t)
 	cfg := Config{KNN: &ConfigKNN{}} // con knn el recorte a top_k y la guía de capas previas se apagan
-	got := primerosCuerposPorFila(t, filas, cfg, true, false)
+	got := primerosCuerposPorFila(t, filas, cfg, true, false, nil)
 	malas := 0
 	for i, r := range filas {
 		if !igualesMsgs(got[i].Messages, r.Mensajes) {
@@ -171,7 +175,7 @@ func TestL3PromptSinDescripcionesNoEsElDePython(t *testing.T) {
 	if con == 0 {
 		t.Skip("ninguna fila con descripciones")
 	}
-	got := primerosCuerposPorFila(t, cd, Config{KNN: &ConfigKNN{}}, false, false)
+	got := primerosCuerposPorFila(t, cd, Config{KNN: &ConfigKNN{}}, false, false, nil)
 	distintas := 0
 	for i, r := range cd {
 		if !igualesMsgs(got[i].Messages, r.Mensajes) {
@@ -187,8 +191,8 @@ func TestL3PromptSinDescripcionesNoEsElDePython(t *testing.T) {
 // llm_logprobs.py. Si alguien vuelve a meter un recorte, un reordenado o una pista en la vía de cascada, este test falla.
 func TestL3PromptCascadaIdenticoAlForzadoYAPython(t *testing.T) {
 	filas := leerPromptsL3(t)
-	cascada := primerosCuerposPorFila(t, filas, Config{KNN: &ConfigKNN{}}, true, false)
-	forzado := primerosCuerposPorFila(t, filas, Config{}, true, true)
+	cascada := primerosCuerposPorFila(t, filas, Config{KNN: &ConfigKNN{}}, true, false, nil)
+	forzado := primerosCuerposPorFila(t, filas, Config{}, true, true, nil)
 	for i, r := range filas {
 		if !igualesMsgs(cascada[i].Messages, forzado[i].Messages) {
 			t.Errorf("%s (%s): el prompt en cascada difiere del de L3 forzado\n cascada: %.300q\n forzado: %.300q", r.ID, r.Tarea, cascada[i].Messages, forzado[i].Messages)
