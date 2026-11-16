@@ -109,15 +109,21 @@ def cmd_medir(a):
         spec = dict(spec)
         modo, cal = spec.pop("esperanza", False), spec.pop("calibrar", None)
         excl = ids_ejemplos(rub) if spec.pop("excluir_ejemplos_rubrica", False) else ()
-        esp = modo
+        esp, sin_umbral = modo, set()
         if cal:
             esp = {}
             for t, (sop, ev) in dev.items():
                 f = pred / cal / (t + ".jsonl")
                 if ev[0]["tipo"] == "score" and f.exists():
-                    esp[t] = umbrales(sop, {r["id"]: r for r in lb.leer(f)}, excl)
-                    out["umbrales"].setdefault(s, {})[t] = esp[t]
-        out["sistemas"][s], oks[s] = lb.cifras_sistema(dev, lambda t, spec=spec: fuente_de(spec, t, a.pred, a.t3), sint, esp)
+                    try:
+                        esp[t] = umbrales(sop, {r["id"]: r for r in lb.leer(f)}, excl)
+                        out["umbrales"].setdefault(s, {})[t] = esp[t]
+                    except ValueError as e:   # soporte sin predicciones de algún nivel: esa tarea queda sin cubrir («no medido»), no se mide con otra lectura
+                        sin_umbral.add(t)
+                        out["umbrales"].setdefault(s, {})[t] = str(e)
+                elif ev[0]["tipo"] == "score":
+                    sin_umbral.add(t)
+        out["sistemas"][s], oks[s] = lb.cifras_sistema(dev, lambda t, spec=spec, su=sin_umbral: Path("/nonexistent") if t in su else fuente_de(spec, t, a.pred, a.t3), sint, esp)
         out["sistemas"][s]["macro_score"] = macro_score(out["sistemas"][s])
     for s in out["sistemas"]:
         if s != ref:
