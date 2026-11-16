@@ -155,6 +155,33 @@ def cmd_topk(a):
     print("topk", json.dumps(cif), flush=True)
 
 
+def demos_fila(sim, ys, k):
+    """Índices del soporte para una fila: los k más cercanos por coseno; si las clases caben en k (≤ k), al menos uno de cada clase (el más cercano de cada una) y el
+    resto por cercanía. Orden de salida: del más lejano al más cercano (el más parecido queda pegado a la pregunta)."""
+    orden = np.argsort(-sim, kind="stable")
+    clases = sorted(set(ys))
+    if len(clases) <= k:
+        elegidos = [next(i for i in orden if ys[i] == c) for c in clases]
+        elegidos += [i for i in orden if i not in set(elegidos)][:k - len(elegidos)]
+    else:
+        elegidos = list(orden[:k])
+    return sorted(elegidos, key=lambda i: sim[i])
+
+
+def cmd_demos(a):
+    """D: para cada fila de test, las k demostraciones del soporte de oro más parecidas por coseno de e5 (los vectores de `vectores`). Escribe SAL/<tarea>.jsonl
+    con {id, ejemplos: [ids del soporte]} (el formato de `llm_logprobs.py --demos`)."""
+    for t, (sop, ev) in tareas(a.dev, None).items():
+        z = np.load(Path(a.vec) / (t + ".npz"))
+        if list(z["idtr"]) != [r["id"] for r in sop] or list(z["idte"]) != [r["id"] for r in ev]:
+            raise SystemExit("los vectores de %s no corresponden a las filas de dev" % t)
+        S = z["Xte"] @ z["Xtr"].T
+        ys = [r["etiqueta"] for r in sop]
+        filas = [{"id": r["id"], "ejemplos": [sop[i]["id"] for i in demos_fila(S[j], ys, a.k)]} for j, r in enumerate(ev)]
+        escribir(a.salida, t, filas)
+        print("demos", t, len(filas), flush=True)
+
+
 def cmd_knn(a):
     from model.alt.fusion_knn_l2 import knn, muestrear
     tv = json.loads((Path(a.vec) / "tiempo.json").read_text(encoding="utf-8"))
@@ -176,7 +203,7 @@ def cmd_knn(a):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for nombre in ("nli", "l2", "knn", "vectores", "topk"):
+    for nombre in ("nli", "l2", "knn", "vectores", "topk", "demos"):
         p = sub.add_parser(nombre)
         p.add_argument("--dev", required=True)
         p.add_argument("--max-filas", type=int)
@@ -193,8 +220,10 @@ def main(argv=None):
             p.add_argument("--hasta", type=float, default=0, help="fecha límite (epoch) de todo el NLI (0: sin tope)")
         if nombre == "l2":
             p.add_argument("--m1", required=True)
-        if nombre in ("knn", "vectores", "topk"):
+        if nombre in ("knn", "vectores", "topk", "demos"):
             p.add_argument("--vec", required=True)
+        if nombre == "demos":
+            p.add_argument("--k", type=int, default=8)
         if nombre == "topk":
             p.add_argument("--tarea", required=True)
             p.add_argument("--k", type=int, default=10)
@@ -205,7 +234,7 @@ def main(argv=None):
             p.add_argument("--solo", help="solo estas tareas (separadas por comas)")
             p.add_argument("--transformers", required=True, help="versión de transformers exigida (la instalada)")
     a = ap.parse_args(argv)
-    {"nli": cmd_nli, "l2": cmd_l2, "knn": cmd_knn, "vectores": cmd_vectores, "topk": cmd_topk}[a.cmd](a)
+    {"nli": cmd_nli, "l2": cmd_l2, "knn": cmd_knn, "vectores": cmd_vectores, "topk": cmd_topk, "demos": cmd_demos}[a.cmd](a)
     return 0
 
 
