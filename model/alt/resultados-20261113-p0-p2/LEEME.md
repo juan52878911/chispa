@@ -1984,3 +1984,31 @@ Exactitud por tarea en las 6 de dev, con cobertura del 100 % salvo NLI:
 - **jql:** la mayoritaria (0,38) supera a todos los sistemas. Solo el NLI se le acerca, y sobre 40 filas.
 - **NLI:** con el tope de 40 filas por tarea queda en una señal débil, sin cobertura.
 - **Consecuencia para D:** mezclar la posterior del kNN-oro con la del 4B tiene margen en finanzas y, quizá, en las tareas score.
+
+### 17.20 T3b corregido y D (preparados; código 91deb47, rama `r10-d` fusionada)
+
+**T3b, causa del fallo:** `snapshot_download` se ejecutaba con el venv de transformers antes de que este terminara de instalarse.
+
+Corrección:
+- La descarga y la medida van con el venv de vLLM, que trae huggingface_hub y numpy.
+- El ud comprueba al principio que cada python importa lo que necesita, con las versiones fijadas. Test: `test_ud_pythons.py`.
+- El criterio (`823cf37a…`) y la rúbrica (`a89ec5b1…`) no cambian.
+
+Datos de lanzamiento:
+- User-data: `lanzados/ud-r10-t3b-91deb47.sh` (sha256 `55c7cdc4…`, 14 411 bytes).
+- Entradas en `s3://…/r10-t3b-91deb47/`: codigo `0836911f…`, dev `b4e36d3f…`, t3 `3ba29458…`.
+
+**D, oro bien usado** (g5, tope 110 min ≈ 1,85 USD; criterio `38bc5612e580001b0f5d34f69abde105f5cdc1a1169a60c3a1acdb740f2f1585`):
+- **Demostraciones por kNN:** 8 del soporte de oro por fila, las más parecidas según e5, con al menos una por clase si caben. Se pasan con `--demos`.
+- **Preselección top-k** (k = 10) en finanzas, para cubrirla al 100 %. La referencia fs8 al azar se mide con el mismo recorte.
+- **Mezcla de posteriores:** p = w·p_kNN + (1 − w)·p_4B. El peso w se elige en la mitad A de dev (partición por hash del id) y se mide en la mitad B.
+- **Sistema final:** la mezcla sobre la variante de demostraciones con mejor macro en A.
+- **PASA** si gana ≥ +3 de macro en las 6 dev frente a fs8 al azar en B, ninguna tarea pierde más de 2 puntos y la cobertura es del 100 %.
+- Las tareas score se informan aparte (exactitud, QWK, MAE y ±1), y también la macro sin sintéticas.
+- **Estimación:** 55–70 min.
+
+Datos de lanzamiento:
+- User-data: `lanzados/ud-r10-d-91deb47.sh` (sha256 `b54ffae8…`, 14 444 bytes).
+- Entradas en `s3://…/r10-d-91deb47/`: codigo `0836911f…`, dev `48cdd7ee…`, t3 `292049db…`.
+
+Las pruebas en seco LOCAL en el i7 pasaron con los pythons ya corregidos. Los dos `--dry-run` dan DryRunOperation.
