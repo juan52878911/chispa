@@ -1963,3 +1963,24 @@ Ficheros:
 - Entradas en `s3://…/r10-t3b-afb29a1/`: codigo.tgz `dc420f54…`, dev.tgz `d113e14f…` y t3.tgz `2cc557db…`.
 
 Las dos pruebas en seco en el i7 pasaron. El `--dry-run` da DryRunOperation en los dos.
+
+### 17.19 Resultado de T3a (EC2 i-02b2fdd9429d8c488, c7i, ≈ 0,1 USD; `verificado`; `t3a-cifras-afb29a1.json`): informativo
+
+Exactitud por tarea en las 6 de dev, con cobertura del 100 % salvo NLI:
+
+| tarea | mayoritaria | L2 zero-shot | kNN-e5 k = 8 | NLI (solo 40 filas) | 4B zero-shot (T3) |
+|---|---|---|---|---|---|
+| cfpb-quejas | 0,112 | 0,166 | 0,390 | 0,45 | **0,672** |
+| congreso-eeuu-partido | 0,500 | 0,508 | 0,516 | 0,475 | **0,596** |
+| finanzas-documentos (sintética) | 0,011 | 0,104 | **0,761** | 0,025 | 0,488 (sobre el 69 % cubierto) |
+| horeca-resenas (sintética) | 0,200 | 0,198 | 0,312 | 0,275 | **0,506** |
+| jql-valor-educativo | **0,380** | 0,211 | 0,218 | 0,40 | 0,149 |
+| usajobs-nivel | 0,090 | 0,094 | 0,144 | 0,025 | **0,146** |
+| **macro de las 6** | 0,215 | 0,214 | 0,390 | — | — |
+
+**Lectura:**
+- **El L2 zero-shot de Chispa (`mejor.pt`) no supera a la clase mayoritaria** en v2-dev: 0,214 frente a 0,215.
+- **El kNN-e5 con 8 de oro** queda por detrás del 4B en todas las tareas salvo finanzas (59 clases sintéticas), donde gana con claridad: 0,761 frente a 0,488.
+- **jql:** la mayoritaria (0,38) supera a todos los sistemas. Solo el NLI se le acerca, y sobre 40 filas.
+- **NLI:** con el tope de 40 filas por tarea queda en una señal débil, sin cobertura.
+- **Consecuencia para D:** mezclar la posterior del kNN-oro con la del 4B tiene margen en finanzas y, quizá, en las tareas score.

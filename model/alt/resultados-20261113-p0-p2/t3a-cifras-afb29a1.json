@@ -1,0 +1,880 @@
+{
+ "criterio_sha256": "fb0a6d5bb3e202bc23454f7706462d572b392d60382d000c06465ac3f41b8f10",
+ "referencia": "mayoritaria",
+ "sinteticas": [
+  "finanzas-documentos",
+  "horeca-resenas"
+ ],
+ "sistemas": {
+  "mayoritaria": {
+   "tareas": {
+    "cfpb-quejas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Checking or savings account",
+      "exactitud_test": 0.112,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.112,
+     "exactitud_cubiertas": 0.112,
+     "ic95_filas": [
+      0.084,
+      0.142
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0
+    },
+    "congreso-eeuu-partido": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "D",
+      "exactitud_test": 0.5,
+      "oraculo_test_exactitud": 0.5
+     },
+     "exactitud": 0.5,
+     "exactitud_cubiertas": 0.5,
+     "ic95_filas": [
+      0.452,
+      0.544
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0
+    },
+    "finanzas-documentos": {
+     "n_test": 461,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Annual Report",
+      "exactitud_test": 0.0108,
+      "oraculo_test_exactitud": 0.0434
+     },
+     "exactitud": 0.0108,
+     "exactitud_cubiertas": 0.0108,
+     "ic95_filas": [
+      0.0022,
+      0.0217
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0
+    },
+    "horeca-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.2,
+     "exactitud_cubiertas": 0.2,
+     "ic95_filas": [
+      0.166,
+      0.236
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.4,
+     "mae": 2.0
+    },
+    "jql-valor-educativo": {
+     "n_test": 469,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.3795,
+      "oraculo_test_exactitud": 0.3795
+     },
+     "exactitud": 0.3795,
+     "exactitud_cubiertas": 0.3795,
+     "ic95_filas": [
+      0.3369,
+      0.4222
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.5757,
+     "mae": 1.2708
+    },
+    "usajobs-nivel": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.09,
+      "oraculo_test_exactitud": 0.092
+     },
+     "exactitud": 0.09,
+     "exactitud_cubiertas": 0.09,
+     "ic95_filas": [
+      0.066,
+      0.114
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.18,
+     "mae": 5.004
+    }
+   },
+   "macro": {
+    "valor": 0.2154,
+    "ic95_tareas": [
+     0.0856,
+     0.3616
+    ],
+    "n_tareas": 6
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.2704,
+    "ic95_tareas": [
+     0.101,
+     0.4397
+    ],
+    "n_tareas": 4
+   },
+   "cobertura_total": 1.0,
+   "invalidas_total": 0
+  },
+  "mdeberta-nli": {
+   "tareas": {
+    "cfpb-quejas": {
+     "n_test": 500,
+     "cobertura": 0.08,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Checking or savings account",
+      "exactitud_test": 0.112,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.036,
+     "exactitud_cubiertas": 0.45,
+     "ic95_filas": [
+      0.02,
+      0.054
+     ],
+     "invalidas": 460,
+     "lat_ms_p50": 312.78,
+     "lat_ms_p95": 416.43
+    },
+    "congreso-eeuu-partido": {
+     "n_test": 500,
+     "cobertura": 0.08,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "D",
+      "exactitud_test": 0.5,
+      "oraculo_test_exactitud": 0.5
+     },
+     "exactitud": 0.038,
+     "exactitud_cubiertas": 0.475,
+     "ic95_filas": [
+      0.022,
+      0.056
+     ],
+     "invalidas": 460,
+     "lat_ms_p50": 87.6,
+     "lat_ms_p95": 91.96
+    },
+    "finanzas-documentos": {
+     "n_test": 461,
+     "cobertura": 0.0868,
+     "sintetica": true,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Annual Report",
+      "exactitud_test": 0.0108,
+      "oraculo_test_exactitud": 0.0434
+     },
+     "exactitud": 0.0022,
+     "exactitud_cubiertas": 0.025,
+     "ic95_filas": [
+      0.0,
+      0.0065
+     ],
+     "invalidas": 421,
+     "lat_ms_p50": 3068.46,
+     "lat_ms_p95": 3156.82
+    },
+    "horeca-resenas": {
+     "n_test": 500,
+     "cobertura": 0.08,
+     "sintetica": true,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.022,
+     "exactitud_cubiertas": 0.275,
+     "ic95_filas": [
+      0.01,
+      0.036
+     ],
+     "invalidas": 460,
+     "lat_ms_p50": 77.12,
+     "lat_ms_p95": 92.82,
+     "modo_score": "mediana",
+     "qwk": 0.3885,
+     "exactitud_pm1": 0.056,
+     "mae": 1.025
+    },
+    "jql-valor-educativo": {
+     "n_test": 469,
+     "cobertura": 0.0853,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.3795,
+      "oraculo_test_exactitud": 0.3795
+     },
+     "exactitud": 0.0341,
+     "exactitud_cubiertas": 0.4,
+     "ic95_filas": [
+      0.0171,
+      0.0533
+     ],
+     "invalidas": 429,
+     "lat_ms_p50": 175.46,
+     "lat_ms_p95": 191.93,
+     "modo_score": "mediana",
+     "qwk": 0.0746,
+     "exactitud_pm1": 0.0554,
+     "mae": 1.075
+    },
+    "usajobs-nivel": {
+     "n_test": 500,
+     "cobertura": 0.08,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.09,
+      "oraculo_test_exactitud": 0.092
+     },
+     "exactitud": 0.002,
+     "exactitud_cubiertas": 0.025,
+     "ic95_filas": [
+      0.0,
+      0.006
+     ],
+     "invalidas": 460,
+     "lat_ms_p50": 431.43,
+     "lat_ms_p95": 482.15,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.012,
+     "mae": 5.25
+    }
+   },
+   "macro": {
+    "valor": 0.0224,
+    "ic95_tareas": [
+     0.0108,
+     0.034
+    ],
+    "n_tareas": 6
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.0275,
+    "ic95_tareas": [
+     0.0105,
+     0.037
+    ],
+    "n_tareas": 4
+   },
+   "cobertura_total": 0.0819,
+   "invalidas_total": 2690
+  },
+  "l2-zs": {
+   "tareas": {
+    "cfpb-quejas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Checking or savings account",
+      "exactitud_test": 0.112,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.166,
+     "exactitud_cubiertas": 0.166,
+     "ic95_filas": [
+      0.136,
+      0.2
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 26.89,
+     "lat_ms_p95": 27.21
+    },
+    "congreso-eeuu-partido": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "D",
+      "exactitud_test": 0.5,
+      "oraculo_test_exactitud": 0.5
+     },
+     "exactitud": 0.508,
+     "exactitud_cubiertas": 0.508,
+     "ic95_filas": [
+      0.464,
+      0.552
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 27.22,
+     "lat_ms_p95": 28.24
+    },
+    "finanzas-documentos": {
+     "n_test": 461,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Annual Report",
+      "exactitud_test": 0.0108,
+      "oraculo_test_exactitud": 0.0434
+     },
+     "exactitud": 0.1041,
+     "exactitud_cubiertas": 0.1041,
+     "ic95_filas": [
+      0.0759,
+      0.1323
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 26.96,
+     "lat_ms_p95": 33.0
+    },
+    "horeca-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.198,
+     "exactitud_cubiertas": 0.198,
+     "ic95_filas": [
+      0.164,
+      0.234
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 4.34,
+     "lat_ms_p95": 5.17,
+     "modo_score": "mediana",
+     "qwk": 0.0451,
+     "exactitud_pm1": 0.624,
+     "mae": 1.182
+    },
+    "jql-valor-educativo": {
+     "n_test": 469,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.3795,
+      "oraculo_test_exactitud": 0.3795
+     },
+     "exactitud": 0.2111,
+     "exactitud_cubiertas": 0.2111,
+     "ic95_filas": [
+      0.1748,
+      0.2473
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 26.96,
+     "lat_ms_p95": 27.32,
+     "modo_score": "mediana",
+     "qwk": 0.0199,
+     "exactitud_pm1": 0.6247,
+     "mae": 1.1663
+    },
+    "usajobs-nivel": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.09,
+      "oraculo_test_exactitud": 0.092
+     },
+     "exactitud": 0.094,
+     "exactitud_cubiertas": 0.094,
+     "ic95_filas": [
+      0.07,
+      0.118
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 26.5,
+     "lat_ms_p95": 27.15,
+     "modo_score": "mediana",
+     "qwk": 0.0097,
+     "exactitud_pm1": 0.266,
+     "mae": 3.476
+    }
+   },
+   "macro": {
+    "valor": 0.2135,
+    "ic95_tareas": [
+     0.1267,
+     0.3395
+    ],
+    "n_tareas": 6
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.2448,
+    "ic95_tareas": [
+     0.1233,
+     0.4225
+    ],
+    "n_tareas": 4
+   },
+   "cobertura_total": 1.0,
+   "invalidas_total": 0
+  },
+  "knn-e5-k8": {
+   "tareas": {
+    "cfpb-quejas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Checking or savings account",
+      "exactitud_test": 0.112,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.39,
+     "exactitud_cubiertas": 0.39,
+     "ic95_filas": [
+      0.346,
+      0.434
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 24.15,
+     "lat_ms_p95": 24.15
+    },
+    "congreso-eeuu-partido": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "D",
+      "exactitud_test": 0.5,
+      "oraculo_test_exactitud": 0.5
+     },
+     "exactitud": 0.516,
+     "exactitud_cubiertas": 0.516,
+     "ic95_filas": [
+      0.472,
+      0.558
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 24.12,
+     "lat_ms_p95": 24.12
+    },
+    "finanzas-documentos": {
+     "n_test": 461,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Annual Report",
+      "exactitud_test": 0.0108,
+      "oraculo_test_exactitud": 0.0434
+     },
+     "exactitud": 0.7614,
+     "exactitud_cubiertas": 0.7614,
+     "ic95_filas": [
+      0.7223,
+      0.8004
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 24.17,
+     "lat_ms_p95": 24.17
+    },
+    "horeca-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.312,
+     "exactitud_cubiertas": 0.312,
+     "ic95_filas": [
+      0.274,
+      0.352
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 24.12,
+     "lat_ms_p95": 24.12,
+     "modo_score": "mediana",
+     "qwk": 0.4459,
+     "exactitud_pm1": 0.812,
+     "mae": 0.896
+    },
+    "jql-valor-educativo": {
+     "n_test": 469,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.3795,
+      "oraculo_test_exactitud": 0.3795
+     },
+     "exactitud": 0.2175,
+     "exactitud_cubiertas": 0.2175,
+     "ic95_filas": [
+      0.1812,
+      0.2537
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 24.13,
+     "lat_ms_p95": 24.13,
+     "modo_score": "mediana",
+     "qwk": 0.1998,
+     "exactitud_pm1": 0.7484,
+     "mae": 1.0341
+    },
+    "usajobs-nivel": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.09,
+      "oraculo_test_exactitud": 0.092
+     },
+     "exactitud": 0.144,
+     "exactitud_cubiertas": 0.144,
+     "ic95_filas": [
+      0.114,
+      0.176
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 24.13,
+     "lat_ms_p95": 24.13,
+     "modo_score": "mediana",
+     "qwk": 0.428,
+     "exactitud_pm1": 0.398,
+     "mae": 2.136
+    }
+   },
+   "macro": {
+    "valor": 0.3901,
+    "ic95_tareas": [
+     0.249,
+     0.5557
+    ],
+    "n_tareas": 6
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.3169,
+    "ic95_tareas": [
+     0.1807,
+     0.453
+    ],
+    "n_tareas": 4
+   },
+   "cobertura_total": 1.0,
+   "invalidas_total": 0
+  }
+ },
+ "pareadas": {
+  "mdeberta-nli": {
+   "tareas": {
+    "cfpb-quejas": {
+     "dif": -0.076,
+     "ic95": [
+      -0.112,
+      -0.042
+     ],
+     "solo_sistema": 18,
+     "solo_referencia": 56,
+     "mcnemar_p": 1.1e-05,
+     "sintetica": false
+    },
+    "congreso-eeuu-partido": {
+     "dif": -0.462,
+     "ic95": [
+      -0.5101,
+      -0.41
+     ],
+     "solo_sistema": 19,
+     "solo_referencia": 250,
+     "mcnemar_p": 0.0,
+     "sintetica": false
+    },
+    "finanzas-documentos": {
+     "dif": -0.0087,
+     "ic95": [
+      -0.0195,
+      0.0
+     ],
+     "solo_sistema": 1,
+     "solo_referencia": 5,
+     "mcnemar_p": 0.21875,
+     "sintetica": true
+    },
+    "horeca-resenas": {
+     "dif": -0.178,
+     "ic95": [
+      -0.216,
+      -0.142
+     ],
+     "solo_sistema": 9,
+     "solo_referencia": 98,
+     "mcnemar_p": 0.0,
+     "sintetica": true
+    },
+    "jql-valor-educativo": {
+     "dif": -0.3454,
+     "ic95": [
+      -0.3902,
+      -0.3028
+     ],
+     "solo_sistema": 2,
+     "solo_referencia": 164,
+     "mcnemar_p": 0.0,
+     "sintetica": false
+    },
+    "usajobs-nivel": {
+     "dif": -0.088,
+     "ic95": [
+      -0.112,
+      -0.064
+     ],
+     "solo_sistema": 0,
+     "solo_referencia": 44,
+     "mcnemar_p": 0.0,
+     "sintetica": false
+    }
+   },
+   "macro": {
+    "dif": -0.193,
+    "ic95_tareas": [
+     -0.3309,
+     -0.0726
+    ]
+   },
+   "macro_sin_sinteticas": {
+    "dif": -0.2429,
+    "ic95_tareas": [
+     -0.4037,
+     -0.079
+    ]
+   }
+  },
+  "l2-zs": {
+   "tareas": {
+    "cfpb-quejas": {
+     "dif": 0.054,
+     "ic95": [
+      0.014,
+      0.096
+     ],
+     "solo_sistema": 70,
+     "solo_referencia": 43,
+     "mcnemar_p": 0.014087,
+     "sintetica": false
+    },
+    "congreso-eeuu-partido": {
+     "dif": 0.008,
+     "ic95": [
+      -0.054,
+      0.072
+     ],
+     "solo_sistema": 125,
+     "solo_referencia": 121,
+     "mcnemar_p": 0.848361,
+     "sintetica": false
+    },
+    "finanzas-documentos": {
+     "dif": 0.0933,
+     "ic95": [
+      0.065,
+      0.1236
+     ],
+     "solo_sistema": 47,
+     "solo_referencia": 4,
+     "mcnemar_p": 0.0,
+     "sintetica": true
+    },
+    "horeca-resenas": {
+     "dif": -0.002,
+     "ic95": [
+      -0.056,
+      0.056
+     ],
+     "solo_sistema": 99,
+     "solo_referencia": 100,
+     "mcnemar_p": 1.0,
+     "sintetica": true
+    },
+    "jql-valor-educativo": {
+     "dif": -0.1684,
+     "ic95": [
+      -0.2388,
+      -0.1023
+     ],
+     "solo_sistema": 99,
+     "solo_referencia": 178,
+     "mcnemar_p": 2e-06,
+     "sintetica": false
+    },
+    "usajobs-nivel": {
+     "dif": 0.004,
+     "ic95": [
+      -0.034,
+      0.04
+     ],
+     "solo_sistema": 47,
+     "solo_referencia": 45,
+     "mcnemar_p": 0.917041,
+     "sintetica": false
+    }
+   },
+   "macro": {
+    "dif": -0.0019,
+    "ic95_tareas": [
+     -0.0742,
+     0.0512
+    ]
+   },
+   "macro_sin_sinteticas": {
+    "dif": -0.0256,
+    "ic95_tareas": [
+     -0.1243,
+     0.0415
+    ]
+   }
+  },
+  "knn-e5-k8": {
+   "tareas": {
+    "cfpb-quejas": {
+     "dif": 0.278,
+     "ic95": [
+      0.222,
+      0.334
+     ],
+     "solo_sistema": 186,
+     "solo_referencia": 47,
+     "mcnemar_p": 0.0,
+     "sintetica": false
+    },
+    "congreso-eeuu-partido": {
+     "dif": 0.016,
+     "ic95": [
+      -0.064,
+      0.1
+     ],
+     "solo_sistema": 216,
+     "solo_referencia": 208,
+     "mcnemar_p": 0.733939,
+     "sintetica": false
+    },
+    "finanzas-documentos": {
+     "dif": 0.7505,
+     "ic95": [
+      0.7115,
+      0.7896
+     ],
+     "solo_sistema": 346,
+     "solo_referencia": 0,
+     "mcnemar_p": 0.0,
+     "sintetica": true
+    },
+    "horeca-resenas": {
+     "dif": 0.112,
+     "ic95": [
+      0.05,
+      0.174
+     ],
+     "solo_sistema": 156,
+     "solo_referencia": 100,
+     "mcnemar_p": 0.000561,
+     "sintetica": true
+    },
+    "jql-valor-educativo": {
+     "dif": -0.162,
+     "ic95": [
+      -0.2324,
+      -0.0959
+     ],
+     "solo_sistema": 102,
+     "solo_referencia": 178,
+     "mcnemar_p": 7e-06,
+     "sintetica": false
+    },
+    "usajobs-nivel": {
+     "dif": 0.054,
+     "ic95": [
+      0.014,
+      0.092
+     ],
+     "solo_sistema": 72,
+     "solo_referencia": 45,
+     "mcnemar_p": 0.015864,
+     "sintetica": false
+    }
+   },
+   "macro": {
+    "dif": 0.1747,
+    "ic95_tareas": [
+     -0.0211,
+     0.4217
+    ]
+   },
+   "macro_sin_sinteticas": {
+    "dif": 0.0465,
+    "ic95_tareas": [
+     -0.108,
+     0.222
+    ]
+   }
+  }
+ }
+}
