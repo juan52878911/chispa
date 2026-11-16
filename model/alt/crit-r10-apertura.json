@@ -1,0 +1,215 @@
+{
+ "ronda": "r10-apertura",
+ "estado": "BORRADOR hasta que la sesión principal lo revise y lo congele (rellenar `congelado.commit` y commitear; el ud comprueba el sha256 de ESTE fichero)",
+ "congelado": {
+  "commit": "__SHA_COMMIT_AL_CONGELAR__",
+  "fecha": "__FECHA_AL_CONGELAR__"
+ },
+ "motivo": "Apertura única de las 8 tareas selladas de la batería v2 (R10): medir UNA vez el sistema final congelado (choice: 4B con 8 demostraciones elegidas por kNN; score: rúbrica mecánica + umbrales isotónicos) frente a sus líneas base, con el criterio fijado en dev y sin leer ninguna fila sellada",
+ "descripcion": "Apertura de las selladas de la batería v2 con el 4B (Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554) por logprobs en dos g5.xlarge en paralelo (partes a y b). Nadie lee filas selladas: la rúbrica es mecánica y se genera dentro de la instancia desde el soporte.",
+ "modelo": {
+  "llm": "Qwen/Qwen3-4B-Instruct-2507",
+  "rev": "cdbee75f17c01a7cc42f958dc650907174af0554",
+  "vllm": "0.33.0",
+  "e5": "intfloat/multilingual-e5-small",
+  "e5_rev": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "transformers": "5.22.2",
+  "torch": "2.7.1"
+ },
+ "config": {
+  "cascada_en_final": false,
+  "cascada": {
+   "informativa": true,
+   "senal": "margen p1 - p2 del kNN-e5",
+   "f": 0.5,
+   "u": 0.039217,
+   "fuente": "model/alt/resultados-20261113-p0-p2/e-cascada-sin-fondo-9030c9b.json (u elegido en la mitad A de dev, aplicado tal cual); L3 = el sistema final; el final manda TODO a L3 mientras cascada_en_final sea false"
+  }
+ },
+ "sistemas": {
+  "mayoritaria": "clase mayoritaria del soporte de oro (empate: el id menor), como T3/T3b; no usa el modelo",
+  "knn": {
+   "nombre_pred": "knn-e5-k8",
+   "descripcion": "kNN-e5 con 8 de oro por clase (semilla 0), 32 vecinos, T 0,05, sobre todas las opciones (lineas_base_v2_pred.py knn = escalado.l2)",
+   "k_oro": 8,
+   "vecinos": 32,
+   "T": 0.05,
+   "semilla": 0
+  },
+  "zs": {
+   "nombre_pred": "zs",
+   "descripcion": "4B zero-shot por logprobs (llm_logprobs.py, sin ejemplos); score: mediana CORAL como T3; con preselección top-k en las tareas choice de > 20 opciones"
+  },
+  "fs8-azar": {
+   "nombre_pred": "fs8-azar",
+   "descripcion": "4B con 8 ejemplos al azar estratificados del soporte (llm_logprobs.py --ejemplos --k 8, semilla 20261115, ejemplo-max-chars 1200); score: mediana CORAL como T3",
+   "k": 8,
+   "semilla": 20261115
+  },
+  "final": {
+   "choice": {
+    "nombre_pred": "fs8-knn",
+    "descripcion": "exactamente fs8-knn de D: 8 demostraciones POR FILA, las más parecidas por coseno de e5 (lineas_base_v2_pred.py demos --k 8), orden de la más lejana a la más cercana; SIN mezcla de posteriores"
+   },
+   "score": {
+    "nombre_pred": "rub",
+    "descripcion": "exactamente rub+cal de T3b: 4B zero-shot con la rúbrica mecánica (descripciones) sobre el test (rub) y sobre el soporte de oro (rub-sop); esperanza ordinal; umbrales isotónicos ajustados con lineas_base_v2b.umbrales sobre las predicciones del soporte, EXCLUYENDO las filas-ejemplo de la rúbrica"
+   }
+  }
+ },
+ "rubrica_mecanica": {
+  "regla": "Por nivel: descripción = la de la propia opción si las filas traen `descripciones` (texto no vacío); si no, «Etiqueta N = nivel N de K.». Ejemplo = la primera fila del soporte de oro (split train) de ese nivel por id (orden natural), con espacios normalizados y recortada a 130 caracteres terminando en «…». En el prompt cada descripción lleva «Ejemplo: «…»». `fuente_ejemplo` = id de esa fila. Se genera dentro de la instancia (apertura_v2.py preparar → rubrica-mecanica.json); nadie la escribe ni la lee antes.",
+  "ejemplos_excluidos_del_ajuste": true
+ },
+ "umbrales": {
+  "oro_min_por_nivel": 8,
+  "metodo": "mediana de la esperanza por nivel sobre las predicciones del 4B en el soporte de oro, isotónica (PAV), puntos medios (lineas_base_v2b.umbrales); nivel = 1 + nº de umbrales por debajo de la esperanza"
+ },
+ "topk": {
+  "k": 10,
+  "umbral_opciones": 20,
+  "aplica_a": "tareas choice con más de 20 opciones (ninguna de las selladas, máx. 18); si aparece alguna, zs, fs8-azar y fs8-knn usan las 10 candidatas del kNN-e5 como en D",
+  "k_oro": 8
+ },
+ "demos": {
+  "k": 8,
+  "seleccion": "las 8 filas del soporte más cercanas por coseno de e5; si las clases caben en 8, al menos la más cercana de cada clase"
+ },
+ "metricas": "las de lineas_base_v2.py: exactitud (top-1; score en zs/fs8-azar/knn: mediana CORAL; final score: umbrales), QWK, MAE y ±1 en score; macro = media simple de exactitudes por tarea",
+ "lectura": {
+  "tipo": "descriptiva, sin umbral de PASA/NO PASA",
+  "se_reporta": [
+   "por tarea: exactitud de cada sistema (mayoritaria, knn, zs, fs8-azar, final) con IC95 por filas; en score QWK, MAE y ±1",
+   "macro por tipo (choice, score) con IC95 bootstrap sobre tareas (lb.ic_tareas), y macro global de las 8",
+   "final − zs y final − mayoritaria (y final − knn, final − fs8-azar) por tipo y global: diferencia macro con IC95 sobre tareas y bootstrap por filas dentro de tarea (auditoria.boot_par)",
+   "cobertura por sistema y tarea; cascada kNN+margen informativa (u fijo de dev)"
+  ],
+  "validez": "el veredicto solo vale si el final y el 4B zs cubren el 100 % de las filas de test de CADA tarea sellada (cobertura de lineas_base_v2); si no, «no medido». Las filas inválidas se cuentan como fallo y se reportan."
+ },
+ "cobertura_exigida": {
+  "sistemas": [
+   "final",
+   "zs"
+  ],
+  "minimo": 1.0
+ },
+ "ejecucion": {
+  "gpus": "dos g5.xlarge en paralelo, una por parte; cada parte con su ud y su prefijo S3 (r10-apertura-SHA-a / -b); medir junta las predicciones de ambas (--pred A --pred B)",
+  "parte_a": "final (rub-sop, rub, fs8-knn), zs (choice, score); kNN y mayoritaria en CPU (sin GPU)",
+  "parte_b": "fs8-azar (score, choice)",
+  "orden_en_cada_g5": "primero el sistema final y el 4B zs; luego fs8 al azar; kNN y mayoritaria al final (CPU, baratos)",
+  "tiempos_min": {
+   "cap_parte_a": 100,
+   "cap_parte_b": 70,
+   "fases_a": {
+    "rub-sop": 2,
+    "rub": 5,
+    "fs8-knn": 35,
+    "zs-score": 11,
+    "zs-choice": 14
+   },
+   "fases_b": {
+    "fs8-azar-score": 15,
+    "fs8-azar-choice": 21
+   }
+  },
+  "base_estimacion": "ritmos reales de dev en g5 (filas/s): zs 3,3 (T3: 2789 en 845 s); fs8-azar 2,28 (T3: 2469 en 1085 s); fs8-knn 1,35 (D: 2469 en 1828 s); rub 12,3 (T3b: 1469 en 119 s); rub-sop 8 (168 en 21 s). Filas selladas por manifiesto: choice 1700 test (200+500+500+500), score 1255 test (55+500+500+200) y 144 de soporte. Cada fase = filas / ritmo × 1,5 de margen, redondeada hacia arriba.",
+  "coste_usd_max": {
+   "parte_a": 1.68,
+   "parte_b": 1.17,
+   "total": 2.85,
+   "tarifa_usd_h": 1.006
+  },
+  "ensayo_seco": {
+   "donde": "i7, CHISPA_LOCAL=1, vLLM falso (r10_t3_vllm_falso.py), e5 real en CPU, dev empaquetado como selladas (empaquetar_r10_apertura.sh --dev-como-selladas)",
+   "una_tarea": "horeca-resenas (500 test, 40 soporte): ud completo en 19 s (CPU: vectores, kNN, demos, rúbrica, medir)",
+   "dos_tareas": "horeca + congreso (1000 test, 56 soporte), partes a y b y medir con las dos: 61 s la parte a (101 s con la rama top-k forzada); veredicto «medido» al unir a y b; las llamadas al LLM no se miden (servidor falso)",
+   "texto_g5": "el tiempo en g5 sale de los ritmos reales de dev (base_estimacion), no del ensayo"
+  }
+ },
+ "tareas_selladas": {
+  "unlu-consultas": {
+   "tipo": "choice",
+   "clases": 16,
+   "n_test": 200,
+   "n_soporte": 124,
+   "tope_caracteres": 3000,
+   "idioma": "es"
+  },
+  "disco-soneto-valencia": {
+   "tipo": "score",
+   "clases": 4,
+   "n_test": 55,
+   "n_soporte": 32,
+   "tope_caracteres": 3000,
+   "idioma": "es"
+  },
+  "congreso-grupo": {
+   "tipo": "choice",
+   "clases": 9,
+   "n_test": 500,
+   "n_soporte": 72,
+   "tope_caracteres": 3000,
+   "idioma": "es"
+  },
+  "promise-requisitos": {
+   "tipo": "choice",
+   "clases": 11,
+   "n_test": 500,
+   "n_soporte": 88,
+   "tope_caracteres": 3000,
+   "idioma": "es"
+  },
+  "ropa-resenas": {
+   "tipo": "score",
+   "clases": 5,
+   "n_test": 500,
+   "n_soporte": 40,
+   "tope_caracteres": 3000,
+   "idioma": "en"
+  },
+  "rtp-toxicidad": {
+   "tipo": "score",
+   "clases": 5,
+   "n_test": 500,
+   "n_soporte": 40,
+   "tope_caracteres": 3000,
+   "idioma": "en"
+  },
+  "polite-cortesia": {
+   "tipo": "score",
+   "clases": 4,
+   "n_test": 200,
+   "n_soporte": 32,
+   "tope_caracteres": 3000,
+   "idioma": "en"
+  },
+  "arxiv-categoria": {
+   "tipo": "choice",
+   "clases": 18,
+   "n_test": 500,
+   "n_soporte": 144,
+   "tope_caracteres": 3000,
+   "idioma": "en"
+  }
+ },
+ "selladas_sha256": {
+  "unlu-consultas.jsonl": "bc85b23e03a7f5a57474961f1342b564bcc1aac02609769a4af4373dc0087b6f",
+  "disco-soneto-valencia.jsonl": "ad11a12d9c2e1e040526bd6709d2e12a81effc88b4f5c05c09cd3958719c1496",
+  "congreso-grupo.jsonl": "b07a031be3c80d9f20cbedaa524a57b03ab6f377dceec73948aeac5e98ed52ee",
+  "promise-requisitos.jsonl": "a1c33668fdb12f04f6650488d96929f2c9a530b731a7463eff3c56eeead6b7dd",
+  "ropa-resenas.jsonl": "6d29de3d0240315c38934e09db9b617dcb3a4fae8429eb30dba048a39dfa474c",
+  "rtp-toxicidad.jsonl": "96e19f1da7949563a79c8299d16343f6ab8eb693948a47666ef83447346fcd00",
+  "polite-cortesia.jsonl": "223f17f3a17afe083d4b095346af0fcfbe443046c48cff426c96e5d201cedf42",
+  "arxiv-categoria.jsonl": "619068d1a1f79d4738c065fd32e81c9a38cc63fc690fb3b5f672c1ebaea8ea56"
+ },
+ "dev_ensayo_sha256": {
+  "cfpb-quejas.jsonl": "171b70de7891cab1b874792bba7d6b74133e9f701ac75139a1e6c00bb3ef627c",
+  "congreso-eeuu-partido.jsonl": "2f0303896a146ca5474469e76df7e84d096cd79d2598ee5e3393adf5d827a77b",
+  "finanzas-documentos.jsonl": "32bae6360be9196e8e79d297d5b96c0aaed48341b583e4e36c24ac34323a166b",
+  "horeca-resenas.jsonl": "cdc1622c2312d52bb5c6bd0e4cde9c55dd70d89423cc3a6fec024e07c02b592b",
+  "jql-valor-educativo.jsonl": "55a8622703788acc79890bf7b4a6d0295dd3a141e8af984419a7a4e9940ceeff",
+  "usajobs-nivel.jsonl": "cb85d4f854f43710692a9e60aee220e732550c33aba4a17b3dc0ccd812a90ac7"
+ },
+ "ensayo": "la prueba en seco empaqueta DEV como si fuera sellada (--dev-como-selladas) y corre el ud en local (CHISPA_LOCAL=1) con modo ensayo, que comprueba dev_ensayo_sha256 en vez de selladas_sha256"
+}
