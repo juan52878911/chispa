@@ -355,6 +355,12 @@ func (s *Servidor) decide(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Chispa-L3-Espera-Ms", strconv.FormatFloat(float64(pr.l3EsperaNs.Load())/1e6, 'f', 3, 64))
 		w.Header().Set("X-Chispa-L3-Ms", strconv.FormatFloat(float64(pr.l3Ns.Load())/1e6, 'f', 3, 64))
 	}
+	if pr := presupuestoDe(ctx); pr.knnNs.Load() > 0 {
+		w.Header().Set("X-Chispa-KNN-Ms", strconv.FormatFloat(float64(pr.knnNs.Load())/1e6, 'f', 3, 64))
+		if pr.knnCodNs.Load() > 0 {
+			w.Header().Set("X-Chispa-Cod-Ms", strconv.FormatFloat(float64(pr.knnCodNs.Load())/1e6, 'f', 3, 64))
+		}
+	}
 	json.NewEncoder(w).Encode(out)
 }
 
