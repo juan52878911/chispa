@@ -41,18 +41,25 @@ def hipotesis(r, o):
 
 def cmd_nli(a):
     import torch
+    torch.set_num_threads(a.hilos)
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
     tok = AutoTokenizer.from_pretrained(a.modelo)
     m = AutoModelForSequenceClassification.from_pretrained(a.modelo).to(a.dispositivo).eval()
     if a.dispositivo != "cpu":
         m = m.half()
+    elif a.bf16:   # CPU con AMX/AVX512-bf16 (c7i): bf16 en vez de fp32
+        m = m.to(torch.bfloat16)
     lab = {int(i): str(n).lower() for i, n in m.config.id2label.items()}
     ie = next(i for i, n in lab.items() if n.startswith("entail"))
     ic = next(i for i, n in lab.items() if n.startswith("contra"))
     print("nli etiquetas", lab, "entail", ie, "contra", ic, flush=True)
     for t, (_, ev) in sorted(tareas(a.dev, a.max_filas).items(), key=lambda kv: len(kv[1][1]) * len(kv[1][1][0]["opciones"])):   # lo barato primero: un corte deja lo hecho
         out = []
+        t_ini = time.time()
         for r in ev:
+            if (a.seg_tarea and time.time() - t_ini > a.seg_tarea) or (a.hasta and time.time() > a.hasta):
+                print("nli corte por tiempo en", t, len(out), "de", len(ev), flush=True)   # tope por tarea: lo hecho queda; medir cuenta el resto como fallo y da la cobertura
+                break
             ops = r["opciones"]
             t0 = time.perf_counter()
             s = []
@@ -89,10 +96,63 @@ def cmd_vectores(a):
     Path(a.vec).mkdir(parents=True, exist_ok=True)
     vacio.write_text("", encoding="utf-8")
     from model.alt.lineas_base_v2 import cargar_dev
+    if a.solo:   # solo esas tareas (carpeta aparte con sus jsonl)
+        solo = Path(a.vec) / "dev-solo"
+        solo.mkdir(parents=True, exist_ok=True)
+        for t in a.solo.split(","):
+            (solo / (t + ".jsonl")).write_bytes((Path(a.dev) / (t + ".jsonl")).read_bytes())
+        a.dev = str(solo)
     n = sum(len(s) + len(e) for s, e in cargar_dev(a.dev).values())
     t0 = time.perf_counter()
     K.cmd_vectores(argparse.Namespace(bateria=a.dev, fondo=str(vacio), salida=a.vec, hilos=a.hilos, max_fondo=0, sin_bateria=False, transformers=a.transformers))
     (Path(a.vec) / "tiempo.json").write_text(json.dumps({"segundos": round(time.perf_counter() - t0, 2), "textos": n}), encoding="utf-8")
+
+
+def cmd_topk(a):
+    """Preselección top-k (R10-T3b, V4) de una tarea con muchas opciones: escribe SAL/test/<tarea>.jsonl y SAL/soporte/<tarea>.jsonl con `opciones`
+    y `descripciones` recortadas a las k candidatas (orden alfabético) y SAL/preseleccion.json con las cifras (recall@k, kNN top-1), sin textos."""
+    from model.alt.fusion_knn_l2 import knn, muestrear
+    t = a.tarea
+    sop, ev = tareas(a.dev, None)[t]
+    z = np.load(Path(a.vec) / (t + ".npz"))
+    if list(z["idtr"]) != [r["id"] for r in sop] or list(z["idte"]) != [r["id"] for r in ev]:
+        raise SystemExit("los vectores de %s no corresponden a las filas de dev" % t)
+    ys = [r["etiqueta"] for r in sop]
+    idx = muestrear(ys, a.k_oro, 0)
+    ops = ev[0]["opciones"]
+
+    def candidatas(x, rel, forzar=None):
+        P, _, C = knn(x[None, :], z["Xtr"][rel], [ys[i] for i in rel], [ops])
+        orden = np.lexsort((-C[0, :len(ops)], -P[0, :len(ops)]))   # P descendente; desempate por el centroide
+        top = [ops[i] for i in orden[:a.k]]
+        if forzar is not None and forzar not in top:
+            top[-1] = forzar
+        return top, ops[int(np.argmax(P[0, :len(ops)]))]
+
+    def recortar(r, top):
+        g = dict(r)
+        g["opciones"] = sorted(top)
+        g["descripciones"] = {o: d for o, d in (r.get("descripciones") or {}).items() if o in top}
+        return g
+
+    sal = Path(a.salida)
+    nt = nk = rec = 0
+    filas = []
+    for r, x in zip(ev, z["Xte"]):
+        top, k1 = candidatas(x, idx)
+        nt, nk, rec = nt + 1, nk + (k1 == r["etiqueta"]), rec + (r["etiqueta"] in top)
+        filas.append(recortar(r, top))
+    escribir(sal / "test", t, filas)
+    forzadas, filas = 0, []
+    for i, (r, x) in enumerate(zip(sop, z["Xtr"])):
+        rel = np.array([j for j in idx if j != i])   # kNN dejando fuera la propia fila
+        forzadas += r["etiqueta"] not in candidatas(x, rel)[0]
+        filas.append(recortar(r, candidatas(x, rel, forzar=r["etiqueta"])[0]))
+    escribir(sal / "soporte", t, filas)
+    cif = {"tarea": t, "k": a.k, "k_oro": a.k_oro, "n_test": nt, "n_soporte": len(sop), "recall_at_k": round(rec / nt, 4), "knn_top1": round(nk / nt, 4),
+           "soporte_oro_forzado": int(forzadas), "transformers": str(z["transformers"])}
+    (sal / "preseleccion.json").write_text(json.dumps(cif, indent=1) + "\n", encoding="utf-8")
+    print("topk", json.dumps(cif), flush=True)
 
 
 def cmd_knn(a):
@@ -116,28 +176,36 @@ def cmd_knn(a):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for nombre in ("nli", "l2", "knn", "vectores"):
+    for nombre in ("nli", "l2", "knn", "vectores", "topk"):
         p = sub.add_parser(nombre)
         p.add_argument("--dev", required=True)
         p.add_argument("--max-filas", type=int)
         p.add_argument("--hilos", type=int, default=4)
-        if nombre != "vectores":
+        if nombre not in ("vectores",):
             p.add_argument("--salida", required=True)
         if nombre in ("nli", "l2"):
             p.add_argument("--dispositivo", default="cpu")
         if nombre == "nli":
             p.add_argument("--modelo", required=True)
             p.add_argument("--lote", type=int, default=32)
+            p.add_argument("--bf16", action="store_true")
+            p.add_argument("--seg-tarea", type=float, default=0, help="tope de segundos por tarea (0: sin tope)")
+            p.add_argument("--hasta", type=float, default=0, help="fecha límite (epoch) de todo el NLI (0: sin tope)")
         if nombre == "l2":
             p.add_argument("--m1", required=True)
-        if nombre in ("knn", "vectores"):
+        if nombre in ("knn", "vectores", "topk"):
             p.add_argument("--vec", required=True)
+        if nombre == "topk":
+            p.add_argument("--tarea", required=True)
+            p.add_argument("--k", type=int, default=10)
+            p.add_argument("--k-oro", type=int, default=8)
         if nombre == "knn":
             p.add_argument("--k", type=int, default=8)
         if nombre == "vectores":
+            p.add_argument("--solo", help="solo estas tareas (separadas por comas)")
             p.add_argument("--transformers", required=True, help="versión de transformers exigida (la instalada)")
     a = ap.parse_args(argv)
-    {"nli": cmd_nli, "l2": cmd_l2, "knn": cmd_knn, "vectores": cmd_vectores}[a.cmd](a)
+    {"nli": cmd_nli, "l2": cmd_l2, "knn": cmd_knn, "vectores": cmd_vectores, "topk": cmd_topk}[a.cmd](a)
     return 0
 
 

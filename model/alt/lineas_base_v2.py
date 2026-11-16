@@ -59,12 +59,15 @@ def orden(r):
     return sorted(r["opciones"], key=int) if r["tipo"] == "score" else list(r["opciones"])
 
 
-def top1(probs, r):
-    """Opción predicha o None (inválida)."""
+def top1(probs, r, esp=False):
+    """Opción predicha o None (inválida). `esp` (solo score): esperanza ordinal, la suma de nivel × p(nivel) redondeada al nivel, en vez de la mediana CORAL."""
     ops = orden(r)
     p = [float(probs.get(o, 0.0)) for o in ops] if probs else [0.0]
     if sum(p) <= 0:
         return None
+    if r["tipo"] == "score" and esp:
+        e = sum(int(o) * x for o, x in zip(ops, p)) / sum(p)
+        return min(ops, key=lambda o: (abs(int(o) - e), int(o)))   # nivel más cercano; en el empate exacto, el menor
     if r["tipo"] == "score":
         q = np.asarray(p) / sum(p)
         cola = np.cumsum(q[::-1])[::-1][1:]
@@ -72,12 +75,12 @@ def top1(probs, r):
     return ops[int(np.argmax(p))]   # empate: la primera opción
 
 
-def evaluar_tarea(ev, preds):
+def evaluar_tarea(ev, preds, esp=False):
     """Vectores por fila: acierto, predicción (o None), ms (o nan)."""
     ok, pred, ms = [], [], []
     for r in ev:
         p = preds.get(r["id"])
-        y = top1(p["probs"], r) if p and p.get("valida", True) and p.get("probs") else None
+        y = top1(p["probs"], r, esp) if p and p.get("valida", True) and p.get("probs") else None
         pred.append(y)
         ok.append(1.0 if y is not None and y == r["etiqueta"] else 0.0)
         ms.append(float(p["ms"]) if p and p.get("ms") is not None else float("nan"))
@@ -121,19 +124,22 @@ def pct(x, q):
     return round(float(np.percentile(x, q)), 2) if len(x) else None
 
 
-def cifras_sistema(dev, directorio, sinteticas):
+def cifras_sistema(dev, fuente, sinteticas, esp=False):
+    """`fuente`: carpeta con <tarea>.jsonl o función tarea -> ruta (None si no hay)."""
     por, oks = {}, {}
     for t, (_, ev) in dev.items():
-        f = Path(directorio) / (t + ".jsonl")
-        preds = {r["id"]: r for r in leer(f)} if f.exists() else {}
-        ok, pred, ms, presentes = evaluar_tarea(ev, preds)
+        f = fuente(t) if callable(fuente) else Path(fuente) / (t + ".jsonl")
+        preds = {r["id"]: r for r in leer(f)} if f and Path(f).exists() else {}
+        ok, pred, ms, presentes = evaluar_tarea(ev, preds, esp)
         oks[t] = ok
+        cub = np.array([r["id"] in preds for r in ev])
         d = {"n_test": len(ev), "cobertura": round(presentes / len(ev), 4), "sintetica": t in sinteticas, "tipo": ev[0]["tipo"],
-             "exactitud": round(float(ok.mean()), 4), "ic95_filas": ic_filas(ok), "invalidas": sum(1 for y in pred if y is None),
+             "exactitud": round(float(ok.mean()), 4), "exactitud_cubiertas": round(float(ok[cub].mean()), 4) if cub.any() else None, "ic95_filas": ic_filas(ok), "invalidas": sum(1 for y in pred if y is None),
              "lat_ms_p50": pct(ms, 50), "lat_ms_p95": pct(ms, 95)}
         if ev[0]["tipo"] == "score":
             gold = np.array([int(r["etiqueta"]) for r in ev])
             val = np.array([y is not None for y in pred])
+            d["esperanza_ordinal"] = bool(esp)
             py = np.array([int(y) if y is not None else 0 for y in pred])
             err = np.abs(py - gold)
             d["exactitud_pm1"] = round(float(((err <= 1) & val).mean()), 4)
@@ -171,23 +177,28 @@ def cmd_medir(a):
         for s in sistemas:
             if s == ref:
                 continue
-            tabla, difs, difs_sin = {}, [], []
-            for t in dev:
-                a1, b1 = oks[s][t], oks[ref][t]
-                na, nb, p = mcnemar(a1, b1)
-                d = float(a1.mean() - b1.mean())
-                tabla[t] = {"dif": round(d, 4), "ic95": ic_dif_filas(a1, b1), "solo_sistema": na, "solo_referencia": nb, "mcnemar_p": p, "sintetica": t in sint}
-                difs.append(d)
-                if t not in sint:
-                    difs_sin.append(d)
-            out["pareadas"][s] = {"tareas": tabla, "macro": {"dif": round(float(np.mean(difs)), 4), "ic95_tareas": ic_tareas(difs)},
-                                  "macro_sin_sinteticas": {"dif": round(float(np.mean(difs_sin)), 4), "ic95_tareas": ic_tareas(difs_sin)}}
+            out["pareadas"][s] = par_sistema(dev, oks[s], oks[ref], sint)
     out["veredicto"] = veredicto(out, crit)
     Path(a.salida).write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     v = out["veredicto"]
     print("veredicto:", v["lectura"], "| delta", v.get("delta"), "| sin sinteticas", v.get("delta_sin_sinteticas"))
     for s, c in out["sistemas"].items():
         print("%-14s macro %.4f (sin sint. %.4f) cobertura %.3f invalidas %d" % (s, c["macro"]["valor"], c["macro_sin_sinteticas"]["valor"], c["cobertura_total"], c["invalidas_total"]))
+
+
+def par_sistema(dev, oks_s, oks_ref, sint):
+    """Diferencias pareadas sistema − referencia por tarea (bootstrap pareado por filas, McNemar) y la macro (bootstrap sobre tareas)."""
+    tabla, difs, difs_sin = {}, [], []
+    for t in dev:
+        a1, b1 = oks_s[t], oks_ref[t]
+        na, nb, p = mcnemar(a1, b1)
+        d = float(a1.mean() - b1.mean())
+        tabla[t] = {"dif": round(d, 4), "ic95": ic_dif_filas(a1, b1), "solo_sistema": na, "solo_referencia": nb, "mcnemar_p": p, "sintetica": t in sint}
+        difs.append(d)
+        if t not in sint:
+            difs_sin.append(d)
+    return {"tareas": tabla, "macro": {"dif": round(float(np.mean(difs)), 4), "ic95_tareas": ic_tareas(difs)},
+            "macro_sin_sinteticas": {"dif": round(float(np.mean(difs_sin)), 4), "ic95_tareas": ic_tareas(difs_sin)}}
 
 
 def veredicto(out, crit):
