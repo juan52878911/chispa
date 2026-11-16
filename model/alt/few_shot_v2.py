@@ -156,21 +156,23 @@ def coste_texto(n_opciones):
     return min(1.2, 0.05 + 1.15 * (n_opciones - 10) / 50.0)
 
 
-def ordenar(filas, por_clase=100, tope_tarea=2000):
+def ordenar(filas, por_clase=100, tope_tarea=2000, tope_ventana=1000):
     """Orden para que lo más útil quepa en la ventana. Fase 1: las tareas baratas (coste < 0,2 s) hasta `por_clase` textos por clase
     (≤ tope_tarea), intercaladas. Fase 2: se alternan, por coste acumulado, las tareas caras (muchas opciones) y el resto de las baratas,
-    para que ninguna se quede sin textos mientras la otra gasta toda la ventana."""
+    para que ninguna se quede sin textos mientras la otra gasta toda la ventana. Una tarea barata no pasa de `tope_ventana` textos antes de que
+    se agote la cara: el resto de sus textos va al final de la cola."""
     por = defaultdict(list)
     for f in filas:
         por[f["conjunto"]].append(f)
     cost = {c: coste_texto(len(v[0]["opciones"])) for c, v in por.items()}
     baratas = sorted(c for c in por if cost[c] < 0.2)
     caras = sorted(c for c in por if cost[c] >= 0.2)
-    f1, f2b = [], []
+    f1, f2b, sobra = [], [], []
     for c in baratas:
         n = min(len(por[c]), tope_tarea, por_clase * len(por[c][0]["opciones"]))
         f1.append(por[c][:n])
-        f2b.append(por[c][n:])
+        f2b.append(por[c][n:max(n, tope_ventana)])
+        sobra.append(por[c][max(n, tope_ventana):])
     inter = lambda ls: [x for t in zip(*[l + [None] * (max(map(len, ls)) - len(l)) for l in ls]) for x in t if x is not None] if ls else []  # noqa: E731
     fase1 = inter(f1)
     extras = inter(f2b)
@@ -182,7 +184,7 @@ def ordenar(filas, por_clase=100, tope_tarea=2000):
             out.append(extras[i]); t_ex += cost[extras[i]["conjunto"]]; i += 1
         else:
             out.append(cola[j]); t_ca += cost[cola[j]["conjunto"]]; j += 1
-    return out, cost
+    return out + inter(sobra), cost
 
 
 def estimar(filas, cost, ventana_s):
