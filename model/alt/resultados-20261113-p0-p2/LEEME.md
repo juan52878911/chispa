@@ -1667,3 +1667,13 @@ Evaluación y datos de la ronda:
 - User-data: `lanzados/ud-r10-piloto-d8e7e67.sh` (sha256 `8d06833a…`, 12 748 bytes).
 - Prueba en seco en el Mac con pesos aleatorios: OK. El export ONNX con e5 real no se ha probado.
 - `--dry-run` da DryRunOperation.
+
+**Redefinición del piloto, única y anterior a cualquier medida** (por orden de la sesión madre). El ud `ud-r10-piloto-d8e7e67.sh` queda **anulado** y se regenera:
+- Parte de **e5-small puro @ 614241f6**, no de `mejor.pt`. Así el piloto predice lo que haría el plan completo, que reentrena desde e5, y no arrastra la licencia de `mejor.pt` (SIB-200, -SA).
+- **Δ frente a dos bases:**
+  - **e5 puro**: zero-shot y k = 8, medidos en la misma instancia y en int8. El criterio SIGUE/PARA se aplica contra esta base.
+  - **L2 actual**: es dato aparte, con las cifras de T3.
+- El tope pasa a 110 min (≈ 1,85 USD), para que el entrenamiento llegue a unos 60 min.
+- Antes de lanzarlo, se hace una prueba en seco del export ONNX con el e5 real.
+
+**Deuda:** el tokenizador de Go (`runtime/tok`) quita el espacio final y el de HF no. Por ahora la corrección vive solo en el codificador e5 de T5b. Para arreglarlo en `runtime/tok` hay que medir antes la paridad del L2 ajustado con los ids nuevos.
