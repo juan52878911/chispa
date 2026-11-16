@@ -1769,3 +1769,35 @@ Con L3 forzado (R9-e2e) coincidía en el 99,84 %. Hipótesis: en cascada el serv
 - L3: p50 101 ms, p95 10,9 s, es decir, el timeout_fila.
 
 **Caudal con la mezcla real**, con un 47,6 % de escalado: **17 req/s con 16 clientes y 20 req/s con 64.** Con L3 forzado eran 7,5–10.
+
+### 17.12 T5c: causa del −3,2 y corrección (rama `r10-t5c` fusionada; sin AWS)
+
+**Causa (b), 229 filas: fallo de la ronda, no del servidor.** El cliente e2e mandaba las consultas **sin las descripciones de las opciones**. `llm_logprobs.py` las mete en el prompt, así que L3 recibía otro prompt. fakenews, con 2 opciones descritas, era la que más se apartaba.
+- Con las descripciones, el prompt sale **idéntico byte a byte** al de Python en 192 de 192 filas escaladas, medido por HTTP contra un vLLM falso que guarda los cuerpos.
+
+**Segunda causa, latente y ya corregida:** con `knn` activo y el `top_k` por defecto (8), L3 se quedaba con las 8 primeras opciones del kNN más la guía de la capa previa. Eso cambiaba el prompt en 90 de 192 filas.
+- En la ronda no actuó porque iba con `top_k: 256`.
+- Ahora `knn` sin `l3.top_k` explícito no recorta.
+
+**Causa (a), 188 filas de massive-es:** `timeout_fila` de 10 s con 16 clientes. Es un coste de capacidad y se mide aparte.
+
+**Tests nuevos** (`server/decide/l3_prompt_paridad_test.go`):
+- el prompt de la cascada es idéntico al de L3 forzado y al de `llm_logprobs.preparar` en 45 filas de testdata de 8 tareas (192 de 192 con el fixture completo);
+- sin descripciones, el prompt cambia;
+- se cubren los tres casos de `top_k`.
+
+**Pool de sesiones ORT del codificador** (`knn.e5_sesiones`, por defecto min(4, núcleos)), medido en el Mac con 16 clientes:
+
+| sesiones | consultas/s | p50 | p95 |
+|---|---|---|---|
+| 1 | 23 | 358 ms | — |
+| 2 | 69 | 137 ms | — |
+| 4 | 104 | 56 ms | 521 ms |
+
+**Nueva ronda e2e** (g5, tope 30 min):
+- **Paridad:** 4 clientes, `timeout_fila` 60 s.
+- **Capacidad:** 16 clientes, `timeout_fila` 30 s. Las filas que agotan el tiempo se cuentan aparte.
+- **Barrido:** 16 y 64 clientes.
+- User-data: `lanzados/ud-r10-t5e2e-082f6f25668b838c9d40ab6ed8b63259418d87e3.sh` (sha256 `bae19135…`, 4 620 bytes).
+- Entradas en `s3://…/r10-t5e2e-082f6f25…/`: codigo.tgz `e781fc19…`; bancos.tgz, consultas.jsonl y e5.onnx no cambian.
+- `--dry-run` da DryRunOperation.
