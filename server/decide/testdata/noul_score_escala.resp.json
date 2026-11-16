@@ -23,7 +23,8 @@
       "layer": "escalar",
       "escalate": true,
       "escalate_reason": "baja_confianza",
-      "ms": 0
+      "ms": 0,
+      "experimental": true
     }
   ]
 }

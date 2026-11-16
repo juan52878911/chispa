@@ -608,6 +608,26 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 		}
 		return nil, err
 	}
+	if kn, ok := capaL2.(*decide.L2KNN); ok && cfg.L3 != nil { // few-shot de L3 (fs8) con los ejemplos de oro de cada tarea
+		n := decide.L3EjemplosPorDefecto
+		if cfg.L3.Ejemplos != nil {
+			n = *cfg.L3.Ejemplos
+		}
+		for _, a := range kn.Avisos {
+			if n > 0 {
+				log.Print("AVISO: ", a)
+			}
+		}
+		if l3, ok := capaL3.(*decide.L3LLM); ok && n > 0 {
+			if err := kn.ComprobarEjemplos(n); err != nil {
+				if cerrar != nil {
+					cerrar()
+				}
+				return nil, err
+			}
+			l3.ConEjemplos(kn.EjemplosDe)
+		}
+	}
 	// Sin sección L1 la cascada se salta la capa (L1 es opcional mientras se mide si sobra).
 	capas, decisores, sinL1 := decide.SinL1Ausente(cfg.CapasEfectivas(), []decide.Decisor{l0, capaL1, capaL2, capaL3})
 	casc, err := decide.NuevaCascadaConTauNuevo(capas, decisores, met, cfg.TauL2EsquemaNuevo)

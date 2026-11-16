@@ -1,0 +1,24 @@
+{
+  "api_keys": [{"id": "cliente-a", "hash_sha256": "5f1809302f06d1c05ae56929417b33256b780176970793c19a07dd40bd2b325f", "rps": 20, "rafaga": 40}],
+  "knn": {
+    "umbral": 0.06641,
+    "siempre": [],
+    "e5_onnx": "/modelos/e5.onnx",
+    "e5_sesiones": 4,
+    "tareas": {
+      "mi-tarea": {"banco": "/bancos/banco-mi-tarea", "preguntas": ["Texto exacto de la pregunta (campo question) que atiende esta tarea"]}
+    }
+  },
+  "l3": {
+    "url": "http://vllm:8000/v1",
+    "modelo": "qwen3-4b",
+    "modo": "logprobs",
+    "tau": 0,
+    "ejemplos": 8,
+    "timeout": "60s",
+    "timeout_fila": "30s",
+    "max_concurrente": 32,
+    "max_cola": 64,
+    "max_por_peticion": 256
+  }
+}

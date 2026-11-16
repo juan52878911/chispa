@@ -21,14 +21,27 @@ def main(argv=None):
     ap.add_argument("--salida", required=True)
     ap.add_argument("--por-tarea", type=int, default=25)
     ap.add_argument("--todas", action="store_true")
+    ap.add_argument("--fs-k", type=int, default=0, help="few-shot: escribe también `mensajes_fs` (llm_logprobs con --ejemplos --k K) y --fs-salida con los ejemplos elegidos por tarea")
+    ap.add_argument("--fs-semilla", type=int, default=lp.SEMILLA_EJEMPLOS if hasattr(lp, "SEMILLA_EJEMPLOS") else 20261115)
+    ap.add_argument("--fs-salida", help="JSON {tarea: [ejemplos]}: los que el servidor lee de <banco>.ejemplos.jsonl")
     a = ap.parse_args(argv)
-    bat = {}
+    bat, oro = {}, {}
     for d in a.bat.split(","):
         for f in sorted(Path(d).glob("*.jsonl")):
             for l in open(f, encoding="utf-8"):
                 if l.strip():
                     r = json.loads(l)
                     bat[r["id"]] = r
+                    if r.get("split") == "train":
+                        oro.setdefault(f.stem, []).append(r)
+    ids = {json.loads(l)["id"] for l in open(Path(a.fixture) / "consultas.jsonl", encoding="utf-8") if l.strip()}
+    ejem, turnos = {}, {}
+    if a.fs_k:   # el soporte de oro de cada tarea (split train de la batería) sin las filas que se puntúan, como exige llm_logprobs
+        for t, sop in oro.items():
+            sop = [r for r in sop if r["id"] not in ids]
+            if sop:
+                ejem[t] = lp.elegir_ejemplos(sop, a.fs_k, a.fs_semilla)
+                turnos[t] = lp.turnos_ejemplos(ejem[t], 1200)
     cont, n = {}, 0
     with open(a.salida, "w", encoding="utf-8") as o:
         for l in open(Path(a.fixture) / "consultas.jsonl", encoding="utf-8"):
@@ -43,10 +56,14 @@ def main(argv=None):
             except ValueError:   # más de 62 opciones: no hay prompt
                 continue
             cont[c["tarea"]] = cont.get(c["tarea"], 0) + 1
+            fs = lp.con_ejemplos(msgs, turnos[c["tarea"]]) if c["tarea"] in turnos else None
             o.write(json.dumps({"id": c["id"], "tarea": c["tarea"], "tipo": f["tipo"], "pregunta": f["pregunta"], "texto": f["texto"], "opciones": f["opciones"],
-                                "descripciones": f.get("descripciones") or {}, "mensajes": msgs, "etiquetas": list(etq)}, ensure_ascii=False) + "\n")
+                                "descripciones": f.get("descripciones") or {}, "mensajes": msgs, "etiquetas": list(etq), "mensajes_fs": fs}, ensure_ascii=False) + "\n")
             n += 1
-    print("%d filas: %s" % (n, cont))
+    if a.fs_salida:
+        cols = ("id", "pregunta", "tipo", "texto", "opciones", "etiqueta")
+        json.dump({t: [{k: e[k] for k in cols} for e in es] for t, es in ejem.items()}, open(a.fs_salida, "w", encoding="utf-8"), ensure_ascii=False)
+    print("%d filas: %s; ejemplos fs: %s" % (n, cont, {t: len(e) for t, e in ejem.items()}))
 
 
 if __name__ == "__main__":

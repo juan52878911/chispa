@@ -104,9 +104,10 @@ const (
 )
 
 type tareaKNNViva struct {
-	banco   *BancoKNN
-	umbral  float64
-	siempre bool
+	ejemplos []EjemploFS // few-shot de L3 (<banco>.ejemplos.jsonl); nil = la tarea contesta zero-shot
+	banco    *BancoKNN
+	umbral   float64
+	siempre  bool
 }
 
 // L2KNN: ver el comentario del fichero.
@@ -117,6 +118,25 @@ type L2KNN struct {
 	cod     Codificador
 	met     *Metricas
 	cfg     ConfigKNN
+	Avisos  []string // cosas dudosas al cargar (tareas con oro y sin ejemplos fs)
+}
+
+// EjemplosDe da los ejemplos de oro del few-shot de L3 para una pregunta (la tarea cuyo texto de `question` coincide); nil si no hay.
+func (k *L2KNN) EjemplosDe(pregunta string) []EjemploFS {
+	if t, ok := k.porPreg[pregunta]; ok {
+		return k.tareas[t].ejemplos
+	}
+	return nil
+}
+
+// ComprobarEjemplos falla si algún fichero de ejemplos trae más de n (el servidor no recorta: la elección es la del generador, que da la paridad con Python).
+func (k *L2KNN) ComprobarEjemplos(n int) error {
+	for _, nombre := range k.Tareas() {
+		if e := k.tareas[nombre].ejemplos; len(e) > n {
+			return fmt.Errorf("knn: tarea %q: el fichero de ejemplos trae %d y l3.ejemplos pide %d; regenere el banco con generar_banco.py --k %d", nombre, len(e), n, n)
+		}
+	}
+	return nil
 }
 
 // NuevoL2KNN carga los bancos de la config. cod puede ser nil (solo vectores inyectados).
@@ -134,11 +154,21 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 		if err != nil {
 			return nil, fmt.Errorf("knn: tarea %q: %w", n, err)
 		}
+		ej, err := CargarEjemplosFS(t.Banco)
+		if err != nil {
+			return nil, fmt.Errorf("knn: tarea %q: %w", n, err)
+		}
+		if ej != nil && b.NOro == 0 {
+			ej = nil // sin oro no hay few-shot: L3 contesta zero-shot
+		}
+		if b.NOro > 0 && ej == nil {
+			k.Avisos = append(k.Avisos, fmt.Sprintf("tarea %q: tiene oro pero no %s.ejemplos.jsonl: L3 contestará zero-shot", n, t.Banco))
+		}
 		u := cfg.Umbral
 		if t.Umbral != nil {
 			u = *t.Umbral
 		}
-		k.tareas[n] = &tareaKNNViva{banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
+		k.tareas[n] = &tareaKNNViva{ejemplos: ej, banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
 		for _, q := range t.Preguntas {
 			k.porPreg[q] = n
 		}
