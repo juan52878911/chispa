@@ -90,6 +90,14 @@ type Cascada struct {
 	marcaCalib bool
 	// omitidas son capas que el modelo no trae y la cascada se salta (L1 sin sección L1): Capacidades las da como inactivas.
 	omitidas []string
+	// soloL3: prueba (config forzar_l3): se saltan las demás capas y L3 contesta con τ = 0. Ver SoloL3.
+	soloL3 bool
+}
+
+// SoloL3 salta todas las capas salvo L3 y acepta su respuesta sea cual sea su confianza (config forzar_l3, solo para pruebas).
+func (c *Cascada) SoloL3() *Cascada {
+	c.soloL3 = true
+	return c
 }
 
 // ConOmitidas apunta capas que no están en la cascada porque el modelo no las trae (ver SinL1Ausente).
@@ -237,6 +245,9 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 			otraFalla = true // el plazo venció antes de correr esta capa: es incompleta, no sin_presupuesto_torres
 			break
 		}
+		if c.soloL3 && l.d.Nombre() != "L3" {
+			continue
+		}
 		t := time.Now()
 		var r Respuesta
 		var err error
@@ -282,6 +293,9 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 			mejor = r
 		}
 		tau := l.tau
+		if c.soloL3 {
+			tau = 0
+		}
 		if cr, ok := l.d.(DecisorConRespaldo); ok && respaldo && !(r.EsquemaNuevo && l.tauNuevo != nil) {
 			// respaldo de L2c: τ de L2 base (tau_escalate_l2) salvo esquema nuevo con τ de esquema nuevo (igual que Kotlin/Swift), solo si el τ de la capa es el de la cabeza (tau_l2c de CALIB)
 			if tr, tc, ok := cr.TauRespaldo(); ok && l.tau == tc {

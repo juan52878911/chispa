@@ -569,6 +569,10 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 		casc.ConOmitidas("L1")
 	}
 	casc.ConCalibracion(calibracion, calibradas)
+	if cfg.ForzarL3 {
+		casc.SoloL3()
+		log.Print("AVISO: forzar_l3: la cascada salta L0, L1 y L2 y manda todo a L3 (solo para pruebas)")
+	}
 	log.Print(resumenCapas(l0.NumModelos(), casc.Capacidades()))
 	return &decide.Armado{Cascada: casc, CacheRespuestas: cfg.CacheRespuestas, BytesNonces: cfg.CacheRespuestasMB << 20, Limites: cfg.Limites, APIKeys: cfg.APIKeys, APIKeysAbierto: cfg.APIKeysAbierto, AdminToken: cfg.AdminToken, AdminTokenSHA256: cfg.AdminTokenSHA256, L0: l0, Cerrar: cerrar}, nil
 }

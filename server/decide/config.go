@@ -77,6 +77,11 @@ type Config struct {
 	TextoLargo *TextoLargo `json:"texto_largo,omitempty"`
 	// L3 (opcional): escalado a un LLM compatible con OpenAI; ver ConfigL3. Ausente = apagada. Exige una capa "L3" en capas.
 	L3 *ConfigL3 `json:"l3,omitempty"`
+	// ForzarL3 es SOLO PARA PRUEBAS (por defecto false): la cascada se salta L0, L1 y L2 y manda toda pregunta a L3, cuya respuesta
+	// se acepta sea cual sea su confianza (τ = 0; si L3 no opina, escala). Sirve para medir L3 sin la cascada (paridad con el Python,
+	// cola, tope de tiempo). Exige `l3`. En choice con más de top_k opciones L3 solo ve las top_k de una capa previa; como aquí no
+	// hay capas previas las ve todas.
+	ForzarL3 bool `json:"forzar_l3,omitempty"`
 	// CapasExplicitas: el JSON de la config trae «capas». Solo entonces sus τ de L1 y L2 cuentan frente a los de CALIB, y solo para
 	// subirlos (ArmarDesde); sin «capas» (también con «{}») el τ es el de CALIB, igual que sin -config. Lo fija CargarConfig.
 	CapasExplicitas bool `json:"-"`
@@ -256,6 +261,9 @@ func (c Config) Validar() error {
 		if err := c.TextoLargo.Validar(); err != nil {
 			return err
 		}
+	}
+	if c.ForzarL3 && c.L3 == nil {
+		return fmt.Errorf("config: forzar_l3 exige la sección l3")
 	}
 	if c.L3 != nil {
 		if err := c.L3.validar(); err != nil {
