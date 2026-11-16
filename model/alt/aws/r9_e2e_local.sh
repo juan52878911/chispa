@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 sha=${1:-$(git rev-parse HEAD)}
-D=${CHISPA_DRY_DIR:-/tmp/chispa-r9-dryrun}; rm -rf "$D"; mkdir -p "$D/muestra" "$D/s3/movil"
+D=${CHISPA_DRY_DIR:-/tmp/chispa-r9-dryrun}; chmod -R u+w "$D" 2>/dev/null || true; rm -rf "$D"; mkdir -p "$D/muestra" "$D/s3/movil"
 python3 - "$D/muestra/filas.jsonl" <<'PY'
 import json, random, sys
 r = random.Random(1)
@@ -32,7 +32,7 @@ trap 'kill $FALSO 2>/dev/null' EXIT
 sleep 1
 git show "$sha:model/alt/aws/r9_e2e.sh" | sed -e "s#__CHISPA_S3__#$D/s3#" -e "s#__N_FILAS__#$(wc -l < "$D/muestra/filas.jsonl" | tr -d ' ')#" > "$D/ud.sh"
 bash -n "$D/ud.sh"
-CHISPA_LOCAL=1 CHISPA_BASE="$D/base" CHISPA_LOCAL_URL=http://127.0.0.1:8765 CHISPA_MODELO_L3=qwen3-4b CHISPA_DURA_C=8 CHISPA_CLIENTES_C=8 CHISPA_CLIENTES_A=4 \
+CHISPA_LOCAL=1 CHISPA_BASE="$D/base" CHISPA_LOCAL_URL=http://127.0.0.1:8765 CHISPA_MODELO_L3=qwen3-4b CHISPA_DURA_C=8 CHISPA_CLIENTES_C=32 CHISPA_CLIENTES_A=4 \
   CHISPA_MOVIL_S3="$D/s3/movil" bash "$D/ud.sh" || true
 echo "== estado"; cat "$D/base/res/estado.tsv"
 ls "$D/base/res"
