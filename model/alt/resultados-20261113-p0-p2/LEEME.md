@@ -2012,3 +2012,31 @@ Datos de lanzamiento:
 - Entradas en `s3://…/r10-d-91deb47/`: codigo `0836911f…`, dev `48cdd7ee…`, t3 `292049db…`.
 
 Las pruebas en seco LOCAL en el i7 pasaron con los pythons ya corregidos. Los dos `--dry-run` dan DryRunOperation.
+
+### 17.21 Resultado de T3b (EC2 inst-36, g5, ≈ 0,5 USD; `verificado`; `t3b-cifras-91deb47.json`): **PASA con rúbrica + umbrales calibrados**
+
+Criterio `823cf37a…`, sobre las 3 tareas score (horeca, jql y usajobs). La base es el 4B zero-shot de T3. Las tres tienen cobertura completa.
+
+| variante | Δ exactitud macro | Δ QWK macro | bajo la mayoritaria | veredicto |
+|---|---|---|---|---|
+| rúbrica | −0,1 | +0,10 | jql | NO PASA |
+| base + esperanza ordinal | −0,1 | +0,00 | jql | NO PASA |
+| rúbrica + esperanza ordinal | −0,5 | +0,10 | jql | NO PASA |
+| base + umbrales calibrados | +5,1 | +0,16 | jql | NO PASA |
+| **rúbrica + umbrales calibrados** | **+15,1** | **+0,24** | ninguna | **PASA** |
+
+Exactitud por tarea, con QWK y MAE entre paréntesis:
+
+| tarea | base | rúbrica + calibrado | fs8 (informativo) |
+|---|---|---|---|
+| horeca (sintética) | 0,506 (0,776 / 0,58) | **0,556** (0,774 / 0,55) | 0,634 (0,810 / 0,45) |
+| jql | 0,149 (0,067 / 1,83) | **0,478** (0,663 / 0,67) | 0,083 |
+| usajobs | 0,146 (0,546 / 2,11) | **0,222** (0,668 / 2,11) | 0,194 |
+
+**Calibración:** los umbrales se ajustan sobre la esperanza ordinal con los 8 de oro por nivel del soporte, mediante una regresión isotónica. Las filas que sirven de ejemplo en la rúbrica quedan fuera de este ajuste. Con ellos, jql pasa de 0,149 a 0,478 y supera a la mayoritaria (0,38).
+
+**Lectura:**
+- En las tareas de escala, lo que falla es la calibración del nivel y no el modelo. Con la rúbrica y unos umbrales ajustados a 8 ejemplos por nivel, el 4B sale de cerca del azar.
+- En horeca, fs8 sigue siendo mejor (0,634).
+
+**Choice (informativo):** en finanzas, la preselección top-k con kNN (k = 10) seguida del 4B da **0,813**, frente a 0,703 del 4B con las 59 opciones. Son +10,9 puntos [+6,6, +15,6] sobre las 320 filas comunes, y la cobertura llega al 100 %.
