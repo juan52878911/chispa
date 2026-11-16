@@ -1,0 +1,35 @@
+{
+ "ronda": "r10-t3",
+ "descripcion": "Lineas base de la bateria v2 (6 tareas de DESARROLLO) para decidir donde esta el cuello de L3. Congelada ANTES de medir.",
+ "datos": "Solo dev/: el ud solo recibe dev.tgz. Las tareas selladas de la bateria v2 NO se abren en T3 (ni se copian, ni se suben, ni se miden).",
+ "tareas_dev": ["finanzas-documentos", "horeca-resenas", "jql-valor-educativo", "cfpb-quejas", "usajobs-nivel", "congreso-eeuu-partido"],
+ "sinteticas": ["finanzas-documentos", "horeca-resenas"],
+ "referencia": "4B zero-shot por logprobs",
+ "sistemas": {
+  "4b-zs": "Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554, logprobs zero-shot (llm_logprobs.py)",
+  "4b-fs8": "el mismo 4B, logprobs con 8 ejemplos en contexto del soporte de oro (informativo)",
+  "14b-awq-zs": "Qwen/Qwen3-14B-AWQ@31c69efc29464b6bb0aee1398b5a7b50a99340c3, logprobs zero-shot, enable_thinking=false, contexto 8192",
+  "mdeberta-nli": "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@b5113eb38ab63efdd7f280f8c144ea8b13f978ce, NLI zero-shot (informativo)",
+  "l2-zs": "checkpoint L2 de Chispa ajuste-80ab8ef/ckpt/mejor.pt, sin soporte (informativo)",
+  "knn-e5-k8": "kNN e5 (614241f6...), 8 de oro por clase, 32 vecinos, temperatura 0,05 (informativo)"
+ },
+ "metrica": "exactitud por tarea (inválida = fallo); macro = media de las 6 exactitudes por tarea",
+ "ic95": {
+  "macro": "bootstrap sobre TAREAS: se remuestrean las 6 tareas con reemplazo y se promedia la exactitud de cada una (2000 remuestreos, semilla 0)",
+  "tarea": "bootstrap sobre filas (2000 remuestreos, semilla 0, percentil)",
+  "dif_pareada_tarea": "bootstrap pareado sobre las filas de la tarea frente al 4B zero-shot"
+ },
+ "delta": "macro(14b-awq-zs) - macro(4b-zs), sobre las 6 tareas de dev; se informa al lado la misma resta sin las 2 sinteticas (4 tareas), que NO decide",
+ "lectura": {
+  "delta_ge": 0.08,
+  "si_ge": "el cuello es L3",
+  "delta_lt": 0.03,
+  "si_lt": "el cuello es la especificación de la tarea",
+  "entre": "indeterminado"
+ },
+ "cobertura": "la lectura solo se aplica si 4b-zs y 14b-awq-zs cubren el 100 % de las filas de test de las 6 tareas; si no, el veredicto es «no medido»",
+ "decide": "la estimación puntual de delta; el IC95 se informa pero no mueve la lectura",
+ "informativo": ["4b-fs8 menos 4b-zs", "mdeberta-nli", "l2-zs", "knn-e5-k8"],
+ "score": "tareas score: exactitud ±1 nivel y MAE en niveles; el top-1 es la mediana CORAL de las probabilidades",
+ "semillas": {"bootstrap": 0, "ejemplos_fewshot": 20261115, "knn": 0}
+}
