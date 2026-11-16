@@ -2129,3 +2129,56 @@ Mitad B, exactitud por tarea:
 - Entradas: codigo.tgz `c6b57e16…` y selladas.tgz `a2bb334e…`, en los dos prefijos.
 - La prueba en seco se hizo en el i7 con vLLM falso: una tarea dev (horeca) y después dos, con las partes a y b. Salió «medido».
 - El `--dry-run` de las dos instancias da DryRunOperation.
+
+### 17.26 Resultado de la apertura única de las selladas (2 g5: a i-013ed4ee2a4fdee71, b i-065617b39c717fb87; ≈ 2,1 USD; `verificado` en las dos; `apertura-selladas-29c441f.json`): **MEDIDO**
+
+Criterio `a79d33a9…`. Es **válido**: el sistema final y el 4B zs cubren el 100 % de las 2 955 filas de test, sin filas inválidas. El fs8-knn de la parte a tardó 57,4 min de sus 60.
+
+Lo informativo, fs8 al azar en la parte b, quedó en el 58 %:
+- arxiv se comió el tope, con 0,31 filas/s (abstracts largos con 8 demostraciones);
+- congreso, promise y unlu no llegaron a empezar.
+
+Macro por tipo, con IC95 por tareas (4 tareas por tipo):
+
+| sistema | choice | score | global (8) |
+|---|---|---|---|
+| mayoritaria del soporte | 0,108 | 0,149 | 0,128 |
+| kNN-e5 k = 8 | 0,483 [0,38, 0,60] | 0,320 [0,25, 0,42] | 0,402 |
+| 4B zs | 0,485 [0,31, 0,64] | 0,417 [0,36, 0,46] | 0,451 |
+| **final** | **0,614** [0,43, 0,77] | 0,389 [0,29, 0,48] | **0,501** |
+
+Diferencias del final, con IC95 por tareas:
+
+| | choice | score | global |
+|---|---|---|---|
+| final − 4B zs | **+12,9** [−1,6, +28,0] | −2,7 [−12,4, +4,4] | +5,1 [−4,3, +15,5] |
+| final − mayoritaria | +50,6 [+29,6, +66,6] | +24,0 [+15,9, +30,8] | **+37,3** [+24,4, +50,9] |
+| final − kNN | +13,0 [+3,1, +20,6] | +7,0 [−12,7, +20,0] | +10,0 [−0,0, +18,4] |
+
+Por tarea, exactitud del zs → final:
+
+| tarea | tipo | zs | final | Δ |
+|---|---|---|---|---|
+| arxiv | choice | 0,448 | 0,758 | +31,0 |
+| unlu | choice | 0,600 | 0,790 | +19,0 |
+| congreso-grupo | choice | 0,216 | 0,316 | +10,0 |
+| promise | choice | 0,674 | 0,590 | −8,4 |
+| disco | score | 0,436 | 0,273 | −16,4 |
+| polite | score | 0,430 | 0,430 | 0,0 |
+| ropa | score | 0,472 | 0,532 | +6,0 |
+| rtp | score | 0,328 | 0,322 | −0,6 |
+
+**Lectura:**
+- **choice:** fs8 con demostraciones elegidas por kNN es lo que más aporta. Gana en 3 de las 4 selladas, y en arxiv y unlu por mucho. Con solo 4 tareas, el IC frente al zs roza el 0. Confirma lo visto en D (+5,5 en dev).
+- **score:** la rúbrica mecánica + calibración **no se sostiene fuera de dev**.
+  - Frente al zs pierde 2,7, con disco (55 filas) en −16,4.
+  - En QWK mejora en ropa (0,79 → 0,82) y rtp (0,45 → 0,56), y empeora en polite (0,59 → 0,46).
+  - El +15,1 de T3b venía de rúbricas escritas a partir del soporte. Aquí la rúbrica es mecánica, con las descripciones de las opciones y un ejemplo.
+  - En disco y polite, con 4 niveles, dos umbrales quedan casi pegados (3,000 y 3,003): la esperanza de los niveles altos no se separa con 8 ejemplos. **Lo que queda escrito:** la calibración de score depende de la calidad de la rúbrica. «Estable con calibración» en PRODUCTO.md exige una rúbrica escrita, no mecánica.
+- **Cascada kNN + margen (informativa, u de dev):**
+  - en choice da 0,594, escalando el 48 %, frente a 0,614 del final;
+  - en score da 0,357, escalando el 71 %.
+  - Confirma E: sin fondo no compensa.
+- **Global:** el sistema final supera a la mayoritaria por +37 [+24, +51] y al kNN por +10. Frente al 4B zs el IC incluye el 0, porque score resta.
+
+Las selladas quedan abiertas: no se vuelven a usar como medida ciega.
