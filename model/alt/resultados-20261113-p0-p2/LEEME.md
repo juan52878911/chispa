@@ -1826,3 +1826,6 @@ Lectura informativa, que no es el veredicto:
 **Otros sistemas que fallaron:** mDeBERTa-NLI y L2 zero-shot fallaron porque el venv no tenía torch. El kNN falló porque `vec/tiempo.json` no se escribió tras ese fallo. **No hay cifras.**
 
 **Latencia** del 4B zero-shot en serie: p50 105 ms, p95 2,5 s.
+- **Decisión de la sesión madre:** T3 queda en **«no medido»** con su lectura congelada. El +1,3 de las 5 tareas completas es **informativo y no decide nada**. El 14B ya no entra.
+  - **T3a:** NLI, L2 y kNN en una c7i con torch CPU fijado.
+  - **T3b:** variantes de especificación del 4B en dev: rúbrica en las tareas score, esperanza ordinal, fs8 + rúbrica, y preselección top-k con kNN para muchas opciones.
