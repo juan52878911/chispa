@@ -457,6 +457,12 @@ func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opc
 		}
 		if err == nil && valida {
 			r = respuestaDeProbsLP(p, ordenadas, xs)
+			if p.Kind == KindScore && l.umbralesDe != nil { // score calibrado: esperanza ordinal + umbrales del banco en vez de la mediana
+				if i, ok := nivelCalibrado(ordenadas, xs, l.umbralesDe(p.Texto)); ok {
+					r.Answer = ordenadas[i].ID
+					r.Conf = r.Probs[r.Answer]
+				}
+			}
 		}
 	}
 	l.met.l3Latencia(time.Since(t))

@@ -55,6 +55,9 @@ type Respuesta struct {
 	// Tarea y MotivoKNN: tarea del kNN que contestó y motivo por el que escala a L3 («margen», «sin_oro», «siempre»; "" si contesta).
 	// La cascada los usa para contar el motivo «incompleta» cuando L3 falla. Interno.
 	Tarea, MotivoKNN string
+	// RankKNN: solo L2KNN y solo con más de L3TopKKNNDesde opciones: la similitud de la consulta al centroide de oro de cada opción (0 si la clase no tiene oro),
+	// el desempate del ranking de la preselección top-k de L3. Interno.
+	RankKNN map[string]float64
 }
 
 // Decisor es una capa de la cascada.

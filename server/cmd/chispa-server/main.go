@@ -627,6 +627,9 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 			}
 			l3.ConEjemplos(kn.EjemplosDe)
 		}
+		if l3, ok := capaL3.(*decide.L3LLM); ok {
+			l3.ConUmbrales(kn.UmbralesDe) // score calibrado con los umbrales del banco (si la tarea los tiene)
+		}
 	}
 	// Sin sección L1 la cascada se salta la capa (L1 es opcional mientras se mide si sobra).
 	capas, decisores, sinL1 := decide.SinL1Ausente(cfg.CapasEfectivas(), []decide.Decisor{l0, capaL1, capaL2, capaL3})
