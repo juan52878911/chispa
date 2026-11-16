@@ -32,7 +32,7 @@ parar() { pkill -TERM -f "$1" 2>/dev/null; for _ in $(seq 30); do pgrep -f "$1" 
 medir() { [ -d "$BASE/dev" ] && [ -d "$BASE/t3" ] && ( cd "$REPO" && PYTHONPATH=$REPO timeout 120 "${NPY:-python3}" -m model.alt.lineas_base_v2b medir --dev "$BASE/dev" --pred "$PRED" --t3 "$BASE/t3" \
   --presel "$BASE/t/topk/preseleccion.json" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null; }
 subir_y_apagar() {
-  trap - EXIT; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"; medir; cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
+  trap - EXIT; [ -n "${WPID:-}" ] && kill $WPID 2>/dev/null; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"; medir; cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
   for l in "$BASE"/vllm-*.log; do [ -f "$l" ] && tail -n 200 "$l" > "$OUT/$(basename "$l" .log)-cola.log"; done
   ( cd "$BASE" && tar -czf resultados.tgz res ) && s3cp "$BASE/resultados.tgz" "$CHISPA_S3/resultados.tgz" || echo "no se pudo subir resultados.tgz"
   s3cp "$BASE/log.txt" "$CHISPA_S3/log.txt" || echo "no se pudo subir log.txt"
@@ -45,7 +45,7 @@ subir_y_apagar() {
 trap subir_y_apagar EXIT; trap 'exit 143' TERM INT HUP
 cierre() { echo "== listo $(date -u +%FT%TZ) fallo=${FALLO:-no} ($(( $(date +%s) - T0 )) s)"; exit 0; }
 CIERRE=$(( 5 + ESPERA_MIN )); FINM=$(( MIN - CIERRE ))   # minuto en que se corta el trabajo
-( while sleep 30; do [ "$(quedan_min)" -le $CIERRE ] && { echo "== tope: se cierra"; pkill -TERM -f llm_logprobs; pkill -TERM -f lineas_base_v2_pred; pkill -TERM -f vllm.entrypoints; break; }; done ) &
+( while sleep 30; do [ "$(quedan_min)" -le $CIERRE ] && { echo "== tope: se cierra"; pkill -TERM -f llm_logprobs; pkill -TERM -f lineas_base_v2_pred; pkill -TERM -f vllm.entrypoints; break; }; done ) & WPID=$!
 limite() { local a=$(( $(date +%s) + $1 * 60 )) b=$(( T0 + (FINM - 1) * 60 )); echo $(( a < b ? a : b )); }
 cliente() {   # corre hasta acabar o hasta la fecha límite $1 (epoch); lo escrito queda
   local dl=$1; shift
