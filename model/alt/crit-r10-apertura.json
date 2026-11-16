@@ -95,29 +95,29 @@
  },
  "ejecucion": {
   "gpus": "dos g5.xlarge en paralelo, una por parte; cada parte con su ud y su prefijo S3 (r10-apertura-SHA-a / -b); medir junta las predicciones de ambas (--pred A --pred B)",
-  "parte_a": "final (rub-sop, rub, fs8-knn), zs (choice, score); kNN y mayoritaria en CPU (sin GPU)",
-  "parte_b": "fs8-azar (score, choice)",
-  "orden_en_cada_g5": "primero el sistema final y el 4B zs; luego fs8 al azar; kNN y mayoritaria al final (CPU, baratos)",
+  "parte_a": "sistema final: rub-sop, rub (score) y fs8-knn (choice); kNN y mayoritaria en CPU (sin GPU)",
+  "parte_b": "4B zs (score, choice) primero; luego fs8-azar (score, choice)",
+  "orden_en_cada_g5": "a: solo el sistema final (y kNN/mayoritaria en CPU); b: primero el 4B zs y luego fs8 al azar. Lo que se corte primero es lo informativo.",
   "tiempos_min": {
-   "cap_parte_a": 100,
-   "cap_parte_b": 70,
+   "cap_parte_a": 110,
+   "cap_parte_b": 110,
    "fases_a": {
-    "rub-sop": 2,
-    "rub": 5,
-    "fs8-knn": 35,
-    "zs-score": 11,
-    "zs-choice": 14
+    "rub-sop": 3,
+    "rub": 8,
+    "fs8-knn": 60
    },
    "fases_b": {
+    "zs-score": 12,
+    "zs-choice": 20,
     "fs8-azar-score": 15,
-    "fs8-azar-choice": 21
+    "fs8-azar-choice": 25
    }
   },
   "base_estimacion": "ritmos reales de dev en g5 (filas/s): zs 3,3 (T3: 2789 en 845 s); fs8-azar 2,28 (T3: 2469 en 1085 s); fs8-knn 1,35 (D: 2469 en 1828 s); rub 12,3 (T3b: 1469 en 119 s); rub-sop 8 (168 en 21 s). Filas selladas por manifiesto: choice 1700 test (200+500+500+500), score 1255 test (55+500+500+200) y 144 de soporte. Cada fase = filas / ritmo × 1,5 de margen, redondeada hacia arriba.",
   "coste_usd_max": {
-   "parte_a": 1.68,
-   "parte_b": 1.17,
-   "total": 2.85,
+   "parte_a": 1.84,
+   "parte_b": 1.84,
+   "total": 3.69,
    "tarifa_usd_h": 1.006
   },
   "ensayo_seco": {
@@ -125,7 +125,8 @@
    "una_tarea": "horeca-resenas (500 test, 40 soporte): ud completo en 19 s (CPU: vectores, kNN, demos, rúbrica, medir)",
    "dos_tareas": "horeca + congreso (1000 test, 56 soporte), partes a y b y medir con las dos: 61 s la parte a (101 s con la rama top-k forzada); veredicto «medido» al unir a y b; las llamadas al LLM no se miden (servidor falso)",
    "texto_g5": "el tiempo en g5 sale de los ritmos reales de dev (base_estimacion), no del ensayo"
-  }
+  },
+  "ajuste_sesion_principal": "topes por fase ampliados sobre la estimación ×1,5: las choice selladas tienen 9–18 opciones frente a 2–11 en las choice de dev de las que salen los ritmos de fs8; fs8-knn 35→60 min y zs pasa a la parte b para que el final tenga una g5 entera"
  },
  "tareas_selladas": {
   "unlu-consultas": {
