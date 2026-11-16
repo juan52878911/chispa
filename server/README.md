@@ -104,7 +104,7 @@ Con `"l3": {...}` en la config **y** una capa `"L3"` en `capas`, las preguntas q
 (`POST {url}/chat/completions`, p. ej. Ollama en `http://127.0.0.1:11434/v1`). Pide un JSON estricto con una probabilidad por opción, lo valida y lo normaliza (en `multi`
 no normaliza y deben venir todas); si la respuesta no sirve, L3 no opina y la pregunta escala.
 Campos de `l3`: `url`, `modelo`, `api_key_env` (nombre de la variable de entorno con la clave: nunca la clave en la config; si la variable está vacía, falla al armar),
-`timeout` (`"10s"` o segundos; por defecto 10 s), `max_por_peticion` (llamadas al LLM por petición HTTP; por defecto 8) y `tau` (si falta, el de la capa `L3`).
+`timeout` (`"10s"` o segundos; por defecto 10 s), `min_por_peticion` y `max_por_peticion` (cupo de filas con L3 por petición HTTP: el tamaño del lote acotado a [mín 8, máx 256]; ver «Endurecimiento») y `tau` (si falta, el de la capa `L3`).
 **Los textos del cliente salen del servidor hacia ese endpoint**; L3 no los registra. Métrica: `chispa_l3_llamadas_total`.
 
 #### L3 por logprobs (`"modo": "logprobs"`)
@@ -117,12 +117,39 @@ Sin `modo` (o `"json"`) todo sigue como arriba. Se activa en la config:
 Cada opción recibe una etiqueta de un carácter (A–Z, a–z, 0–9; en `score` con niveles de una cifra, el propio nivel) y se pide `max_tokens=1`, `logprobs=true`,
 `top_logprobs=20`. Las variantes `"A"` y `" A"` se suman. Las etiquetas que no salen en el top 20 se puntúan con `prompt_logprobs` (`add_generation_prompt=false`,
 `continue_final_message=true`) para las primeras `max_extra`; el resto recibe un piso (mínimo conocido − 1). probs = softmax sobre las opciones. Más de 62 opciones,
-o ninguna etiqueta puntuada, = respuesta inválida (L3 no opina y escala). El tipo `multi` sigue por JSON. El servidor vLLM debe tener `--max-logprobs` ≥ 20.
+o ninguna etiqueta puntuada, = respuesta inválida (L3 no opina y escala). `multi` también va por logprobs (ver abajo). El servidor vLLM debe tener `--max-logprobs` ≥ 20.
 - `max_concurrente`: filas puntuándose a la vez contra el LLM (semáforo; por defecto 4).
 - `timeout_fila`: tope de cada fila incluido el relleno (por defecto, el `timeout`). Si vence con algo puntuado se devuelven las probs parciales con piso; si no, error `ErrSinL3` y la pregunta escala.
-- `timeout`: tope de cada llamada HTTP; los errores de red y los 5xx se reintentan 1 vez.
+- `timeout`: tope de cada llamada HTTP; los reintentos se describen en «Endurecimiento».
 - `max_extra`: etiquetas fuera del top 20 que se puntúan por prefijo (por defecto 4; 0 = ninguna).
 - `sin_pensar`: manda `chat_template_kwargs: {"enable_thinking": false}`; solo se manda si es `true`.
+
+#### Endurecimiento de L3 (todo configurable en `l3`; los valores son los de por defecto)
+Cortacircuitos, cola acotada, reintentos y multi valen en modo `logprobs`; el cortacircuitos y el cupo por lote valen también en modo `json`.
+- **Cupo por lote** (`min_por_peticion` 8, `max_por_peticion` 256). Antes `max_por_peticion` era un tope fijo de 8 llamadas para TODA la petición HTTP:
+  el presupuesto lo comparten las preguntas de la petición (`conPresupuesto`) y `reservar` rechazaba desde la 9.ª pregunta («presupuesto», sin L3),
+  así que en un lote de 32 las filas 9..32 se quedaban sin L3. Ahora el cupo es el número de preguntas del lote acotado a [`min`, `max`]
+  (`min` > `max` ⇒ vale `max`; una llamada directa sin lote usa `min`). Para el comportamiento antiguo: `"min_por_peticion": 8, "max_por_peticion": 8`.
+- **Cortacircuitos** (`circuito_fallos` 5, `circuito_espera` `"10s"`, `circuito_tasa` 0 = apagada, `circuito_ventana` 20, `circuito_apagado` false). Cuenta filas
+  (pregunta entera con reintentos y relleno): fallo = error de red, 5xx, 429 sin remedio o tope de la fila vencido sin nada puntuado; una respuesta inválida
+  o parcial NO es fallo. Tras `circuito_fallos` fallos seguidos, o con `circuito_tasa` > 0 una tasa de fallos ≥ ese valor en las últimas `circuito_ventana` filas,
+  se **abre** `circuito_espera`: L3 devuelve `ErrCircuitoAbierto` (cuelga de `ErrSinL3`) sin llamar al LLM. Pasada la espera queda **semiabierto**: deja pasar UNA fila
+  de prueba (las demás se descartan); si va bien cierra, si falla vuelve a abrir. Métricas: `chispa_l3_circuito_estado` (0 cerrado, 1 abierto, 2 semiabierto),
+  `chispa_l3_circuito_aperturas_total`.
+- **Reintentos** (`max_intentos` 2 = un reintento, `espera_base` `"50ms"`, `espera_max` `"1s"`). Se reintenta ante error de red, 5xx y 429 (no ante otros 4xx), con espera
+  `espera_base · 2^(n-1)` hasta `espera_max` por un jitter en [0,5, 1). Un 429 espera su `Retry-After` (segundos o fecha HTTP). Si lo que queda de `timeout_fila`
+  no alcanza para la espera, no se espera ni se reintenta: la fila nunca pasa de su tope. Métrica: `chispa_l3_reintentos_total{causa="red|5xx|429"}`.
+- **Cola acotada** (`max_cola` 64; `0` = sin cola). Además de `max_concurrente`, como mucho `max_cola` filas esperan un hueco; la siguiente se descarta al instante con
+  `ErrColaLlena` (cuelga de `ErrSinL3`, motivo «cola llena») en vez de esperar. Métricas: `chispa_l3_semaforo_en_uso` y `_capacidad`, `chispa_l3_cola_longitud`,
+  `chispa_l3_descartes_total{causa="cola_llena|circuito_abierto"}`, `chispa_l3_espera_segundos`.
+- **Parciales**: `chispa_l3_filas_parciales_total` cuenta las filas con alguna opción puntuada con el piso (relleno a medias por `max_extra` o por el tope de la fila).
+- **`multi` por logprobs** (`multi_max_opciones` 16): **extensión solo-Go**; `model/alt/llm_logprobs.py` no tiene multi (allí «multi» es «elige la opción más probable», una elección única).
+  Cada opción es un sí/no independiente: UNA llamada por opción (`max_tokens=1`, `top_logprobs=20`) con etiquetas `S`/`N`; p(opción) = p(S)/(p(S)+p(N)) sumando las variantes con espacio;
+  si solo sale una de las dos, la otra recibe el piso (menor logprob visto − 1); si no sale ninguna, la fila es inválida. θ = 0,5 como en la vía JSON. Se descartó «dos etiquetas por
+  opción en una llamada»: el primer token da UNA sola distribución, no n sí/no independientes. Coste: n llamadas por fila (hasta 8 en paralelo dentro del mismo hueco del
+  semáforo; comparten prefijo con `--enable-prefix-caching`); más de `multi_max_opciones` opciones = no opina. El prompt es el del Python (mismas dos primeras frases, mismo escapado
+  del texto y mismo formato `json.dumps`) con la instrucción `S`/`N` y un campo `"opcion"` en lugar de `"opciones"`.
+- **`forzar_l3`** (solo pruebas): salta L0–L2 y manda todo a L3. El servidor **se niega a arrancar** (y a recargar) con él si no se le pasa `-pruebas`.
 
 ### Flags de `chispa-server`
 | flag | por defecto | uso |
@@ -138,6 +165,7 @@ o ninguna etiqueta puntuada, = respuesta inválida (L3 no opina y escala). El ti
 | `-plazo-cuerpo` | `0` (= 10 s) | plazo para recibir el cuerpo de `/v1/decide`; negativo = sin plazo |
 | `-pre-drenaje` | `0` | tras SIGTERM/SIGINT, `/healthz` responde 503 `shutting_down` este tiempo antes de apagar |
 | `-apagado` | `25s` | plazo para terminar las peticiones en vuelo tras SIGTERM/SIGINT |
+| `-pruebas` | `false` | permite las opciones solo-pruebas de la config (`forzar_l3`); sin él, el servidor no arranca con ellas |
 | `-abierto` | `false` | permite escuchar fuera de loopback sin `api_keys` (o `api_keys_abierto` en la config) |
 | `-admin-addr` | — | listener aparte para `POST /v1/admin/recargar` (la pública deja de servirla: 404) |
 | `-metricas-protegidas` | `false` | `/metrics` exige `Authorization: Bearer` con una api_key válida (o el `admin_token`) |

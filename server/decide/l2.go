@@ -430,6 +430,7 @@ type claveCtxPresupuesto struct{}
 // presupuestoTorres cuenta las torres nuevas que ha calculado una petición.
 type presupuestoTorres struct {
 	usadas atomic.Int64
+	lote   atomic.Int64 // preguntas de la petición HTTP (0 = llamada directa); L3 reparte su cupo según él
 
 	mu     sync.Mutex
 	trozos [2]int                     // ventanas de texto largo ya decididas por la petición, por capa (capaL1, capaL2): L1 no gasta el cupo de L2

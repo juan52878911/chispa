@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand/v2"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -28,15 +29,35 @@ import (
 
 // ConfigL3 es la sección `l3` de la config; ausente = L3 apagada (stub sin opinión).
 type ConfigL3 struct {
-	URL            string   `json:"url"`                        // base del endpoint (sin /chat/completions)
-	Modelo         string   `json:"modelo"`                     // nombre del modelo en el endpoint
-	APIKeyEnv      string   `json:"api_key_env,omitempty"`      // nombre de la variable de entorno con la clave (nunca la clave en la config)
-	Timeout        Duracion `json:"timeout,omitempty"`          // plazo de cada llamada ("10s" o segundos); 0 = L3TimeoutPorDefecto
-	MaxPorPeticion int      `json:"max_por_peticion,omitempty"` // llamadas al LLM que una petición HTTP puede hacer; 0 = L3MaxPorPeticionPorDefecto
+	URL       string   `json:"url"`                   // base del endpoint (sin /chat/completions)
+	Modelo    string   `json:"modelo"`                // nombre del modelo en el endpoint
+	APIKeyEnv string   `json:"api_key_env,omitempty"` // nombre de la variable de entorno con la clave (nunca la clave en la config)
+	Timeout   Duracion `json:"timeout,omitempty"`     // plazo de cada llamada ("10s" o segundos); 0 = L3TimeoutPorDefecto
+	// Cupo de filas con L3 por petición HTTP = el tamaño del lote acotado a [min_por_peticion, max_por_peticion]. Antes era un tope fijo
+	// de 8 para toda la petición: en un lote de 32 las filas 9..32 salían sin L3 («presupuesto»).
+	MaxPorPeticion int      `json:"max_por_peticion,omitempty"` // máximo; 0 = L3MaxPorPeticionPorDefecto (256)
+	MinPorPeticion int      `json:"min_por_peticion,omitempty"` // mínimo (peticiones pequeñas o llamadas directas); 0 = L3MinPorPeticionPorDefecto (8); si > máximo, vale el máximo
 	Tau            *float64 `json:"tau,omitempty"`              // τ de L3; si falta manda el de la capa "L3" de `capas`
 	// TopK: en choice con más opciones, L3 solo ve las top_k mejores según la capa anterior que opinó (L2, si no L1 o L0); las
 	// demás salen con p = 0. 0 o ausente = L3TopKPorDefecto; si no, ≥ 2.
 	TopK int `json:"top_k,omitempty"`
+	// Endurecimiento (ver l3_circuito.go y l3_logprobs.go). Cortacircuitos: tras circuito_fallos filas seguidas fallidas (defecto 5) o, si
+	// circuito_tasa > 0, una tasa de fallos ≥ circuito_tasa sobre las últimas circuito_ventana filas (defecto 20), se abre circuito_espera
+	// (defecto 10 s): L3 devuelve ErrSinL3 sin llamar al LLM; pasado el plazo deja pasar UNA fila de prueba (semiabierto).
+	CircuitoFallos  int      `json:"circuito_fallos,omitempty"`
+	CircuitoEspera  Duracion `json:"circuito_espera,omitempty"`
+	CircuitoTasa    float64  `json:"circuito_tasa,omitempty"`
+	CircuitoVentana int      `json:"circuito_ventana,omitempty"`
+	CircuitoApagado bool     `json:"circuito_apagado,omitempty"`
+	// Reintentos de cada llamada HTTP (modo logprobs): max_intentos en total (defecto 2 = un reintento), espera exponencial con jitter
+	// desde espera_base (50 ms) hasta espera_max (1 s). Un 429 espera su Retry-After. Nunca se espera más de lo que queda de timeout_fila.
+	MaxIntentos int      `json:"max_intentos,omitempty"`
+	EsperaBase  Duracion `json:"espera_base,omitempty"`
+	EsperaMax   Duracion `json:"espera_max,omitempty"`
+	// MaxCola: filas esperando un hueco de max_concurrente (modo logprobs); al superarlo, descarte inmediato (ErrColaLlena). nil = 64; 0 = no hay cola.
+	MaxCola *int `json:"max_cola,omitempty"`
+	// MultiMaxOpciones: máximo de opciones de una pregunta multi por logprobs (una llamada por opción); 0 = 16. Más = no opina.
+	MultiMaxOpciones int `json:"multi_max_opciones,omitempty"`
 	// Modo: "" o "json" (por defecto: se pide un JSON de probabilidades) o "logprobs" (una etiqueta por opción y se lee la
 	// distribución de su primer token; ver l3_logprobs.go). Los campos siguientes solo cuentan en modo logprobs.
 	Modo           string   `json:"modo,omitempty"`
@@ -48,7 +69,9 @@ type ConfigL3 struct {
 
 const (
 	L3TimeoutPorDefecto        = 10 * time.Second
-	L3MaxPorPeticionPorDefecto = 8
+	L3MaxPorPeticionPorDefecto = 256
+	L3MinPorPeticionPorDefecto = 8
+	L3MaxColaPorDefecto        = 64
 	L3MaxConcurrentePorDefecto = 4
 	// L3TopKPorDefecto: con 60 opciones L3 tenía p99 ≈ 120 s y solo opinaba en el 2,9 % de los casos (bench l3 de model/); la
 	// salida y la entrada del LLM crecen con las opciones.
@@ -104,6 +127,13 @@ func (c ConfigL3) validar() error {
 	if c.Modelo == "" {
 		return fmt.Errorf("config: l3.modelo es obligatorio")
 	}
+	if c.MinPorPeticion < 0 || c.MaxIntentos < 0 || c.EsperaBase < 0 || c.EsperaMax < 0 || c.CircuitoFallos < 0 || c.CircuitoEspera < 0 ||
+		c.CircuitoVentana < 0 || c.MultiMaxOpciones < 0 || (c.MaxCola != nil && *c.MaxCola < 0) {
+		return fmt.Errorf("config: l3.min_por_peticion, max_intentos, espera_*, circuito_*, multi_max_opciones y max_cola no pueden ser negativos")
+	}
+	if c.CircuitoTasa < 0 || c.CircuitoTasa > 1 {
+		return fmt.Errorf("config: l3.circuito_tasa fuera de [0,1]: %v", c.CircuitoTasa)
+	}
 	if c.MaxPorPeticion < 0 {
 		return fmt.Errorf("config: l3.max_por_peticion no puede ser negativo")
 	}
@@ -153,6 +183,11 @@ type L3LLM struct {
 	clave  string
 	cli    *http.Client
 	max    int
+	min    int
+	cola   atomic.Int64 // filas esperando un hueco del semáforo
+	circ   *circuito
+	dormir func(ctx context.Context, d time.Duration) error // sustituibles en los tests
+	azar   func() float64
 	sem    chan struct{} // semáforo del modo logprobs (max_concurrente)
 	met    *Metricas
 	cuenta sync.Map // weak.Pointer[presupuestoTorres] (la petición) → *atomic.Int64 de llamadas; se limpia al recogerse la petición
@@ -168,6 +203,24 @@ func NuevoL3LLM(cfg ConfigL3, cli *http.Client) (*L3LLM, error) {
 	if l.max == 0 {
 		l.max = L3MaxPorPeticionPorDefecto
 	}
+	if l.min = cfg.MinPorPeticion; l.min == 0 {
+		l.min = L3MinPorPeticionPorDefecto
+	}
+	if l.min > l.max {
+		l.min = l.max
+	}
+	l.circ = nuevoCircuito(cfg)
+	l.dormir = func(ctx context.Context, d time.Duration) error {
+		t := time.NewTimer(d)
+		defer t.Stop()
+		select {
+		case <-t.C:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	l.azar = rand.Float64
 	mc := cfg.MaxConcurrente
 	if mc == 0 {
 		mc = L3MaxConcurrentePorDefecto
@@ -196,7 +249,25 @@ func NuevoL3LLM(cfg ConfigL3, cli *http.Client) (*L3LLM, error) {
 func (l *L3LLM) Nombre() string { return "L3" }
 
 // UsaMetricas conecta L3 con /metrics (chispa_l3_*); lo hace NuevaCascada.
-func (l *L3LLM) UsaMetricas(m *Metricas) { l.met = m }
+func (l *L3LLM) UsaMetricas(m *Metricas) {
+	l.met = m
+	if m != nil {
+		m.l3SemCap.Store(int64(cap(l.sem)))
+		l.circ.conMetricas(m)
+	}
+}
+
+// cupo es el número de filas con L3 que puede tener una petición de n preguntas: n acotado a [min, max].
+func (l *L3LLM) cupo(n int64) int {
+	c := int(n)
+	if c < l.min {
+		c = l.min
+	}
+	if c > l.max {
+		c = l.max
+	}
+	return c
+}
 
 // reservar toma una llamada del presupuesto de la petición (la misma que comparten todas sus preguntas).
 func (l *L3LLM) reservar(ctx context.Context) bool {
@@ -210,7 +281,7 @@ func (l *L3LLM) reservar(ctx context.Context) bool {
 			runtime.AddCleanup(pr, func(m *sync.Map) { m.Delete(k) }, &l.cuenta)
 		}
 	}
-	if v.(*atomic.Int64).Add(1) > int64(l.max) {
+	if v.(*atomic.Int64).Add(1) > int64(l.cupo(pr.lote.Load())) {
 		return false
 	}
 	return true
@@ -314,7 +385,7 @@ func (l *L3LLM) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 		l.met.l3Cuenta("presupuesto")
 		return Respuesta{Incompleto: true}, nil // no opina por falta de presupuesto, no por criterio: no se cachea bajo el nonce
 	}
-	if l.cfg.Modo == L3ModoLogprobs && p.Kind != KindMulti { // multi (sí/no independientes) no cabe en una etiqueta: sigue por JSON
+	if l.cfg.Modo == L3ModoLogprobs {
 		return l.decidirLogprobs(ctx, p, ordenadas)
 	}
 	ops := make([]opL3, len(ordenadas))
@@ -328,9 +399,15 @@ func (l *L3LLM) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 		MaxTokens:      16 + 24*len(ops),
 		ResponseFormat: map[string]string{"type": "json_object"},
 	})
+	ok, sonda := l.circ.permite()
+	if !ok {
+		l.met.l3Descarte("circuito_abierto")
+		return Respuesta{}, ErrCircuitoAbierto
+	}
 	t := time.Now()
 	contenido, err := l.llamar(ctx, cuerpo)
 	l.met.l3Latencia(time.Since(t))
+	l.circ.registra(err == nil, sonda, ctx.Err() != nil)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err) {
 			l.met.l3Cuenta("timeout")
