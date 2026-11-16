@@ -48,11 +48,12 @@ copiar github.com/juan52878911/kindling "$kv"; copiar github.com/yalue/onnxrunti
 chmod -R u+w "$t/.mc" "$t/.gp" 2>/dev/null || true; rm -rf "$t/.mc" "$t/.gp"
 find "$t" -name '._*' -delete
 tarz() { COPYFILE_DISABLE=1 tar --no-xattrs -czf "$1" -C "$2" "${@:3}" 2>/dev/null || COPYFILE_DISABLE=1 tar -czf "$1" -C "$2" "${@:3}"; }
-rm -f "$sal/codigo.tgz" "$sal/bancos.tgz"
+rm -f "$sal/codigo.tgz"; [ -n "${CHISPA_BANCOS_TGZ:-}" ] || rm -f "$sal/bancos.tgz"
 tarz "$sal/codigo.tgz" "$t" server runtime format model gomod-proxy
 # --- bancos, consultas con texto y onnx
-mkdir -p "$t/bancos"; cp "$FIXTURE"/banco-*.npy "$FIXTURE"/banco-*.jsonl "$FIXTURE/referencia.json" "$FIXTURE/consultas.npy" "$t/bancos/"
-tarz "$sal/bancos.tgz" "$t/bancos" .
+if [ -n "${CHISPA_BANCOS_TGZ:-}" ]; then cp "$CHISPA_BANCOS_TGZ" "$sal/bancos.tgz"   # reutiliza un bancos.tgz ya subido (el tar lleva mtimes: reempaquetar cambia su sha)
+else mkdir -p "$t/bancos"; cp "$FIXTURE"/banco-*.npy "$FIXTURE"/banco-*.jsonl "$FIXTURE/referencia.json" "$FIXTURE/consultas.npy" "$t/bancos/"
+  tarz "$sal/bancos.tgz" "$t/bancos" .; fi
 python3 "$t/model/alt/consultas_con_texto.py" --fixture "$FIXTURE" --bat "$BATS" --salida "$sal/consultas.jsonl"
 cp "$ONNX" "$sal/e5.onnx"
 for f in codigo.tgz bancos.tgz; do tar -tzf "$sal/$f" | grep -q '\._' && { echo "$f trae ._*" >&2; exit 1; }; done
