@@ -566,7 +566,32 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 		l1.ConCacheBytes(cfg.CacheEsquemasMB)
 	}
 	if cfg.KNN != nil { // L2 = kNN por tarea (banco de oro + fondo); el vector e5 de la consulta lo inyecta quien llama (ver decide.ConVectorConsulta)
-		k, err := decide.NuevoL2KNN(*cfg.KNN, nil)
+		var cod decide.Codificador
+		if cfg.KNN.E5ONNX != "" { // codificador e5 en el servidor: el kNN contesta por HTTP
+			if rutaTok == "" {
+				if cerrar != nil {
+					cerrar()
+				}
+				return nil, fmt.Errorf("config: knn.e5_onnx exige el flag -tok (tokenizador de e5)")
+			}
+			ce, err := montarCodificadorE5(cfg.KNN.E5ONNX, rutaTok)
+			if err != nil {
+				if cerrar != nil {
+					cerrar()
+				}
+				return nil, err
+			}
+			cod = ce
+			previo := cerrar
+			cerrar = func() error {
+				e := ce.Close()
+				if previo != nil {
+					return errors.Join(e, previo())
+				}
+				return e
+			}
+		}
+		k, err := decide.NuevoL2KNN(*cfg.KNN, cod)
 		if err != nil {
 			if cerrar != nil {
 				cerrar()

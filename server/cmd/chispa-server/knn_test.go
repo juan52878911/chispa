@@ -25,6 +25,14 @@ func TestKNNDesdeConfig(t *testing.T) {
 	if !r.Escalate {
 		t.Fatalf("%+v", r)
 	}
+	// knn.e5_onnx exige -tok y el tokenizador debe existir
+	cfgE5 := `{"knn": {"umbral": 0.5, "e5_onnx": "/no/existe.onnx", "tareas": {"b": {"banco": "` + banco + `", "preguntas": ["¿b?"]}}}}`
+	if _, err := armarModelo(decide.NuevasMetricas(), escribeCfg(t, cfgE5), "", ""); err == nil || !strings.Contains(err.Error(), "-tok") {
+		t.Fatalf("sin -tok debía fallar citándolo: %v", err)
+	}
+	if _, err := armarModelo(decide.NuevasMetricas(), escribeCfg(t, cfgE5), "", "/no/existe.chispa-tok"); err == nil || !strings.Contains(err.Error(), "knn.e5_onnx") {
+		t.Fatalf("tokenizador inexistente: %v", err)
+	}
 	mal := `{"knn": {"umbral": 0.5, "tareas": {"b": {"banco": "/no/existe"}}}}`
 	if _, err := armarModelo(decide.NuevasMetricas(), escribeCfg(t, mal), "", ""); err == nil || !strings.Contains(err.Error(), "knn") {
 		t.Fatalf("un banco que no existe debía fallar: %v", err)

@@ -176,11 +176,21 @@ Con los τ de CALIB del `.chispa`, la cascada L0/L1/L2→L3 escala ≈ 98,8 % de
 - **Motivos y métricas.** `chispa_knn_filas_total{tarea}` cuenta las filas que decidió el kNN y `chispa_knn_escaladas_total{tarea,motivo}` las que escalaron, con motivo `margen`, `sin_oro` o `siempre`;
   `incompleta` cuenta las escaladas a las que L3 no pudo contestar (es un subconjunto de las anteriores, no se suma). Fracción escalada de una tarea = (margen + sin_oro + siempre) / filas.
   `chispa_knn_sin_vector_total` cuenta las filas sin vector de consulta (L2 no opina y sigue L3).
-- **Vector de consulta.** El kNN necesita el vector e5 de la consulta (multilingual-e5-small, media de tokens normalizada a norma 1, prefijo «query: », 256 tokens). **El servidor no tiene ese codificador**:
-  el ONNX del `.chispa` es el L2 ajustado (ranuras S, MaxSim), no e5 puro; sí tiene el tokenizador de e5 (`-tok`) y ONNX Runtime. Por eso el vector se inyecta con `decide.ConVectorConsulta(ctx, v)` (código
-  que embeba el servidor) o con una implementación de `decide.Codificador` que se pase a `NuevoL2KNN`. Para que `/v1/decide` use el kNN por HTTP sin más, faltaría un `Codificador` hecho con el ONNX de
-  multilingual-e5-small sin ajustar (salida `last_hidden_state`), el tokenizador de `-tok`, pooling medio con máscara, normalización y el prefijo «query: »; y medir su paridad de vectores con Python (coseno).
-  Hoy, sin vector, L2 no opina y todo escala a L3.
+- **Vector de consulta y codificador e5.** El kNN necesita el vector e5 de la consulta (multilingual-e5-small sin ajustar, media de tokens con máscara normalizada a norma 1,
+  prefijo «query: », 256 tokens, con la normalización de mayúsculas del mensaje). El ONNX del `.chispa` es el L2 ajustado (ranuras S), no e5 puro, así que el codificador es otro ONNX:
+  `knn.e5_onnx` apunta al e5 exportado con `model/alt/exportar_e5_onnx.py` (revisión 614241f6, licencia MIT, `last_hidden_state`, opset 17, fp32; sha256 en `e5-onnx.json`).
+  Con `knn.e5_onnx` el servidor monta `decide.CodificadorE5` (ONNX Runtime: hay que compilar con `-tags ort`; y pasar `-tok e5.chispa-tok`, el tokenizador de e5, que
+  se trunca a 256 tokens como los bancos) y el kNN contesta por HTTP; sin `knn.e5_onnx` el vector se inyecta (`decide.ConVectorConsulta(ctx, v)` o un `decide.Codificador` propio) y,
+  sin vector, L2 no opina y todo escala a L3. Una consulta por llamada (lote 1) y una sesión ORT serializada: el codificador es un cuello compartido por todas las peticiones.
+  *Paridad de tokenización:* el tokenizador de Go (`runtime/tok`) descarta los espacios finales como sentencepiece, y el rápido de HuggingFace con el que se calcularon los vectores de los
+  bancos deja un token «▁» (id 6) antes de `</s>`: «No la soporto. » da 11 tokens en HF y 10 en Go (coseno 0,96 en hatecheck-es). `CodificadorE5` añade ese token cuando el texto acaba en
+  espacio (`conEspacioFinal`); `runtime/tok` no se toca (el L2 ajustado se sirve con su comportamiento actual).
+  *Paridad de vectores medida* (4 244 consultas de banco-paridad, e5 fp32, ORT arm64): coseno Go/Python mínimo 1,000000, p01 1,000000; top-1 del kNN con el vector de Go = Python en el 100 %; escala y motivo 100 %.
+  El criterio (coseno p01 ≥ 0,999 y top-1 ≥ 99,5 %) está congelado en `model/alt/crit-r10-t5b.json`. El test es `TestE5ParidadVectoresYDecision` (`-tags ort`; variables `CHISPA_PARIDAD_DIR`,
+  `CHISPA_CONSULTAS_TEXTO`, `CHISPA_E5_ONNX`, `CHISPA_E5_TOK`, `CHISPA_ORT_LIB`; `consultas_con_texto.py` añade el texto al fixture).
+  Cabeceras y métricas del codificador: `X-Chispa-Cod-Ms` y `X-Chispa-KNN-Ms` (suma de las filas de la petición), `chispa_knn_codificador_segundos` y `chispa_knn_votacion_segundos`.
+  Para reproducir el escalado de Python con L3 real, configure también `"l3": {"tau": 0, "top_k": 256}`: la cascada de Python acepta siempre la respuesta de L3 y L3 ve todas las opciones
+  (con `top_k` por defecto, 8, L3 solo ve las 8 mejores del kNN).
 - **Paridad.** `decide/knn_test.go`: `TestKNNSinteticoParidadConPython` (fixture sintético en `decide/testdata/knn`, generado por `generar.py`, una reimplementación literal de `escalado.l2` en Python; corre siempre) y
   `TestKNNParidadFixtureReal` (con `CHISPA_PARIDAD_DIR=<banco-paridad>`: 4 244 consultas de 8 tareas; compara L2 top-1, escala sí/no y motivo con Python, y la exactitud de la cascada usando la `l3` del fixture).
 
