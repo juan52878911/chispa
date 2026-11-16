@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 )
 
 // L2KNN es la capa L2 de la cascada L2→L3 de R8/R10: un kNN por tarea (knn.go) sobre un banco de oro ∪ fondo etiquetado por el LLM.
@@ -31,6 +32,9 @@ type ConfigKNN struct {
 	SOro        float64  `json:"s_oro,omitempty"`       // 0 = 0,90: con el oro más cercano ≥ s_oro, vota solo el oro
 	// ConservarL0L1: por defecto, con `knn` la cascada es L2(kNN)→L3 como en Python (L0 y L1 se saltan); con true se conservan.
 	ConservarL0L1 bool `json:"conservar_l0_l1,omitempty"`
+	// E5ONNX: ruta del ONNX de multilingual-e5-small sin ajustar (model/alt/exportar_e5_onnx.py, fp32 o int8). Con ella el servidor monta el
+	// codificador (CodificadorE5, binario con -tags ort y flag -tok) y el kNN contesta por HTTP; sin ella, el vector se inyecta (ConVectorConsulta).
+	E5ONNX string `json:"e5_onnx,omitempty"`
 }
 
 // TareaKNN describe una tarea.
@@ -199,9 +203,15 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 		return Respuesta{}, nil // la pregunta no es de ninguna tarea con banco: no opina
 	}
 	q, _ := ctx.Value(claveVectorKNN{}).([]float32)
+	pr := presupuestoDe(ctx)
 	if q == nil && k.cod != nil {
 		var err error
-		if q, err = k.cod.Codificar(ctx, p.Estado); err != nil {
+		t0 := time.Now()
+		q, err = k.cod.Codificar(ctx, p.Estado)
+		d := time.Since(t0)
+		k.met.knnCodificador(d)
+		pr.knnCodNs.Add(int64(d))
+		if err != nil {
 			return Respuesta{}, fmt.Errorf("knn: codificador: %w", err)
 		}
 	}
@@ -213,7 +223,11 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 	for i, o := range p.Opciones {
 		ops[i] = o.ID
 	}
+	t1 := time.Now()
 	d, err := k.Evaluar(tarea, q, ops)
+	dv := time.Since(t1)
+	k.met.knnVotacion(dv)
+	pr.knnNs.Add(int64(dv))
 	if err != nil {
 		return Respuesta{}, err
 	}
