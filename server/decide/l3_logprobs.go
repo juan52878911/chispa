@@ -323,8 +323,10 @@ func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opc
 		return Respuesta{Incompleto: true}, nil
 	}
 	// Semáforo: la espera por un hueco la acota el contexto de la petición; el tope de la fila empieza al obtenerlo.
+	te := time.Now()
 	select {
 	case l.sem <- struct{}{}:
+		l.met.l3EsperaCola(time.Since(te))
 		defer func() { <-l.sem }()
 	case <-ctx.Done():
 		l.met.l3Cuenta("timeout")
