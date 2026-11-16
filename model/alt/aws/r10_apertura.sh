@@ -1,18 +1,18 @@
 #!/bin/bash
 CHISPA_S3=__CHISPA_S3__
 # R10-apertura: la apertura ÚNICA de las 8 tareas SELLADAS de la batería v2 con el 4B (Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f) por logprobs, en DOS g5.xlarge BAJO DEMANDA
-# en paralelo (PARTE a y b, cada una con su ud y su prefijo S3), tope duro CHISPA_MIN (a: 100 min ≈ 1,68 USD; b: 70 min ≈ 1,17 USD). user-data (DLAMI GPU PyTorch AL2023,
+# en paralelo (PARTE a y b, cada una con su ud y su prefijo S3), tope duro CHISPA_MIN (a y b: 110 min ≈ 1,84 USD cada una). user-data (DLAMI GPU PyTorch AL2023,
 # rol rol-ec2-pruebas sin ListBucket), terminate. Lectura congelada: model/alt/crit-r10-apertura.json (su sha256 y el de cada fichero de datos se comprueban ANTES de
 # computar). Nadie lee filas selladas: filas y rúbrica MECÁNICA (apertura_v2.py preparar) salen del soporte dentro de la instancia. En modo `ensayo` los datos son dev.
-#   PARTE a: rub-sop y rub (score: final), fs8-knn (choice: final), zs (score y choice); kNN-e5 k=8 y mayoritaria en CPU (la mayoritaria al medir)
-#   PARTE b: fs8-azar (score y choice)         Orden: primero el final y el 4B zs; luego fs8 al azar; kNN y mayoritaria, baratos, al final.
+#   PARTE a: rub-sop y rub (score: final), fs8-knn (choice: final); kNN-e5 k=8 y mayoritaria en CPU (la mayoritaria al medir)
+#   PARTE b: zs (score y choice), luego fs8-azar (score y choice)   Orden: primero el final y el 4B zs; luego fs8 al azar; kNN y mayoritaria, baratos, al final.
 # Lee:     $CHISPA_S3/{codigo.tgz,selladas.tgz}
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar. Cifras de la parte: res/cifras.json (solo vale la
 # unión de a y b: apertura_v2.py medir --pred A --pred B).
 PARTE=__PARTE__; MODO=__MODO__
-if [ "$PARTE" = a ]; then MIN_DEF=100; else MIN_DEF=70; fi
+MIN_DEF=110
 MIN=${CHISPA_MIN:-$MIN_DEF}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-32}; VLLM=${CHISPA_VLLM:-0.33.0}
-CRS=${CHISPA_CRS:-2}; CR=${CHISPA_CR:-5}; CFK=${CHISPA_CFK:-35}; CZS=${CHISPA_CZS:-11}; CZC=${CHISPA_CZC:-14}; CAS=${CHISPA_CAS:-15}; CAC=${CHISPA_CAC:-21}   # minutos máximos de rub-sop, rub, fs8-knn, zs score, zs choice, fs8-azar score, fs8-azar choice
+CRS=${CHISPA_CRS:-3}; CR=${CHISPA_CR:-8}; CFK=${CHISPA_CFK:-60}; CZS=${CHISPA_CZS:-12}; CZC=${CHISPA_CZC:-20}; CAS=${CHISPA_CAS:-15}; CAC=${CHISPA_CAC:-25}   # minutos máximos de rub-sop, rub, fs8-knn, zs score, zs choice, fs8-azar score, fs8-azar choice
 REV4=cdbee75f17c01a7cc42f958dc650907174af0554; E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3; TORCH=2.7.1; TRANSFORMERS=5.22.2
 CRIT_SHA=__CRIT_SHA__; N_TAREAS=__N_TAREAS__; N_TEST=__N_TEST__; N_SOP=__N_SOP__
 LOCAL=${CHISPA_LOCAL:-0}
@@ -158,9 +158,9 @@ if [ $OK4 = 1 ]; then
     for _ in $(seq 240); do [ -f "$BASE/demos.ok" ] && break; kill -0 $PP 2>/dev/null || break; sleep 5; done
     if [ -f "$BASE/demos.ok" ] && [ -f "$BASE/topk.ok" ]; then lp fs8-knn "$CFK" test "$CHOICE" soporte "$BASE/t/demos"   # sistema final, choice
     else tail -3 "$BASE/presel.log"; fallo "vectores, kNN, demostraciones o preselección"; estado demos "FALLO"; fi
-    lp zs "$CZS" test "$SCORE"   # 4B zero-shot
-    [ -f "$BASE/topk.ok" ] && lp zs "$CZC" test "$CHOICE"
   else
+    lp zs "$CZS" test "$SCORE"   # 4B zero-shot (necesario para el veredicto): primero en la parte b
+    [ -f "$BASE/topk.ok" ] && lp zs "$CZC" test "$CHOICE"
     lp fs8-azar "$CAS" test "$SCORE" soporte   # 8 al azar, semilla 20261115
     [ -f "$BASE/topk.ok" ] && lp fs8-azar "$CAC" test "$CHOICE" soporte
   fi
