@@ -1,0 +1,88 @@
+{
+ "tareas": {
+  "horeca-resenas": {
+   "zeroshot": {
+    "macro_f1": 0.190190186382655,
+    "exactitud": 0.278,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.24634553935390785,
+    "exactitud": 0.314,
+    "n": 500
+   }
+  },
+  "usajobs-nivel": {
+   "zeroshot": {
+    "macro_f1": 0.015040106951871657,
+    "exactitud": 0.09,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.05229080039228063,
+    "exactitud": 0.1,
+    "n": 500
+   }
+  },
+  "congreso-eeuu-partido": {
+   "zeroshot": {
+    "macro_f1": 0.47088558884749265,
+    "exactitud": 0.516,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.476893105811898,
+    "exactitud": 0.478,
+    "n": 500
+   }
+  },
+  "cfpb-quejas": {
+   "zeroshot": {
+    "macro_f1": 0.3364540039581235,
+    "exactitud": 0.376,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.5117330548432572,
+    "exactitud": 0.514,
+    "n": 500
+   }
+  },
+  "finanzas-documentos": {
+   "zeroshot": {
+    "macro_f1": 0.4612874932606954,
+    "exactitud": 0.5292841648590022,
+    "n": 461
+   },
+   "k8": {
+    "macro_f1": 0.8645164580294898,
+    "exactitud": 0.8806941431670282,
+    "n": 461
+   }
+  },
+  "jql-valor-educativo": {
+   "zeroshot": {
+    "macro_f1": 0.17954838939765003,
+    "exactitud": 0.26652452025586354,
+    "n": 469
+   },
+   "k8": {
+    "macro_f1": 0.14701246163165022,
+    "exactitud": 0.22388059701492538,
+    "n": 469
+   }
+  }
+ },
+ "info": {
+  "modelo": "e5 puro",
+  "max_tok": 256,
+  "vocab_ampliado": {
+   "textos": 153196,
+   "ids_antes": 55000,
+   "ids_despues": 61924
+  },
+  "onnx_mb": 48.1
+ },
+ "etiqueta": "base",
+ "criterio_sha256": "d9ee43f584f54b6eb44bf3e0ab542cf0495fc24ccea1a2a0b78e667d2df00299"
+}
