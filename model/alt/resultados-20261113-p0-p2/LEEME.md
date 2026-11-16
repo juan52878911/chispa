@@ -1591,3 +1591,44 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 - Entradas en `s3://…/r10-c-lp-8e27680/`: reetiqueta.jsonl `1175ed52…`. User-data: `lanzados/ud-r10-c-lp-8e27680.sh`.
 
 **Medición en una c7i** (`r10_c_medir.sh`, tope 30 min, transformers 5.22.2 fijado): se empaqueta cuando la g5 esté verificada.
+
+### 17.9 T5b: codificador e5 en Go (rama `r10-t5b` fusionada; sin AWS)
+
+**Criterio congelado antes de medir** (`model/alt/crit-r10-t5b.json`, sha256 `912ccec78bec5fbba907af653ff95a9395f1c87f2c87997a72a248f024833eed`), sobre las 4 244 consultas de banco-paridad:
+- el coseno p01 de los vectores Go frente a Python tiene que ser ≥ 0,999;
+- el top-1 del kNN calculado con el vector de Go tiene que coincidir con Python en ≥ 99,5 %.
+
+La decisión de punta a punta y la versión int8 son informativas.
+
+**ONNX:** multilingual-e5-small @ 614241f6 (MIT), exportado en el i7 con torch 2.5.1 y transformers 4.46.3, opset 17, salida `last_hidden_state`, fp32.
+- sha256 `c30444b4…`, 470 MB.
+- Fuera del repo: `escalado/e5-onnx/`.
+
+**Codificador** (`decide/e5_ort.go`, `-tags ort`; config `knn.e5_onnx`; cabeceras `X-Chispa-Cod-Ms` y `X-Chispa-KNN-Ms`):
+- prefijo «query: », 256 tokens con el tokenizador `-tok` (el sentencepiece de e5, mismo sha `356d7ef0…`);
+- media de los tokens y norma L2.
+
+**Resultado: PASA.** Medido en el Mac (arm64), con la ORT de onnxruntime_go:
+
+| | resultado |
+|---|---|
+| coseno, mínimo / p01 / p50 | **1,000000 / 1,000000 / 1,000000** |
+| top-1 del kNN | **100,00 %** |
+| escala y motivo (informativo) | 100 % |
+
+**Corrección encontrada:** el tokenizador de Go (`runtime/tok`) quita los espacios finales; el de HF deja un «▁» antes de `</s>`.
+- La primera medida daba un p01 de 0,9963, con un mínimo de 0,959 en hatecheck-es, cuyos textos terminan en «. ».
+- Se corrigió solo dentro del codificador (`conEspacioFinal`), sin tocar `runtime/tok`.
+- **Abierto:** queda por decidir si se arregla también en `runtime/tok`. Eso cambia los ids del L2 ajustado y obliga a medir de nuevo su paridad.
+
+**Latencia del codificador** con lote 1, en el Mac arm64 y con carga: p50 de 3,5–4,8 ms. La de x86 sale en la ronda e2e.
+
+**int8:** sin medir; se hará en la ronda e2e.
+
+**Ronda e2e** (g5, tope 30 min):
+1. paridad x86 con la ORT oficial en 1 000 consultas;
+2. /v1/decide con kNN y L3 por logprobs sobre las 4 244 consultas con texto real (referencia: 0,7233 macro sin hatecheck);
+3. fracción escalada por motivo y latencias por capa;
+4. caudal con la mezcla real.
+
+El ud se está recortando porque supera los 16 KB de user-data.
