@@ -199,6 +199,14 @@ Con los τ de CALIB del `.chispa`, la cascada L0/L1/L2→L3 escala ≈ 98,8 % de
   (2) El recorte a `top_k` (8 por defecto) y la guía de la capa previa (aquí, las probabilidades del kNN) se aplican a las preguntas `choice` con más opciones: con `knn` y sin `l3.top_k` quedan APAGADOS
   (`Config.DecisorL3` fija un top_k sin límite); con `l3.top_k` explícito vuelven a mandar. (3) El `timeout_fila` de 10 s dejaba parciales con piso a las filas de massive-es (60 opciones, relleno por `prompt_logprobs`):
   la ronda e2e usa 60 s.
+- **Few-shot de L3 (fs8) y producto.** Con `l3.ejemplos` (por defecto 8; 0 = apagado), cuando L3 contesta una pregunta de una tarea con banco de oro, el prompt lleva como turnos previos usuario/asistente
+  los 8 ejemplos de oro de la tarea que guarda `<banco>.ejemplos.jsonl` (los elige `model/alt/generar_banco.py` con `llm_logprobs.elegir_ejemplos`: estratificados por clase, semilla fija; el servidor no
+  los vuelve a elegir, y por eso hay paridad exacta con `llm_logprobs.py --ejemplos --k 8`: sistema + nota, opciones del ejemplo solo con id y etiqueta, texto recortado a 1 200 caracteres,
+  etiqueta correcta como respuesta, y el caso nuevo con sus descripciones al final). Tareas sin oro, o sin fichero de ejemplos (aviso en el arranque), contestan zero-shot. `l3.ejemplos` = N > 0 falla si el fichero trae más de N.
+  Tests: `TestL3FewShotIdenticoAPython` (testdata/l3_fs_*, generado con el Python; 192 de 192 filas idénticas byte a byte con `--por-tarea 30`: 162 con fs8 y 30 zero-shot de una tarea sin oro).
+  **Estabilidad por tipo:** `choice` y `noul` estables; `score` EXPERIMENTAL (la respuesta lleva `"experimental": true`; la exactitud en score medida en dev está cerca del azar: T3, jql 0,15 y usajobs 0,15);
+  `multi` es una extensión solo de Go. **Límites:** máximo 62 opciones (etiquetas de un carácter); con más de ~20, preseleccione con el kNN con `l3.top_k` (implementado, sin medir con fs8); con 60 opciones L3 cuesta ≈ 1,2 s por fila en una A10G.
+  El empaquetado (imagen, config de ejemplo, generador del banco, cifras y pendientes) está en `server/PRODUCTO.md`.
 - **Paridad.** `decide/knn_test.go`: `TestKNNSinteticoParidadConPython` (fixture sintético en `decide/testdata/knn`, generado por `generar.py`, una reimplementación literal de `escalado.l2` en Python; corre siempre) y
   `TestKNNParidadFixtureReal` (con `CHISPA_PARIDAD_DIR=<banco-paridad>`: 4 244 consultas de 8 tareas; compara L2 top-1, escala sí/no y motivo con Python, y la exactitud de la cascada usando la `l3` del fixture).
 

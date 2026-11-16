@@ -1,0 +1,16 @@
+# Imagen de PRODUCTO: el servidor con ONNX Runtime (el de deploy/Dockerfile) + el codificador e5 + la config de ejemplo. Un cliente trae entre 8 y 32 ejemplos
+# de oro por clase -> kNN (L2) con margen -> si el margen es bajo, 4B por logprobs con 8 demostraciones en el prompt (L3 fs8).
+#   1. docker build -f server/deploy/Dockerfile -t chispa-server --build-arg GO_DIGEST=... --build-arg ORT_SHA256_X64=... .      (imagen base)
+#   2. contexto de esta imagen = un directorio con:  modelos/e5.onnx  modelos/e5.chispa-tok  bancos/banco-<tarea>.{npy,jsonl,ejemplos.jsonl}  config.json
+#      (e5.onnx: model/alt/exportar_e5_onnx.py; e5.chispa-tok: runtime/tok/exportar.py; bancos: model/alt/generar_banco.py; config.json: server/deploy/config.ejemplo.json editada)
+#   3. docker build -f server/deploy/Dockerfile.producto -t chispa-producto ctx/
+#   4. docker run --stop-timeout 40 -p 8090:8090 chispa-producto        (L3 = un vLLM con Qwen3-4B-Instruct-2507 en l3.url)
+# Los pesos (e5.onnx, 470 MB) y los bancos no van en git. Las claves de API van en config.json (api_keys con sha256: chispa-server -hash-clave); sin ellas el servidor se niega a escuchar en 0.0.0.0.
+# Sin construir en esta sesión (no hay demonio de Docker): las órdenes son las de la imagen base, que sí se construyó (ver deploy/README.md).
+ARG BASE=chispa-server
+FROM ${BASE}
+COPY modelos/ /modelos/
+COPY bancos/ /bancos/
+COPY config.json /etc/chispa/config.json
+# El producto no arranca con forzar_l3 (sin -pruebas). -tok es el tokenizador de e5 del codificador del kNN (knn.e5_onnx).
+CMD ["-config", "/etc/chispa/config.json", "-tok", "/modelos/e5.chispa-tok", "-timeout", "60s"]

@@ -1,0 +1,3 @@
+{"id": "e0", "pregunta": "¿a?", "tipo": "choice", "texto": "ejemplo 0 <b>x</b>", "opciones": ["x", "y", "z"], "etiqueta": "x"}
+{"id": "e1", "pregunta": "¿a?", "tipo": "choice", "texto": "ejemplo 1 <b>x</b>", "opciones": ["x", "y", "z"], "etiqueta": "y"}
+{"id": "e2", "pregunta": "¿a?", "tipo": "choice", "texto": "ejemplo 2 <b>x</b>", "opciones": ["x", "y", "z"], "etiqueta": "z"}
