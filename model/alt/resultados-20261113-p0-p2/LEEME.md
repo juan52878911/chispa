@@ -1890,3 +1890,23 @@ Criterio `d9ee43f5…`: macro-F1 de las 6 tareas dev, en int8, comparado con e5 
 
   Los resultados se dan por tipo de tarea y con IC. Antes se hace una prueba en seco de tiempos en dev. Presupuesto reservado: ≈ 8 USD.
 - **Producto:** servidor con kNN + margen → 4B por logprobs con fs8 («trae 8–32 ejemplos por clase»). choice y noul se consideran estables y score, experimental. Si no hay oro, todo va siempre a L3. Se documenta el límite de opciones.
+
+### 17.17 Producto empaquetado (rama `r10-producto`, fusionada; sin AWS)
+
+- **fs8 en el L3 de Go** (`l3.ejemplos`, 8 por defecto si la tarea tiene oro): el prompt es **idéntico byte a byte** al de `llm_logprobs.py --ejemplos --k 8` en las 192 filas escaladas del fixture y en las 24 del testdata.
+  - Los ejemplos los elige el generador del banco con el mismo random de Python, y el servidor los lee de `<banco>.ejemplos.jsonl`.
+  - Si una tarea no tiene oro, va a L3 sin fs8.
+- **score** devuelve `experimental: true`. Las cifras de T3 están en el README y en `PRODUCTO.md`.
+- **multi** es una extensión solo de Go y no está medida.
+- **Banco:** `python -m model.alt.generar_banco` (e5 con torch 2.5.1 y transformers 4.46.3). Sus vectores son idénticos a los del banco de referencia; comprobado en el i7.
+- **Despliegue:** `server/deploy/Dockerfile.producto` (sin construir: no hay docker en la sesión) y `config.ejemplo.json`, con un test de validez.
+- **`server/PRODUCTO.md`:** qué entra, qué sale, las cifras de R10, los límites (62 opciones como máximo; con más de ≈ 20, preselección top-k) y qué es experimental.
+
+**Pendiente para producción:**
+- medir fs8 con vLLM real, en exactitud y latencia, con prefix caching;
+- medir la preselección top-k con fs8;
+- calibrar el umbral u por cliente;
+- construir y probar la imagen;
+- que el codificador agrupe peticiones en lotes y no cargue una copia de los pesos por sesión;
+- `runtime/tok`;
+- firmar los artefactos.
