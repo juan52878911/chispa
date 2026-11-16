@@ -1632,3 +1632,38 @@ La decisión de punta a punta y la versión int8 son informativas.
 4. caudal con la mezcla real.
 
 El ud se está recortando porque supera los 16 KB de user-data.
+
+### 17.10 Ud listos: e2e de T5b y piloto de destilación (sin lanzar)
+
+**T5b-e2e** (g5, tope 30 min; código 0a55923):
+- User-data: `lanzados/ud-r10-t5e2e-0a55923ae11cd849a4f26c269c6f99458d34a950.sh` (sha256 `f7e7b9e3…`, 4 620 bytes).
+- Las fases están en `model/alt/aws/r10_t5e2e_fases.sh`, dentro de codigo.tgz.
+- Entradas en `s3://…/r10-t5e2e-0a55923ae11cd849a4f26c269c6f99458d34a950/`, con sha256 comprobado dentro del ud: codigo.tgz `cb0fcd29…`, bancos.tgz `95a14540…`, consultas.jsonl `519057c4…`, e5.onnx `c30444b4…`.
+- `--dry-run` da DryRunOperation.
+
+**Piloto de destilación 4B → biencoder** (g5, tope 88 min ≈ 1,5 USD; código d8e7e67, rama `r10-piloto-destil` fusionada).
+
+Criterio congelado (`model/alt/crit-r10-piloto.json`, sha256 `dd2d102b001e1882f52d07b2ea60a34410332802dd530dfa6ac642a0a8f4bccb`):
+- Métrica: macro-F1 por tarea ×100, media simple de las 6 dev, en int8.
+- **SIGUE** si Δzero-shot ≥ +4 y Δk8 ≥ −1. **PARA** si Δzero-shot < +2. Entre medias decide Juan.
+- También se informa la macro sin las sintéticas. El IC sobre tareas es informativo.
+
+Partida y datos:
+- **Partida:** el checkpoint de producción `ajuste-80ab8ef/ckpt/mejor.pt`, porque la comparación tiene que ser con la misma base.
+  - **Reserva de licencia:** según `model/datos/pesos-licencias.md`, ese checkpoint entrenó con SIB-200 (CC-BY-SA) y con datos dudosos. Lo que salga de él solo sirve para decidir si seguimos, no para publicar.
+  - El plan completo se reentrenaría desde e5 con el manifiesto.
+- **Blandas:** se reutilizan las de `blandas/e2deac55…` (Qwen3-4B; ninguna de Jev). Hay 168 362 filas con blanda, de tsjev y de las fuentes del manifiesto. synzs no tiene blandas.
+- **Concordancia:** el 4B y el oro coinciden en el top-1 solo en 0,569. Cuando discrepan, se le da al oro la masa del argmax del maestro.
+
+Entrenamiento:
+- Pérdida: 0,6·T²·KL (T = 2) + 0,2·CE con el oro + 0,2·contrastivo + 2,0·penalización por coseno respecto a e5 congelado.
+- El 20 % de los episodios usa un prototipo de 8 soportes. En score se usa una pérdida EMD ordinal.
+- Se entrenan las 4 últimas capas de e5, las ranuras, la torre y las cabezas.
+- **Entran unos 35–40 min, no la hora del plan:** con un tope de 88 min no da para más.
+
+Evaluación y datos de la ronda:
+- Se evalúa en int8 por el camino de producción (perfil movil-int8), base frente a destilado, en CPU y dentro de la misma g5.
+- Entradas en `s3://…/r10-piloto-d8e7e67/`: codigo.tgz `3349352f…`, dev.tgz `8721b083…` (solo las 6 dev).
+- User-data: `lanzados/ud-r10-piloto-d8e7e67.sh` (sha256 `8d06833a…`, 12 748 bytes).
+- Prueba en seco en el Mac con pesos aleatorios: OK. El export ONNX con e5 real no se ha probado.
+- `--dry-run` da DryRunOperation.
