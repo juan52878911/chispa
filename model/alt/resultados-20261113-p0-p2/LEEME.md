@@ -1749,7 +1749,7 @@ Evaluación y datos de la ronda:
 - L2 y escalado coinciden con Python en el **100 %** de las filas: 2 223 en L2 y 2 021 en L3.
 - Macro sin hatecheck: **0,6918 frente a 0,7233 de Python, −3,2 puntos.**
 
-**La diferencia viene entera de L3 en modo cascada.** En las filas escaladas, la respuesta del servidor coincide con la L3 de Python así:
+**Corrección (§17.12): este −3,2 no es del servidor.** Viene de dos sitios: el cliente de la ronda mandaba las consultas sin las descripciones de las opciones (229 filas) y el `timeout_fila` se quedó corto con 16 clientes (188 filas de massive-es). **La diferencia viene entera de L3 en modo cascada.** En las filas escaladas, la respuesta del servidor coincide con la L3 de Python así:
 
 | tarea | coincidencia | Go / Python |
 |---|---|---|
