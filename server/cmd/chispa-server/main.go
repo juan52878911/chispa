@@ -565,6 +565,17 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 	if l1, ok := capaL1.(interface{ ConCacheBytes(int) *decide.L1 }); ok {
 		l1.ConCacheBytes(cfg.CacheEsquemasMB)
 	}
+	if cfg.KNN != nil { // L2 = kNN por tarea (banco de oro + fondo); el vector e5 de la consulta lo inyecta quien llama (ver decide.ConVectorConsulta)
+		k, err := decide.NuevoL2KNN(*cfg.KNN, nil)
+		if err != nil {
+			if cerrar != nil {
+				cerrar()
+			}
+			return nil, err
+		}
+		capaL2 = k
+		log.Printf("knn: L2 = kNN por tarea con %d bancos (%s); sin codificador e5 en el servidor: el vector de la consulta debe inyectarse", len(k.Tareas()), strings.Join(k.Tareas(), ", "))
+	}
 	capaL3, err := cfg.DecisorL3()
 	if err != nil {
 		if cerrar != nil {
@@ -585,6 +596,9 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 		casc.ConOmitidas("L1")
 	}
 	casc.ConCalibracion(calibracion, calibradas)
+	if cfg.KNN != nil && !cfg.KNN.ConservarL0L1 {
+		casc.Saltar("L0", "L1")
+	}
 	if cfg.ForzarL3 {
 		casc.SoloL3()
 		log.Print("AVISO: forzar_l3: la cascada salta L0, L1 y L2 y manda todo a L3 (solo para pruebas)")
