@@ -1,0 +1,84 @@
+{
+ "etiqueta": "bajo",
+ "fila": "massive:test:2491",
+ "n_opciones": 60,
+ "etiqueta_oro": "general_quirky",
+ "repeticiones": [
+  {
+   "http": 200,
+   "ms_cliente": 152.8,
+   "capa": "L3",
+   "escalate": false,
+   "motivo": null,
+   "ms_servidor": 151.868,
+   "n_probs": 60,
+   "answer": "general_quirky",
+   "prob_max": 0.6820064560921953,
+   "probs_distintas": 11
+  },
+  {
+   "http": 200,
+   "ms_cliente": 152.0,
+   "capa": "escalar",
+   "escalate": true,
+   "motivo": "incompleta",
+   "ms_servidor": 151.317,
+   "n_probs": 0,
+   "answer": "",
+   "prob_max": null,
+   "probs_distintas": 0
+  },
+  {
+   "http": 200,
+   "ms_cliente": 151.8,
+   "capa": "L3",
+   "escalate": false,
+   "motivo": null,
+   "ms_servidor": 151.133,
+   "n_probs": 60,
+   "answer": "general_quirky",
+   "prob_max": 0.6820064560921953,
+   "probs_distintas": 11
+  },
+  {
+   "http": 200,
+   "ms_cliente": 151.8,
+   "capa": "escalar",
+   "escalate": true,
+   "motivo": "incompleta",
+   "ms_servidor": 151.21,
+   "n_probs": 0,
+   "answer": "",
+   "prob_max": null,
+   "probs_distintas": 0
+  },
+  {
+   "http": 200,
+   "ms_cliente": 151.8,
+   "capa": "L3",
+   "escalate": false,
+   "motivo": null,
+   "ms_servidor": 150.998,
+   "n_probs": 60,
+   "answer": "general_quirky",
+   "prob_max": 0.6820064560921953,
+   "probs_distintas": 11
+  }
+ ],
+ "l3_llamadas": {
+  "ok": 3.0,
+  "invalida": 0.0,
+  "error": 0.0,
+  "timeout": 2.0,
+  "presupuesto": 0.0
+ },
+ "l3_latencia_ms": {
+  "": {
+   "n": 5,
+   "media": 150.76,
+   "p50": 300.0,
+   "p95": 480.0,
+   "p99": 496.0
+  }
+ }
+}
