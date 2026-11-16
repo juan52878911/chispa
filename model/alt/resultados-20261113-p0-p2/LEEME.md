@@ -1852,3 +1852,19 @@ Cascada completa por HTTP: servidor Go, codificador e5 con un pool de 4 sesiones
 **Caudal con la mezcla real:** 10,6 req/s con 16 clientes y 12,4 req/s con 64. En R9 eran 17–20, pero entonces L3 iba sin descripciones y con un `timeout_fila` de 10 s. Con 64 clientes, la espera de L3 en el semáforo da p50 3,3 s.
 
 **Lectura:** la cascada que funciona ya está en el servidor y la exactitud coincide con Python. El cuello es L3: vLLM con una sola g5 y prompts largos (las descripciones y las 60 opciones de massive).
+
+### 17.15 Resultado del piloto de destilación (EC2 i-0bfed9ddbcad7dac1, g5, 51 min de trabajo ≈ 0,95 USD; `verificado`; `r10-piloto-3c1a7ca/`): **PARA**
+
+Criterio `d9ee43f5…`: macro-F1 de las 6 tareas dev, en int8, comparado con e5 puro.
+
+| grupo | config | e5 puro | destilado | Δ [IC95 por tareas] |
+|---|---|---|---|---|
+| 6 tareas | zero-shot | 27,6 | 16,3 | **−11,2** [−22,9, −1,1] |
+| 6 tareas | k = 8 | 38,3 | 24,3 | **−14,1** [−28,3, −2,2] |
+| sin sintéticas (4) | zero-shot | 25,0 | 18,9 | −6,2 |
+| sin sintéticas (4) | k = 8 | 29,7 | 21,5 | −8,2 |
+
+- **Por tarea:** solo congreso-eeuu mejora (+4,2 en zero-shot). Las caídas más fuertes son cfpb (−21,7 / −28,5) y finanzas (−36,3 / −43,9).
+- **El entrenamiento estropea la geometría de e5:** k = 8 baja 14 puntos a pesar de la penalización por coseno contra e5.
+- **Cómo corrió:** fueron 7 605 pasos y el tope de tiempo cortó el entrenamiento. Las blandas reutilizadas fueron 166 362 (se perdieron 2 000 por excluir los conjuntos de tuits y Reddit).
+- **Lectura:** con esta receta y una hora de entrenamiento, la destilación del 4B en el biencoder **empeora** frente a e5 puro. Como fija el criterio, el plan completo (≈ 16 USD) **no se lanza**. Antes de pensar en volver a intentarlo habría que entender por qué se pierde el kNN: cuánto pesa la penalización, la tasa de aprendizaje del codificador o entrenar solo la torre. Sería una hipótesis nueva, que se congela aparte.

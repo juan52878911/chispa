@@ -1,0 +1,220 @@
+{
+ "criterio_sha256": "d9ee43f584f54b6eb44bf3e0ab542cf0495fc24ccea1a2a0b78e667d2df00299",
+ "tareas": [
+  "cfpb-quejas",
+  "congreso-eeuu-partido",
+  "finanzas-documentos",
+  "horeca-resenas",
+  "jql-valor-educativo",
+  "usajobs-nivel"
+ ],
+ "sinteticas": [
+  "finanzas-documentos",
+  "horeca-resenas"
+ ],
+ "por_tarea": {
+  "cfpb-quejas": {
+   "zeroshot": {
+    "base": 33.64540039581235,
+    "destilado": 11.913414071308807,
+    "delta": -21.731986324503545,
+    "exactitud_base": 37.6,
+    "exactitud_destilado": 14.2,
+    "n": 500
+   },
+   "k8": {
+    "base": 51.17330548432572,
+    "destilado": 22.637833266023883,
+    "delta": -28.535472218301834,
+    "exactitud_base": 51.4,
+    "exactitud_destilado": 25.6,
+    "n": 500
+   }
+  },
+  "congreso-eeuu-partido": {
+   "zeroshot": {
+    "base": 47.08855888474927,
+    "destilado": 51.27424004192872,
+    "delta": 4.185681157179455,
+    "exactitud_base": 51.6,
+    "exactitud_destilado": 52.400000000000006,
+    "n": 500
+   },
+   "k8": {
+    "base": 47.6893105811898,
+    "destilado": 48.198135132864785,
+    "delta": 0.5088245516749856,
+    "exactitud_base": 47.8,
+    "exactitud_destilado": 48.199999999999996,
+    "n": 500
+   }
+  },
+  "finanzas-documentos": {
+   "zeroshot": {
+    "base": 46.12874932606954,
+    "destilado": 9.838593317848346,
+    "delta": -36.290156008221196,
+    "exactitud_base": 52.92841648590022,
+    "exactitud_destilado": 14.967462039045554,
+    "n": 461
+   },
+   "k8": {
+    "base": 86.45164580294899,
+    "destilado": 42.58356014485338,
+    "delta": -43.86808565809561,
+    "exactitud_base": 88.06941431670282,
+    "exactitud_destilado": 44.03470715835141,
+    "n": 461
+   }
+  },
+  "horeca-resenas": {
+   "zeroshot": {
+    "base": 19.0190186382655,
+    "destilado": 12.526812526812527,
+    "delta": -6.4922061114529726,
+    "exactitud_base": 27.800000000000004,
+    "exactitud_destilado": 22.0,
+    "n": 500
+   },
+   "k8": {
+    "base": 24.634553935390784,
+    "destilado": 16.85254225851075,
+    "delta": -7.782011676880038,
+    "exactitud_base": 31.4,
+    "exactitud_destilado": 27.6,
+    "n": 500
+   }
+  },
+  "jql-valor-educativo": {
+   "zeroshot": {
+    "base": 17.954838939765004,
+    "destilado": 9.694078024136962,
+    "delta": -8.26076091562804,
+    "exactitud_base": 26.652452025586353,
+    "exactitud_destilado": 20.8955223880597,
+    "n": 469
+   },
+   "k8": {
+    "base": 14.701246163165022,
+    "destilado": 12.798515078347334,
+    "delta": -1.9027310848176882,
+    "exactitud_base": 22.388059701492537,
+    "exactitud_destilado": 21.535181236673772,
+    "n": 469
+   }
+  },
+  "usajobs-nivel": {
+   "zeroshot": {
+    "base": 1.5040106951871657,
+    "destilado": 2.6960219267911576,
+    "delta": 1.192011231603992,
+    "exactitud_base": 9.0,
+    "exactitud_destilado": 10.0,
+    "n": 500
+   },
+   "k8": {
+    "base": 5.229080039228063,
+    "destilado": 2.436642641246222,
+    "delta": -2.7924373979818413,
+    "exactitud_base": 10.0,
+    "exactitud_destilado": 9.6,
+    "n": 500
+   }
+  }
+ },
+ "seis": {
+  "zeroshot": {
+   "base": 27.55676281330814,
+   "destilado": 16.32385998480442,
+   "delta": -11.232902828503718,
+   "ic95_delta_tareas": [
+    -22.945200672198535,
+    -1.1275501343926446
+   ],
+   "tareas": 6
+  },
+  "k8": {
+   "base": 38.31319033437473,
+   "destilado": 24.251204753641055,
+   "delta": -14.061985580733676,
+   "ic95_delta_tareas": [
+    -28.304078659047732,
+    -2.227043690191214
+   ],
+   "tareas": 6
+  },
+  "veredicto": "PARA"
+ },
+ "sin_sinteticas": {
+  "zeroshot": {
+   "base": 25.048202228878445,
+   "destilado": 18.89443851604141,
+   "delta": -6.1537637128370335,
+   "ic95_delta_tareas": [
+    -16.00098693547666,
+    2.6888461943917235
+   ],
+   "tareas": 4
+  },
+  "k8": {
+   "base": 29.69823556697715,
+   "destilado": 21.517781529620553,
+   "delta": -8.180454037356597,
+   "ic95_delta_tareas": [
+    -21.877286934930797,
+    -0.31649093573922105
+   ],
+   "tareas": 4
+  },
+  "veredicto": "PARA"
+ },
+ "veredicto": "PARA",
+ "veredicto_cambia_sin_sinteticas": false,
+ "info": {
+  "base": {
+   "modelo": "e5 puro",
+   "max_tok": 256,
+   "vocab_ampliado": {
+    "textos": 153196,
+    "ids_antes": 55000,
+    "ids_despues": 61924
+   },
+   "onnx_mb": 48.1
+  },
+  "destilado": {
+   "ckpt": "/opt/chispa/ck/final.pt",
+   "paso": 7605,
+   "max_tok": 256,
+   "cabezas_ckpt": [
+    "score10",
+    "score3",
+    "score4",
+    "score5",
+    "score6",
+    "score7"
+   ],
+   "capas_e5_en_ckpt": 64,
+   "cabezas_sin_entrenar": [
+    "score11"
+   ],
+   "vocab_ampliado": {
+    "textos": 153196,
+    "ids_antes": 55000,
+    "ids_despues": 61924
+   },
+   "consulta_mb": 50.9,
+   "torre_mb": 49.4,
+   "vocab_n": 250037,
+   "segundos_exportar": 15.3,
+   "segundos_evaluar": 228.1,
+   "textos_consulta": 3658,
+   "textos_torre": 73
+  }
+ },
+ "vs_l2_actual": {
+  "medido_aqui": false,
+  "fuente": "T3",
+  "zeroshot_delta": null,
+  "k8_delta": null
+ }
+}

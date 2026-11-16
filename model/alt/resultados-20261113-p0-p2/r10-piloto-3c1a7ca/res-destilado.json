@@ -1,0 +1,107 @@
+{
+ "tareas": {
+  "horeca-resenas": {
+   "zeroshot": {
+    "macro_f1": 0.12526812526812528,
+    "exactitud": 0.22,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.16852542258510747,
+    "exactitud": 0.276,
+    "n": 500
+   }
+  },
+  "usajobs-nivel": {
+   "zeroshot": {
+    "macro_f1": 0.026960219267911575,
+    "exactitud": 0.1,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.024366426412462217,
+    "exactitud": 0.096,
+    "n": 500
+   }
+  },
+  "congreso-eeuu-partido": {
+   "zeroshot": {
+    "macro_f1": 0.5127424004192872,
+    "exactitud": 0.524,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.48198135132864783,
+    "exactitud": 0.482,
+    "n": 500
+   }
+  },
+  "cfpb-quejas": {
+   "zeroshot": {
+    "macro_f1": 0.11913414071308807,
+    "exactitud": 0.142,
+    "n": 500
+   },
+   "k8": {
+    "macro_f1": 0.22637833266023882,
+    "exactitud": 0.256,
+    "n": 500
+   }
+  },
+  "finanzas-documentos": {
+   "zeroshot": {
+    "macro_f1": 0.09838593317848346,
+    "exactitud": 0.14967462039045554,
+    "n": 461
+   },
+   "k8": {
+    "macro_f1": 0.4258356014485338,
+    "exactitud": 0.4403470715835141,
+    "n": 461
+   }
+  },
+  "jql-valor-educativo": {
+   "zeroshot": {
+    "macro_f1": 0.09694078024136962,
+    "exactitud": 0.208955223880597,
+    "n": 469
+   },
+   "k8": {
+    "macro_f1": 0.12798515078347333,
+    "exactitud": 0.21535181236673773,
+    "n": 469
+   }
+  }
+ },
+ "info": {
+  "ckpt": "/opt/chispa/ck/final.pt",
+  "paso": 7605,
+  "max_tok": 256,
+  "cabezas_ckpt": [
+   "score10",
+   "score3",
+   "score4",
+   "score5",
+   "score6",
+   "score7"
+  ],
+  "capas_e5_en_ckpt": 64,
+  "cabezas_sin_entrenar": [
+   "score11"
+  ],
+  "vocab_ampliado": {
+   "textos": 153196,
+   "ids_antes": 55000,
+   "ids_despues": 61924
+  },
+  "consulta_mb": 50.9,
+  "torre_mb": 49.4,
+  "vocab_n": 250037,
+  "segundos_exportar": 15.3,
+  "segundos_evaluar": 228.1,
+  "textos_consulta": 3658,
+  "textos_torre": 73
+ },
+ "etiqueta": "destilado",
+ "criterio_sha256": "d9ee43f584f54b6eb44bf3e0ab542cf0495fc24ccea1a2a0b78e667d2df00299"
+}
