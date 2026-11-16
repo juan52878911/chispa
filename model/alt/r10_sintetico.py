@@ -35,7 +35,12 @@ def crear_e5(destino):
     piezas = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"] + list(string.ascii_lowercase + string.digits + string.punctuation)
     piezas += ["##" + c for c in string.ascii_lowercase + string.digits]
     piezas = list(dict.fromkeys(piezas))
-    tok = BertTokenizerFast(vocab={x: i for i, x in enumerate(piezas)}, do_lower_case=True)
+    Path(destino).mkdir(parents=True, exist_ok=True)
+    (Path(destino) / "vocab.txt").write_text("\n".join(piezas) + "\n", encoding="utf-8")   # vocab_file: vale en transformers 4.x y 5.x
+    try:   # transformers 5: vocab=dict; 4.x: vocab_file
+        tok = BertTokenizerFast(vocab={x: i for i, x in enumerate(piezas)}, do_lower_case=True)
+    except Exception:
+        tok = BertTokenizerFast(vocab_file=str(Path(destino) / "vocab.txt"), do_lower_case=True)
     torch.manual_seed(0)
     cfg = BertConfig(vocab_size=len(piezas), hidden_size=384, num_hidden_layers=2, num_attention_heads=4, intermediate_size=64,
                      max_position_embeddings=130, pad_token_id=0)

@@ -1,17 +1,24 @@
 {
- "id": "r10-piloto-destilacion-4b-biencoder",
+ "id": "r10-piloto-destilacion-4b-biencoder-v2",
  "congelado": "2026-11-15",
- "que_mide": "si destilar Qwen3-4B (blandas existentes) en el biencoder L2 sube el zero-shot sin romper el few-shot, en int8 y sobre las 6 tareas DEV de la bateria v2",
+ "reemplaza": "v1 (sha256 dd2d102b001e1882f52d07b2ea60a34410332802dd530dfa6ac642a0a8f4bccb): partia del checkpoint de produccion ajuste-80ab8ef; la sesion principal lo redefinio antes de medir",
+ "que_mide": "si destilar Qwen3-4B (blandas existentes) en el biencoder L2, entrenado desde e5-small puro, mejora a e5 puro en zero-shot sin romper el few-shot, en int8 y sobre las 6 tareas DEV de la bateria v2",
  "metrica": "macro_f1 por tarea (model.evaluacion.chispa_eval), en puntos (x100); media simple de las tareas",
  "tareas": ["finanzas-documentos", "horeca-resenas", "jql-valor-educativo", "cfpb-quejas", "usajobs-nivel", "congreso-eeuu-partido"],
  "sinteticas": ["finanzas-documentos", "horeca-resenas"],
- "modelos": {"base": "checkpoint de partida", "destilado": "final.pt del entrenamiento (sin elegir por DEV)"},
- "formato": "int8 perfil movil-int8 de model/l2/exportar.py (consulta: codificador int8 dinamico, ranuras fp32; torre int8 dinamico; vocabulario podado ampliado con los ids de las 6 tareas DEV; vectores de torre con escala int8 por vector)",
- "configuraciones": {"zeroshot": "descripciones de las opciones, sin soporte", "k8": "prototipos con los 8 ejemplos de oro por clase (split train de cada fichero DEV)"},
- "decide": "las 6 tareas; se informa tambien la media sin las 2 sinteticas y se avisa si su veredicto difiere",
+ "modelos": {
+  "destilado": "final.pt: e5-small @614241f622f53c4eeff9890bdc4f31cfecc418b3 con ranuras, torre y cabezas inicializadas y entrenadas por el piloto (--partida e5), sin elegir por DEV",
+  "base": "e5 puro @614241f622f53c4eeff9890bdc4f31cfecc418b3, sin L2"
+ },
+ "base_zeroshot": "coseno entre el vector e5 de «query: texto» y el de «passage: pregunta · opcion · descripcion» de cada opcion. Se elige esto y no el L2 con las ranuras iniciales sin entrenar porque ranuras, torre y cabezas con init aleatorio no dan un zero-shot con sentido (seria azar con otra etiqueta); el coseno de e5 es lo que una persona usaria sin entrenar nada y usa el mismo texto de torre que L2",
+ "base_k8": "prototipos con e5 puro: media normalizada de los vectores e5 de los 8 ejemplos de oro de cada clase, coseno con el mensaje",
+ "formato": "int8 con el mismo camino de export de model/l2/exportar.py: e5 con int8 dinamico (base: media normalizada; destilado: consulta con ranuras en fp32 y torre int8), vocabulario podado ampliado con los ids de las 6 tareas DEV; el destilado con vectores de torre int8 por vector. Las dos mediciones se hacen en la misma instancia",
+ "configuraciones": {"zeroshot": "descripciones de las opciones, sin soporte", "k8": "8 ejemplos de oro por clase (split train de cada fichero DEV): prototipos (destilado: simproto de L2 con el beta del checkpoint)"},
+ "decide": "las 6 tareas; se informa tambien la media sin las 2 sinteticas y se avisa si su veredicto difiere. El delta es destilado menos e5 puro",
  "sigue": {"delta_zeroshot_min": 4.0, "delta_k8_min": -1.0},
  "para": {"delta_zeroshot_menor_que": 2.0},
  "entre_medias": "cualquier otro caso (delta zero-shot en [2, 4), o delta zero-shot >= 4 con k8 bajando mas de 1): decide Juan",
+ "vs_l2_actual": "dato aparte, no se mide aqui: el informe deja el campo vs_l2_actual para las cifras de T3 del L2 actual; no entra en la regla",
  "ic": "bootstrap percentil 95 % sobre tareas (remuestreo de las tareas con reposicion, 10000, semilla 0) de la media de diferencias emparejadas; solo informativo, no entra en la regla",
  "fuera": ["tareas selladas de la bateria v2", "el 4B sobre las 6 DEV (lo mide T3)"]
 }
