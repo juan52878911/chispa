@@ -1684,3 +1684,17 @@ Evaluación y datos de la ronda:
   - User-data: `lanzados/ud-r10-c-medir-9590d2a.sh` (sha256 `99318076…`, 7 112 bytes).
   - Entradas en `s3://…/r10-c-medir-9590d2a/`.
   - `--dry-run` da DryRunOperation.
+
+**Piloto regenerado** (código e11aee1):
+- **Partida:** e5-small puro. Las ranuras, la torre y las cabezas arrancan con init. Se entrena unos 55 min, hasta 3 épocas.
+- **Base frente a la que se compara:** e5 puro en int8.
+  - Zero-shot: coseno entre «query: texto» y «passage: pregunta · opción · descripción».
+  - k = 8: prototipos de los 8 de oro.
+  - El campo `vs_l2_actual` se rellena con las cifras de T3.
+- **Criterio nuevo:** `crit-r10-piloto.json`, sha256 `d9ee43f584f54b6eb44bf3e0ab542cf0495fc24ccea1a2a0b78e667d2df00299`. Sustituye a `dd2d102b…`. La regla no cambia.
+- **Corrección:** en las dev reales, el campo `tarea` de cada fila no coincide con el nombre del fichero. Sin arreglarlo, el criterio no habría marcado las sintéticas.
+- **Prueba en seco con el e5 real en el i7:** 6 pasos y 20 filas por tarea. Entrenamiento, export int8 y evaluación de las dos bases salen OK. Las cifras no significan nada.
+- **Lanzamiento:** g5 con tope de 110 min (≈ 1,85 USD).
+  - User-data: `lanzados/ud-r10-piloto-e11aee1.sh` (sha256 `a3702fbf…`, 12 793 bytes).
+  - Entradas en `s3://…/r10-piloto-e11aee1/`: codigo.tgz `0ee1065b…` y dev.tgz `44e5aec3…` (solo las 6 dev).
+  - `--dry-run` da DryRunOperation.
