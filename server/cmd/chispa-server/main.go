@@ -574,7 +574,7 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 				}
 				return nil, fmt.Errorf("config: knn.e5_onnx exige el flag -tok (tokenizador de e5)")
 			}
-			ce, err := montarCodificadorE5(cfg.KNN.E5ONNX, rutaTok)
+			ce, err := montarCodificadorE5(cfg.KNN.E5ONNX, rutaTok, cfg.KNN.E5Sesiones)
 			if err != nil {
 				if cerrar != nil {
 					cerrar()
