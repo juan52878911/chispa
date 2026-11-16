@@ -1677,3 +1677,10 @@ Evaluación y datos de la ronda:
 - Antes de lanzarlo, se hace una prueba en seco del export ONNX con el e5 real.
 
 **Deuda:** el tokenizador de Go (`runtime/tok`) quita el espacio final y el de HF no. Por ahora la corrección vive solo en el codificador e5 de T5b. Para arreglarlo en `runtime/tok` hay que medir antes la paridad del L2 ajustado con los ids nuevos.
+
+**Etiquetado de C** (EC2 inst-25, g5, ≈ 0,45 USD; `verificado`):
+- Se etiquetaron 4 383 de 10 000 textos por logprobs, todos válidos: cfpb 1 000, congreso-eeuu 1 000, horeca 1 000, usajobs 1 100 y **finanzas 283** (unos 5 por clase).
+- **Medición de C** en una c7i, con tope de 30 min. Criterio `45cb5b04…`, comprobado dentro del ud.
+  - User-data: `lanzados/ud-r10-c-medir-9590d2a.sh` (sha256 `99318076…`, 7 112 bytes).
+  - Entradas en `s3://…/r10-c-medir-9590d2a/`.
+  - `--dry-run` da DryRunOperation.
