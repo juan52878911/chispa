@@ -19,7 +19,7 @@ case "$dev" in *sellada*) echo "DIR_DEV parece de selladas" >&2; exit 1;; esac
 mkdir -p "$sal"
 t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
 git archive "$sha" -- model/__init__.py model/alt model/datos model/meta model/evaluacion model/l2/__init__.py model/l2/datos.py model/l2/largos.py \
-  model/l2/modelo.py model/l2/evaluar.py model/l2/exportar.py model/l2/calibrar.py model/l2/linea_base_knn_e5.py model/maestro/__init__.py model/maestro/blandas.py \
+  model/l2/modelo.py model/l2/evaluar.py model/l2/exportar.py model/l2/calibrar.py model/l2/calibrar_capas.py model/l2/linea_base_knn_e5.py model/maestro/__init__.py model/maestro/blandas.py \
   model/bench/vocab-podado-e5-small.json ':(exclude)model/alt/resultados*' ':(exclude)model/alt/aws/lanzados' | tar -x -C "$t"
 find "$t" -name '._*' -delete
 rm -f "$sal/codigo.tgz" "$sal/dev.tgz"

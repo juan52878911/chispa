@@ -8,13 +8,13 @@ CRIT_SHA=__CRIT_SHA__
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz,ckpt/final.pt}; espera $CHISPA_S3/verificado (<= ESPERA_MIN) antes de apagar.
 # Fases: 1 entorno · 2 código, imports y sha del criterio · 3 datos (e5 @614241f6, fuentes HF, tsjev, blandas aplicadas, DEV, partida) · 4 base int8 en CPU
 #   (en segundo plano) · 5 entrenar en GPU hasta agotar el tiempo · 6 destilado int8 en CPU y veredicto. Todo en int8 (perfil movil-int8 de model/l2/exportar.py).
-# CHISPA_LOCAL=1: sin pip, descargas ni shutdown; datos, e5 y checkpoint sintéticos diminutos, CPU, 12 pasos. CHISPA_S3 = carpeta local con codigo.tgz.
+# CHISPA_LOCAL=1: sin pip, descargas ni shutdown; datos, e5 y checkpoint sintéticos diminutos, CPU, 12 pasos. CHISPA_LOCAL_S3 = carpeta con codigo.tgz.
 LOCAL=${CHISPA_LOCAL:-0}
 MIN=${CHISPA_MIN:-88}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-5}; MAX_ENTRENAR=${CHISPA_MIN_ENTRENAR:-50}
 S3=s3://chispa-pruebas-cuenta-aws
 META_S3=${CHISPA_META_S3:-$S3/meta-20261027/meta}; BL_S3=${CHISPA_BLANDAS_S3:-$S3/blandas/e2deac55256e3314}
 PARTIDA_S3=${CHISPA_PARTIDA_S3:-$S3/ajuste-80ab8ef/ckpt/mejor.pt}; E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3
-if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) echo "LOCAL pide CHISPA_S3=carpeta con codigo.tgz"; exit 1;; esac; case $CRIT_SHA in __*) CRIT_SHA=${CHISPA_CRIT_SHA:?};; esac
+if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=${CHISPA_LOCAL_S3:?CHISPA_LOCAL_S3 = carpeta con codigo.tgz};; esac; case $CRIT_SHA in __*) CRIT_SHA=${CHISPA_CRIT_SHA:?};; esac
 else shutdown -h +$MIN; fi
 set -uo pipefail
 export HOME="${HOME:-/root}"; T0=$(date +%s)
