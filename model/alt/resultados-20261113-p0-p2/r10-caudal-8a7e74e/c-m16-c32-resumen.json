@@ -1,0 +1,62 @@
+{
+ "clientes": 32,
+ "segundos": 55.0,
+ "peticiones": 427,
+ "por_segundo": 7.77,
+ "total_ms_cliente": {
+  "n": 427,
+  "p50": 3576.757,
+  "p95": 10541.523,
+  "p99": 11607.516,
+  "media": 3943.362
+ },
+ "http": {
+  "200": 427
+ },
+ "capas": {
+  "L3": 427
+ },
+ "escaladas_por_motivo": {},
+ "invalidas": 0,
+ "espera_semaforo_l3_ms": {
+  "n": 427,
+  "p50": 1828.523,
+  "p95": 3907.471,
+  "p99": 4528.963,
+  "media": 1930.301
+ },
+ "latencia_l3_ms": {
+  "n": 427,
+  "p50": 1212.37,
+  "p95": 7808.645,
+  "p99": 9090.901,
+  "media": 2011.584
+ },
+ "espera_histograma_ms": {
+  "": {
+   "n": 427,
+   "media": 1930.301,
+   "p50": 1964.0,
+   "p95": 4719.565,
+   "p99": 4967.101
+  }
+ },
+ "descartes": {
+  "cola_llena": 0.0,
+  "circuito_abierto": 0.0
+ },
+ "reintentos": {
+  "red": 0.0,
+  "5xx": 0.0,
+  "429": 0.0
+ },
+ "circuito_aperturas": 0.0,
+ "semaforo_capacidad": 16.0,
+ "l3_llamadas": {
+  "ok": 427.0,
+  "invalida": 0.0,
+  "error": 0.0,
+  "timeout": 0.0,
+  "presupuesto": 0.0
+ }
+}

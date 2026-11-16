@@ -1464,3 +1464,36 @@ Cliente L3 del servidor Go (`l3-endurecido`, con `go test -race`, vet, `make tes
   - Entradas en `s3://…/r10-caudal-8a7e74e/`.
   - Prueba en seco local con el vLLM falso: OK.
   - `--dry-run`: DryRunOperation.
+
+### 17.5 Resultado de R10-caudal (EC2 inst-33, g5, 2026-11-16; ≈ 0,45 USD)
+
+Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`. Como los pip y las descargas iban en paralelo, la preparación duró 7,3 min (en R9, 13).
+
+**(b) Cascada por defecto del servidor, con 1 cliente y 600 filas (100 por tarea)** (`.chispa` movil-int8, τ de CALIB):
+- **El 98,8 % de las filas acaba en L3.** L2 contesta 1 de 600 y 6 escalan.
+- La exactitud es la de L3: macro por tarea sin hatecheck 0,726, con hatecheck-es 0,87.
+- Latencia por capa, p50/p95 (métricas del servidor): L0 0,006/0,04 ms, L1 0,16/0,83 ms, L2 8,9/63 ms, L3 32/137 ms. Total por cliente: 46/159 ms.
+- **Reserva de producto:** con los umbrales calibrados del `.chispa` actual, la cascada del servidor no resuelve nada en L1/L2 en estas tareas. La cascada útil de §17.1 b (margen del kNN, escalando ≈ 20–40 %) todavía no está en el servidor: hace falta un L2 con banco kNN y su umbral por margen.
+
+**Barrido de caudal con L3 forzado** (50 s por punto, filas de la muestra con 60 opciones en massive; espera y latencia de L3 sacadas de las cabeceras por petición):
+
+| max_concurrente | clientes | pet/s | total p50 | total p99 | espera p50 | espera p95 | L3 p50 | L3 p95 |
+|---|---|---|---|---|---|---|---|---|
+| 8 | 8 | 7,64 | 0,64 s | 5,45 s | 0,00 s | 0,00 s | 0,64 s | 4,20 s |
+| 8 | 16 | 7,47 | 1,75 s | 6,57 s | 0,96 s | 2,26 s | 0,66 s | 4,10 s |
+| 8 | 32 | 6,93 | 4,11 s | 10,70 s | 3,14 s | 6,18 s | 0,69 s | 4,59 s |
+| 8 | 64 | 7,54 | 8,69 s | 14,78 s | 7,89 s | 10,94 s | 0,62 s | 4,50 s |
+| 16 | 8 | 7,58 | 0,64 s | 5,06 s | 0,00 s | 0,00 s | 0,64 s | 4,39 s |
+| 16 | 16 | 8,03 | 1,22 s | 7,63 s | 0,00 s | 0,00 s | 1,22 s | 6,65 s |
+| 16 | 32 | 7,77 | 3,58 s | 11,61 s | 1,83 s | 3,91 s | 1,21 s | 7,81 s |
+| 16 | 64 | 7,93 | 7,52 s | 16,83 s | 6,02 s | 9,90 s | 1,22 s | 7,60 s |
+| 32 | 8 | 7,56 | 0,63 s | 5,06 s | 0,00 s | 0,00 s | 0,63 s | 4,24 s |
+| 32 | 16 | 7,82 | 1,22 s | 7,72 s | 0,00 s | 0,00 s | 1,22 s | 6,71 s |
+| 32 | 32 | 9,65 | 2,11 s | 10,00 s | 0,00 s | 0,00 s | 2,11 s | 10,00 s |
+| 32 | 64 | 10,00 | 5,09 s | 14,47 s | 2,76 s | 4,50 s | 2,11 s | 10,00 s |
+
+- **El caudal lo limita vLLM, no el servidor:** con una g5 y este cliente por logprobs se queda en 7,5–8 pet/s, y sube a ≈ 10 pet/s solo con `max_concurrente` 32 y ≥ 32 clientes.
+- Subir `max_concurrente` pasa la espera del semáforo a la latencia de L3, pero apenas sube el caudal.
+- Con 32 de concurrencia, el p95 de L3 se queda en 10,0 s: es el `timeout_fila`. Esas filas salen con parciales y piso.
+- No hubo ni un descarte por cola llena ni una apertura del circuito; todas las respuestas fueron HTTP 200.
+- **Lectura:** para tiempo real con L3 hay que acotar la fracción escalada. Con ≈ 8 pet/s de L3 por g5 y un 30 % escalado, la cascada aguanta ≈ 25 pet/s por g5. Si no, hay que usar más réplicas. Las filas de 60 opciones (massive) son las caras.
