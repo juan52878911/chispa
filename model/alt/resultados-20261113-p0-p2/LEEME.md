@@ -1698,3 +1698,19 @@ Evaluación y datos de la ronda:
   - User-data: `lanzados/ud-r10-piloto-e11aee1.sh` (sha256 `a3702fbf…`, 12 793 bytes).
   - Entradas en `s3://…/r10-piloto-e11aee1/`: codigo.tgz `0ee1065b…` y dev.tgz `44e5aec3…` (solo las 6 dev).
   - `--dry-run` da DryRunOperation.
+
+**Piloto sin tuits ni Reddit** (código 3c1a7ca):
+- Se excluyen del entrenamiento ciberacoso, toxicidad_protestas y toxicidad_constitucion, que son tuits, y goemociones_es, que viene de Reddit.
+- La exclusión es explícita (`EXCLUIDOS_PLATAFORMA`) y no toca el manifiesto. La licencia declarada es comercial, pero los términos de la plataforma prohíben redistribuir los textos.
+- `manifiesto validar` no comprueba licencias, solo el sellado: es **deuda**.
+- Se quedan soporte_ti y spam_tanaos; este último va marcado como sintético.
+- **tsjev con Twitter, para que decida Juan:** quedan dentro 15 tareas.
+  - AfriSenti-twitter, 12 lenguas, 4 585 filas.
+  - tweets_hate_speech_detection, 3 296 filas.
+  - twitter-financial-news-sentiment, 4 075 filas.
+  - tweet_sentiment_multilingual, ya excluida por la v1.
+- **Datos del lanzamiento:**
+  - User-data: `lanzados/ud-r10-piloto-3c1a7ca.sh` (sha256 `4554758b…`, 12 715 bytes).
+  - Entradas en `s3://…/r10-piloto-3c1a7ca/`: codigo.tgz `1671bf09…`, dev.tgz `babc1c65…`.
+  - El criterio sigue siendo `d9ee43f5…`.
+  - Los ud `d8e7e67` y `e11aee1` quedan anulados.
