@@ -351,6 +351,10 @@ func (s *Servidor) decide(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Met.Peticion(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
+	if pr := presupuestoDe(ctx); pr.l3Ns.Load() > 0 { // L3 puntuó alguna fila: sus tiempos por petición (para medir sin el histograma)
+		w.Header().Set("X-Chispa-L3-Espera-Ms", strconv.FormatFloat(float64(pr.l3EsperaNs.Load())/1e6, 'f', 3, 64))
+		w.Header().Set("X-Chispa-L3-Ms", strconv.FormatFloat(float64(pr.l3Ns.Load())/1e6, 'f', 3, 64))
+	}
 	json.NewEncoder(w).Encode(out)
 }
 
