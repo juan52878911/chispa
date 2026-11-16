@@ -6,7 +6,8 @@
 #   bancos.tgz       banco-<tarea>.npy/.jsonl, referencia.json y consultas.npy (vectores de Python, para la paridad) del fixture de banco-paridad.
 #   consultas.jsonl  el consultas.jsonl del fixture con texto, pregunta y tipo (model/alt/consultas_con_texto.py), 4 244 filas.
 #   e5.onnx          el e5 fp32 (model/alt/exportar_e5_onnx.py), con su sha256 en el ud.
-#   model/alt/aws/lanzados/ud-r10-t5e2e-SHA.sh   r10_t5e2e.sh de SHA con __CHISPA_S3__, __N_FILAS__, __GO_SHA256__ y __E5_SHA256__ sustituidos.
+#   model/alt/aws/lanzados/ud-r10-t5e2e-SHA.sh   r10_t5e2e.sh de SHA con __CHISPA_S3__, __N_FILAS__, __GO_SHA256__ y los sha256 de los cuatro ficheros sustituidos
+#                    (el ud, que debe caber en los 16 384 bytes de user-data de EC2, solo baja y comprueba; las fases viven en codigo.tgz: model/alt/aws/r10_t5e2e_fases.sh).
 # Las entradas viven en el i7 (rutas por defecto de abajo). Desde el Mac, CHISPA_REMOTO=px-01-i7 las copia por ssh/scp a un directorio temporal; en el
 # propio i7 (o con el NFS montado) se leen directamente. Se pueden cambiar con CHISPA_FIXTURE, CHISPA_ONNX y CHISPA_BATS (lista separada por comas).
 # Uso: GO_SHA256=<sha256 de go1.27.1.linux-amd64.tar.gz> bash model/alt/aws/empaquetar_r10_t5e2e.sh SHA DIR_SALIDA
@@ -15,7 +16,7 @@ cd "$(git rev-parse --show-toplevel)"
 sha=${1:?SHA}; sal=${2:?DIR_SALIDA}
 [ -n "${GO_SHA256:-}" ] || { echo "falta GO_SHA256 (sha256 de go1.27.1.linux-amd64.tar.gz): nada se descarga sin sha256" >&2; exit 1; }
 [[ $GO_SHA256 =~ ^[0-9a-f]{64}$ ]] || { echo "GO_SHA256 no es un sha256 en hex" >&2; exit 1; }
-for f in r10_t5e2e.sh r10_t5_cliente.py r10_cliente.py consultas_con_texto.py; do
+for f in r10_t5e2e.sh r10_t5e2e_fases.sh r10_t5_cliente.py r10_cliente.py consultas_con_texto.py; do
   d=model/alt/aws; [ "$f" = consultas_con_texto.py ] && d=model/alt
   git cat-file -e "$sha:$d/$f" || { echo "$sha no trae $d/$f" >&2; exit 1; }
 done
@@ -34,7 +35,7 @@ if [ -n "${CHISPA_REMOTO:-}" ]; then
 fi
 [ -f "$FIXTURE/consultas.jsonl" ] && [ -f "$FIXTURE/referencia.json" ] && [ -f "$ONNX" ] || { echo "faltan consultas.jsonl, referencia.json o e5.onnx" >&2; exit 1; }
 # --- código de SHA
-git archive "$sha" server runtime/l1 runtime/tok runtime/torre format/chispa3 model/alt/aws/r10_t5_cliente.py model/alt/aws/r10_cliente.py model/alt/consultas_con_texto.py | tar -x -C "$t"
+git archive "$sha" server runtime/l1 runtime/tok runtime/torre format/chispa3 model/alt/aws/r10_t5e2e_fases.sh model/alt/aws/r10_t5_cliente.py model/alt/aws/r10_cliente.py model/alt/consultas_con_texto.py | tar -x -C "$t"
 rm -rf "$t/server/deploy/resultados" "$t/server/deploy/aws/resultados"
 mod=$(go env GOMODCACHE)/cache/download; pq=$t/gomod-proxy
 copiar() { local m=$1 v=$2 d=$pq/$1/@v s=$mod/$1/@v; mkdir -p "$d"; for e in info mod zip ziphash; do cp "$s/$v.$e" "$d/$v.$e"; done; echo "$v" > "$d/list"; }
@@ -56,12 +57,14 @@ python3 "$t/model/alt/consultas_con_texto.py" --fixture "$FIXTURE" --bat "$BATS"
 cp "$ONNX" "$sal/e5.onnx"
 for f in codigo.tgz bancos.tgz; do tar -tzf "$sal/$f" | grep -q '\._' && { echo "$f trae ._*" >&2; exit 1; }; done
 n=$(wc -l < "$sal/consultas.jsonl" | tr -d ' ')
-e5sha=$(shasum -a 256 "$sal/e5.onnx" | cut -d' ' -f1)
+sh() { shasum -a 256 "$1" | cut -d' ' -f1; }
+e5sha=$(sh "$sal/e5.onnx")
 ud=model/alt/aws/lanzados/ud-r10-t5e2e-$sha.sh
 mkdir -p model/alt/aws/lanzados
-git show "$sha:model/alt/aws/r10_t5e2e.sh" | sed -e "s#__CHISPA_S3__#s3://chispa-pruebas-879381269751/r10-t5e2e-$sha#" -e "s#__N_FILAS__#$n#" -e "s#__GO_SHA256__#$GO_SHA256#" -e "s#__E5_SHA256__#$e5sha#" > "$ud"
+git show "$sha:model/alt/aws/r10_t5e2e.sh" | sed -e "s#__CHISPA_S3__#s3://chispa-pruebas-879381269751/r10-t5e2e-$sha#" -e "s#__N_FILAS__#$n#" -e "s#__GO_SHA256__#$GO_SHA256#" -e "s#__E5_SHA256__#$e5sha#" -e "s#__COD_SHA256__#$(sh "$sal/codigo.tgz")#" -e "s#__BAN_SHA256__#$(sh "$sal/bancos.tgz")#" -e "s#__CON_SHA256__#$(sh "$sal/consultas.jsonl")#" > "$ud"
 bash -n "$ud"
 grep -n '__[A-Z0-9_]*__' "$ud" | grep -v 'GO_SHA256#__' && { echo "quedan placeholders sin sustituir" >&2; exit 1; }
+[ "$(wc -c < "$ud")" -lt 15500 ] || { echo "el ud pesa $(wc -c < "$ud") bytes: el user-data de EC2 admite 16384 como máximo (objetivo < 15500)" >&2; exit 1; }
 (cd "$sal" && ls -l codigo.tgz bancos.tgz consultas.jsonl e5.onnx && shasum -a 256 codigo.tgz bancos.tgz consultas.jsonl e5.onnx)
 echo "ud: $ud ($(wc -c < "$ud") bytes, sha256 $(shasum -a 256 "$ud" | cut -d' ' -f1))"
 echo "sube a s3://chispa-pruebas-879381269751/r10-t5e2e-$sha/: codigo.tgz bancos.tgz consultas.jsonl e5.onnx; lanza $ud"
