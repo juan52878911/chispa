@@ -1,5 +1,5 @@
 #!/bin/bash
-CHISPA_S3=s3://chispa-pruebas-cuenta-aws/r10-t3-3c74f68
+CHISPA_S3=s3://chispa-pruebas-cuenta-aws/r10-t3-9ca7524
 # R10-T3: líneas base de la batería v2, SOLO las 6 tareas de DESARROLLO (dev.tgz; las selladas no se abren aquí), en UNA g5.xlarge BAJO DEMANDA (A10G 24 GB),
 # tope duro CHISPA_MIN=110 min (≈ 1,85 USD). user-data (DLAMI GPU PyTorch AL2023, rol rol-ec2-pruebas sin ListBucket), terminate. Sistemas en orden de
 # prioridad, cada uno con su tope; lo hecho queda aunque se corte:
@@ -10,7 +10,7 @@ CHISPA_S3=s3://chispa-pruebas-cuenta-aws/r10-t3-3c74f68
 # Lee:     $CHISPA_S3/{codigo.tgz,dev.tgz} y s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt (L2), todos por nombre exacto
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar.
 MIN=${CHISPA_MIN:-110}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-32}; VLLM=${CHISPA_VLLM:-0.33.0}
-D1=${CHISPA_D1:-14}; D2=${CHISPA_D2:-18}; D3=${CHISPA_D3:-26}; D4=${CHISPA_D4:-8}; D5=${CHISPA_D5:-8}   # minutos máximos por sistema (el 3 incluye cargar el modelo)
+D1=${CHISPA_D1:-14}; D2=${CHISPA_D2:-18}; D3=${CHISPA_D3:-26}; D4=${CHISPA_D4:-10}; D5=${CHISPA_D5:-8}   # minutos máximos por sistema (el 3 incluye cargar el modelo)
 REV4=cdbee75f17c01a7cc42f958dc650907174af0554; REV14=31c69efc29464b6bb0aee1398b5a7b50a99340c3; REVNLI=b5113eb38ab63efdd7f280f8c144ea8b13f978ce
 E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3; TRANSFORMERS=5.22.2
 CRIT_SHA=db6fdacba87fab217edee0e81c02f2729aaa0bcc1cee30c4cd29630d56c073bd; N_TEST=2930; N_SOP=728; CKPT=${CHISPA_CKPT:-s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt}
@@ -53,7 +53,7 @@ cliente() {
   ( cd "$REPO" && PYTHONPATH=$REPO "$VPY" -m model.alt.llm_logprobs "$@" ) & local p=$!
   while kill -0 $p 2>/dev/null; do
     if [ "$(date +%s)" -ge "$dl" ]; then echo "== corte por tiempo"; kill -TERM $p; sleep 5; kill -KILL $p 2>/dev/null; break; fi
-    sleep 5
+    sleep 1
   done; wait $p 2>/dev/null
 }
 urls() { for _ in $(seq "$2"); do printf -- '--url %s ' "$1"; done; }
@@ -173,7 +173,7 @@ if [ "$LOCAL" = 1 ] || [ -f "$BASE/nlp.ok" ]; then
     [ -f "$CK" ] && pred l2-zs "$D5" l2 --m1 "$CK" --dev "$BASE/dev" --salida "$PRED/l2-zs" --dispositivo $DISP "${MAXF[@]}" || estado l2-zs "FALLO: sin checkpoint"
   fi
   if [ "$(quedan_min)" -gt $((5 + ESPERA_MIN + 3)) ]; then
-    pred knn-e5-k8 "$D5" vectores --dev "$BASE/dev" --vec "$BASE/vec" --transformers "$TV" --hilos 4 && pred knn-e5-k8 "$D5" knn --dev "$BASE/dev" --vec "$BASE/vec" --salida "$PRED/knn-e5-k8"
+    pred knn-e5-k8 "$D5" vectores --dev "$BASE/dev" --vec "$BASE/vec" --transformers "$TV" --hilos 4 && pred knn-e5-k8 "$D5" knn --dev "$BASE/dev" --vec "$BASE/vec" --salida "$PRED/knn-e5-k8" "${MAXF[@]}"
   fi
 else fallo "pip del venv de transformers"; estado nlp "FALLO pip"; fi
 cierre
