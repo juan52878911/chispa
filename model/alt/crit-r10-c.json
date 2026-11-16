@@ -1,0 +1,31 @@
+{
+ "delta": "macro(oro32 + LLM) - macro(oro32), macro = media de la exactitud de las 6 tareas dev, en puntos porcentuales",
+ "etiqueta_llm": "top-1 de las probabilidades por logprobs de Qwen3-4B-Instruct-2507 (mediana CORAL en score); solo respuestas validas",
+ "informado_al_lado": "cabeza de prototipos (centroide normalizado por clase, coseno, softmax T = 0,05)",
+ "no_pasa": "todo lo demas",
+ "nombre": "CRIT_R10_C",
+ "pasa": {
+  "caida_max_por_tarea": 2.0,
+  "delta_min": 4.0
+ },
+ "refutado": {
+  "delta_menor_que": 1.0
+ },
+ "se_informa_tambien": [
+  "k = 8 (oro8 + LLM frente a oro8)",
+  "macro sin sinteticas (finanzas-documentos, horeca-resenas)",
+  "prototipos",
+  "IC95 por bootstrap sobre tareas",
+  "+-1 y MAE en las tareas score",
+  "acierto del etiquetador contra la etiqueta de la fuente"
+ ],
+ "sistema_principal": "kNN (32 vecinos, T = 0,05, fusion_knn_l2.knn) sobre e5-small @ 614241f6, transformers 5.22.2",
+ "soportes": [
+  "oro8",
+  "oro32",
+  "oro8+llm",
+  "oro32+llm",
+  "llm"
+ ],
+ "tareas_sin_fondo": "una tarea sin textos de fondo (poco train) cuenta con delta 0 en el macro"
+}
