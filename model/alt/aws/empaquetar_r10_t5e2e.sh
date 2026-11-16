@@ -16,7 +16,7 @@ cd "$(git rev-parse --show-toplevel)"
 sha=${1:?SHA}; sal=${2:?DIR_SALIDA}
 [ -n "${GO_SHA256:-}" ] || { echo "falta GO_SHA256 (sha256 de go1.27.1.linux-amd64.tar.gz): nada se descarga sin sha256" >&2; exit 1; }
 [[ $GO_SHA256 =~ ^[0-9a-f]{64}$ ]] || { echo "GO_SHA256 no es un sha256 en hex" >&2; exit 1; }
-for f in r10_t5e2e.sh r10_t5e2e_fases.sh r10_t5_cliente.py r10_cliente.py consultas_con_texto.py; do
+for f in r10_t5e2e.sh r10_t5e2e_fases.sh r10_t5e2e_descripciones.json r10_t5_cliente.py r10_cliente.py consultas_con_texto.py; do
   d=model/alt/aws; [ "$f" = consultas_con_texto.py ] && d=model/alt
   git cat-file -e "$sha:$d/$f" || { echo "$sha no trae $d/$f" >&2; exit 1; }
 done
@@ -35,7 +35,7 @@ if [ -n "${CHISPA_REMOTO:-}" ]; then
 fi
 [ -f "$FIXTURE/consultas.jsonl" ] && [ -f "$FIXTURE/referencia.json" ] && [ -f "$ONNX" ] || { echo "faltan consultas.jsonl, referencia.json o e5.onnx" >&2; exit 1; }
 # --- código de SHA
-git archive "$sha" server runtime/l1 runtime/tok runtime/torre format/chispa3 model/alt/aws/r10_t5e2e_fases.sh model/alt/aws/r10_t5_cliente.py model/alt/aws/r10_cliente.py model/alt/consultas_con_texto.py | tar -x -C "$t"
+git archive "$sha" server runtime/l1 runtime/tok runtime/torre format/chispa3 model/alt/aws/r10_t5e2e_fases.sh model/alt/aws/r10_t5e2e_descripciones.json model/alt/aws/r10_t5_cliente.py model/alt/aws/r10_cliente.py model/alt/consultas_con_texto.py | tar -x -C "$t"
 rm -rf "$t/server/deploy/resultados" "$t/server/deploy/aws/resultados"
 mod=$(go env GOMODCACHE)/cache/download; pq=$t/gomod-proxy
 copiar() { local m=$1 v=$2 d=$pq/$1/@v s=$mod/$1/@v; mkdir -p "$d"; for e in info mod zip ziphash; do cp "$s/$v.$e" "$d/$v.$e"; done; echo "$v" > "$d/list"; }
@@ -48,11 +48,12 @@ copiar github.com/juan52878911/kindling "$kv"; copiar github.com/yalue/onnxrunti
 chmod -R u+w "$t/.mc" "$t/.gp" 2>/dev/null || true; rm -rf "$t/.mc" "$t/.gp"
 find "$t" -name '._*' -delete
 tarz() { COPYFILE_DISABLE=1 tar --no-xattrs -czf "$1" -C "$2" "${@:3}" 2>/dev/null || COPYFILE_DISABLE=1 tar -czf "$1" -C "$2" "${@:3}"; }
-rm -f "$sal/codigo.tgz" "$sal/bancos.tgz"
+rm -f "$sal/codigo.tgz"; [ -n "${CHISPA_BANCOS_TGZ:-}" ] || rm -f "$sal/bancos.tgz"
 tarz "$sal/codigo.tgz" "$t" server runtime format model gomod-proxy
 # --- bancos, consultas con texto y onnx
-mkdir -p "$t/bancos"; cp "$FIXTURE"/banco-*.npy "$FIXTURE"/banco-*.jsonl "$FIXTURE/referencia.json" "$FIXTURE/consultas.npy" "$t/bancos/"
-tarz "$sal/bancos.tgz" "$t/bancos" .
+if [ -n "${CHISPA_BANCOS_TGZ:-}" ]; then cp "$CHISPA_BANCOS_TGZ" "$sal/bancos.tgz"   # reutiliza un bancos.tgz ya subido (el tar lleva mtimes: reempaquetar cambia su sha)
+else mkdir -p "$t/bancos"; cp "$FIXTURE"/banco-*.npy "$FIXTURE"/banco-*.jsonl "$FIXTURE/referencia.json" "$FIXTURE/consultas.npy" "$t/bancos/"
+  tarz "$sal/bancos.tgz" "$t/bancos" .; fi
 python3 "$t/model/alt/consultas_con_texto.py" --fixture "$FIXTURE" --bat "$BATS" --salida "$sal/consultas.jsonl"
 cp "$ONNX" "$sal/e5.onnx"
 for f in codigo.tgz bancos.tgz; do tar -tzf "$sal/$f" | grep -q '\._' && { echo "$f trae ._*" >&2; exit 1; }; done

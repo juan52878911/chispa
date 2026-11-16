@@ -35,6 +35,8 @@ type ConfigKNN struct {
 	// E5ONNX: ruta del ONNX de multilingual-e5-small sin ajustar (model/alt/exportar_e5_onnx.py, fp32 o int8). Con ella el servidor monta el
 	// codificador (CodificadorE5, binario con -tags ort y flag -tok) y el kNN contesta por HTTP; sin ella, el vector se inyecta (ConVectorConsulta).
 	E5ONNX string `json:"e5_onnx,omitempty"`
+	// E5Sesiones: sesiones ORT del codificador (cada una carga su copia de los pesos, ≈ 470 MB en fp32); 0 = min(4, núcleos).
+	E5Sesiones int `json:"e5_sesiones,omitempty"`
 }
 
 // TareaKNN describe una tarea.
@@ -51,6 +53,9 @@ func (c ConfigKNN) validar() error {
 	}
 	if !(c.Umbral >= 0 && c.Umbral <= 1) {
 		return fmt.Errorf("config: knn.umbral fuera de [0,1]: %v", c.Umbral)
+	}
+	if c.E5Sesiones < 0 {
+		return errors.New("config: knn.e5_sesiones no puede ser negativo")
 	}
 	if c.Vecinos < 0 || c.Temperatura < 0 || c.SOro < 0 || c.SOro > 1 {
 		return errors.New("config: knn.vecinos, temperatura y s_oro deben ser ≥ 0 (s_oro ≤ 1)")
