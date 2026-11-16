@@ -1910,3 +1910,56 @@ Criterio `d9ee43f5…`: macro-F1 de las 6 tareas dev, en int8, comparado con e5 
 - que el codificador agrupe peticiones en lotes y no cargue una copia de los pesos por sesión;
 - `runtime/tok`;
 - firmar los artefactos.
+
+### 17.18 T3a y T3b (preparados; código afb29a1, rama `r10-t3b` fusionada)
+
+**Sesgo de nivel en las tareas score** (predicciones de T3, solo dev): **no es un fallo de código.**
+- El mapeo A–K de usajobs es correcto y el orden de niveles de jql no está invertido.
+- Todos los niveles salen en el top 20, así que se conservan los logprobs de todos.
+
+El sesgo está en el modelo:
+- **jql:** el 4B zero-shot predice el nivel 4 en el 84 % de las filas, y el oro está en el nivel 1 en el 38 %. fs8 se escora hacia el nivel 5. La clase mayoritaria da 0,38 y el 4B 0,15: **el 4B queda por debajo de la mayoritaria.** Hipótesis: el modelo confunde la etiqueta (nota + 1) con la nota.
+- **usajobs:** el 4B zero-shot solo usa GS-7 y GS-11.
+- **horeca:** razonablemente diagonal.
+
+Score con los datos de T3, en macro de las 3 tareas:
+
+| | exactitud | QWK | MAE |
+|---|---|---|---|
+| base (4B zero-shot) | 0,267 | 0,463 | 1,51 |
+| esperanza ordinal | 0,266 | 0,465 | 1,50 |
+| fs8 | 0,304 | 0,570 | 1,37 |
+| mayoritaria | 0,223 | 0 | 2,76 |
+
+La esperanza ordinal sola no mueve nada.
+
+**T3a** (c7i, tope 40 min ≈ 0,24 USD; criterio informativo `fb0a6d5b…`):
+- Sistemas: kNN-e5 con k = 8, L2 zero-shot y mDeBERTa-NLI, más la mayoritaria como base.
+- Mayoritaria en dev: cfpb 0,112, congreso 0,5, finanzas 0,011, horeca 0,2, jql 0,38 y usajobs 0,09.
+- **Causa del fallo en T3:** transformers 5.22.2 exige torch ≥ 2.6. Ahora se usa torch 2.7.1 CPU.
+- NLI va con un tope de 40 filas por tarea porque en finanzas no cabe: 27 200 pares. Por eso es informativo.
+- Ficheros:
+  - User-data: `lanzados/ud-r10-t3a-afb29a1.sh` (sha256 `c5914597…`, 9 565 bytes).
+  - Entradas en `s3://…/r10-t3a-afb29a1/`: codigo.tgz `dc420f54…` y dev.tgz `bcf7859b…`.
+
+**T3b** (g5, tope 45 min ≈ 0,76 USD, solo el 4B; criterio `823cf37adf04d635ab201cee40b44d8abc699f7082c4f07c79c01bb360083cfb`; rúbrica `a89ec5b1…`).
+
+Score:
+- Base: el 4B zero-shot de T3.
+- Variantes:
+  - rúbrica por nivel, sacada del soporte de oro, con «Etiqueta N = nota N−1»;
+  - esperanza ordinal;
+  - esperanza ordinal con umbrales ajustados en el soporte (isotónica).
+- **PASA** si la exactitud macro de las 3 score sube ≥ +5, el QWK sube ≥ +0,15 y ninguna tarea queda por debajo de la mayoritaria del soporte (empate al menor id, lo que en jql obliga a llegar a 0,38).
+
+Choice (informativo):
+- finanzas con preselección top-k (k = 10 por kNN, recall@10 = 0,989).
+- **Dato de dev:** en finanzas, el kNN-e5 con k = 8 solo, tomando su top-1, da 0,761. El 4B zero-shot de T3 se queda en 0,703 en las filas que puntuó.
+
+Cliente: añade `--demos` en `llm_logprobs.py` para que D pueda dar las demostraciones de cada fila (apagado por defecto).
+
+Ficheros:
+- User-data: `lanzados/ud-r10-t3b-afb29a1.sh` (sha256 `fff6cfba…`, 13 839 bytes).
+- Entradas en `s3://…/r10-t3b-afb29a1/`: codigo.tgz `dc420f54…`, dev.tgz `d113e14f…` y t3.tgz `2cc557db…`.
+
+Las dos pruebas en seco en el i7 pasaron. El `--dry-run` da DryRunOperation en los dos.
