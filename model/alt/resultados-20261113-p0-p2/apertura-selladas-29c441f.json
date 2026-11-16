@@ -1,0 +1,1782 @@
+{
+ "criterio_sha256": "a79d33a9712d4c5a02228509e951ecc3764235b6d3a56afe8503edbc0b77cc9d",
+ "modo": "real",
+ "cascada_en_final": false,
+ "sistemas": {
+  "mayoritaria": {
+   "tareas": {
+    "arxiv-categoria": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "astro-ph.GA",
+      "exactitud_test": 0.054,
+      "oraculo_test_exactitud": 0.056
+     },
+     "exactitud": 0.054,
+     "exactitud_cubiertas": 0.054,
+     "ic95_filas": [
+      0.034,
+      0.074
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0
+    },
+    "congreso-grupo": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "GEH Bildu",
+      "exactitud_test": 0.11,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.11,
+     "exactitud_cubiertas": 0.11,
+     "ic95_filas": [
+      0.084,
+      0.138
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0
+    },
+    "disco-soneto-valencia": {
+     "n_test": 55,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.0364,
+      "oraculo_test_exactitud": 0.4727
+     },
+     "exactitud": 0.0364,
+     "exactitud_cubiertas": 0.0364,
+     "ic95_filas": [
+      0.0,
+      0.0909
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.2727,
+     "mae": 1.9455
+    },
+    "polite-cortesia": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.16,
+      "oraculo_test_exactitud": 0.335
+     },
+     "exactitud": 0.16,
+     "exactitud_cubiertas": 0.16,
+     "ic95_filas": [
+      0.11,
+      0.21
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.425,
+     "mae": 1.75
+    },
+    "promise-requisitos": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "A",
+      "exactitud_test": 0.026,
+      "oraculo_test_exactitud": 0.426
+     },
+     "exactitud": 0.026,
+     "exactitud_cubiertas": 0.026,
+     "ic95_filas": [
+      0.014,
+      0.04
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0
+    },
+    "ropa-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.2,
+     "exactitud_cubiertas": 0.2,
+     "ic95_filas": [
+      0.166,
+      0.234
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.4,
+     "mae": 2.0
+    },
+    "rtp-toxicidad": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.2,
+     "exactitud_cubiertas": 0.2,
+     "ic95_filas": [
+      0.168,
+      0.236
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0,
+     "modo_score": "mediana",
+     "qwk": 0.0,
+     "exactitud_pm1": 0.4,
+     "mae": 2.0
+    },
+    "unlu-consultas": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Boleto Universitario",
+      "exactitud_test": 0.24,
+      "oraculo_test_exactitud": 0.24
+     },
+     "exactitud": 0.24,
+     "exactitud_cubiertas": 0.24,
+     "ic95_filas": [
+      0.185,
+      0.3
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 0.0,
+     "lat_ms_p95": 0.0
+    }
+   },
+   "macro": {
+    "valor": 0.1283,
+    "ic95_tareas": [
+     0.0748,
+     0.1818
+    ],
+    "n_tareas": 8
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.1283,
+    "ic95_tareas": [
+     0.0748,
+     0.1818
+    ],
+    "n_tareas": 8
+   },
+   "cobertura_total": 1.0,
+   "invalidas_total": 0,
+   "macro_score": {
+    "n_tareas": 4,
+    "exactitud": 0.1491,
+    "qwk": 0.0,
+    "mae": 1.9239,
+    "exactitud_pm1": 0.3744,
+    "exactitud_sin_sinteticas": 0.1491,
+    "qwk_sin_sinteticas": 0.0
+   },
+   "macro_tipo": {
+    "choice": {
+     "valor": 0.1075,
+     "ic95_tareas": [
+      0.04,
+      0.1935
+     ],
+     "n_tareas": 4
+    },
+    "score": {
+     "valor": 0.1491,
+     "ic95_tareas": [
+      0.0773,
+      0.2
+     ],
+     "n_tareas": 4
+    }
+   }
+  },
+  "knn": {
+   "tareas": {
+    "arxiv-categoria": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "astro-ph.GA",
+      "exactitud_test": 0.054,
+      "oraculo_test_exactitud": 0.056
+     },
+     "exactitud": 0.528,
+     "exactitud_cubiertas": 0.528,
+     "ic95_filas": [
+      0.484,
+      0.57
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.94,
+     "lat_ms_p95": 84.94
+    },
+    "congreso-grupo": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "GEH Bildu",
+      "exactitud_test": 0.11,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.332,
+     "exactitud_cubiertas": 0.332,
+     "ic95_filas": [
+      0.294,
+      0.372
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.92,
+     "lat_ms_p95": 84.92
+    },
+    "disco-soneto-valencia": {
+     "n_test": 55,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.0364,
+      "oraculo_test_exactitud": 0.4727
+     },
+     "exactitud": 0.4727,
+     "exactitud_cubiertas": 0.4727,
+     "ic95_filas": [
+      0.3455,
+      0.6
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.93,
+     "lat_ms_p95": 84.93,
+     "modo_score": "mediana",
+     "qwk": 0.3152,
+     "exactitud_pm1": 0.9455,
+     "mae": 0.5818
+    },
+    "polite-cortesia": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.16,
+      "oraculo_test_exactitud": 0.335
+     },
+     "exactitud": 0.28,
+     "exactitud_cubiertas": 0.28,
+     "ic95_filas": [
+      0.22,
+      0.34
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.92,
+     "lat_ms_p95": 84.92,
+     "modo_score": "mediana",
+     "qwk": 0.3333,
+     "exactitud_pm1": 0.915,
+     "mae": 0.805
+    },
+    "promise-requisitos": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "A",
+      "exactitud_test": 0.026,
+      "oraculo_test_exactitud": 0.426
+     },
+     "exactitud": 0.418,
+     "exactitud_cubiertas": 0.418,
+     "ic95_filas": [
+      0.376,
+      0.46
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.92,
+     "lat_ms_p95": 84.92
+    },
+    "ropa-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.296,
+     "exactitud_cubiertas": 0.296,
+     "ic95_filas": [
+      0.258,
+      0.336
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.92,
+     "lat_ms_p95": 84.92,
+     "modo_score": "mediana",
+     "qwk": 0.5572,
+     "exactitud_pm1": 0.878,
+     "mae": 0.832
+    },
+    "rtp-toxicidad": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.23,
+     "exactitud_cubiertas": 0.23,
+     "ic95_filas": [
+      0.192,
+      0.268
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.92,
+     "lat_ms_p95": 84.92,
+     "modo_score": "mediana",
+     "qwk": 0.2073,
+     "exactitud_pm1": 0.686,
+     "mae": 1.124
+    },
+    "unlu-consultas": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Boleto Universitario",
+      "exactitud_test": 0.24,
+      "oraculo_test_exactitud": 0.24
+     },
+     "exactitud": 0.655,
+     "exactitud_cubiertas": 0.655,
+     "ic95_filas": [
+      0.59,
+      0.72
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 84.94,
+     "lat_ms_p95": 84.94
+    }
+   },
+   "macro": {
+    "valor": 0.4015,
+    "ic95_tareas": [
+     0.3111,
+     0.4964
+    ],
+    "n_tareas": 8
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.4015,
+    "ic95_tareas": [
+     0.3111,
+     0.4964
+    ],
+    "n_tareas": 8
+   },
+   "cobertura_total": 1.0,
+   "invalidas_total": 0,
+   "macro_score": {
+    "n_tareas": 4,
+    "exactitud": 0.3197,
+    "qwk": 0.3533,
+    "mae": 0.8357,
+    "exactitud_pm1": 0.8561,
+    "exactitud_sin_sinteticas": 0.3197,
+    "qwk_sin_sinteticas": 0.3533
+   },
+   "macro_tipo": {
+    "choice": {
+     "valor": 0.4833,
+     "ic95_tareas": [
+      0.375,
+      0.5958
+     ],
+     "n_tareas": 4
+    },
+    "score": {
+     "valor": 0.3197,
+     "ic95_tareas": [
+      0.2465,
+      0.4245
+     ],
+     "n_tareas": 4
+    }
+   }
+  },
+  "zs": {
+   "tareas": {
+    "arxiv-categoria": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "astro-ph.GA",
+      "exactitud_test": 0.054,
+      "oraculo_test_exactitud": 0.056
+     },
+     "exactitud": 0.448,
+     "exactitud_cubiertas": 0.448,
+     "ic95_filas": [
+      0.406,
+      0.492
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 6788.5,
+     "lat_ms_p95": 16518.25
+    },
+    "congreso-grupo": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "GEH Bildu",
+      "exactitud_test": 0.11,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.216,
+     "exactitud_cubiertas": 0.216,
+     "ic95_filas": [
+      0.18,
+      0.25
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 3728.0,
+     "lat_ms_p95": 7594.0
+    },
+    "disco-soneto-valencia": {
+     "n_test": 55,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.0364,
+      "oraculo_test_exactitud": 0.4727
+     },
+     "exactitud": 0.4364,
+     "exactitud_cubiertas": 0.4364,
+     "ic95_filas": [
+      0.3091,
+      0.5636
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 795.0,
+     "lat_ms_p95": 864.3,
+     "modo_score": "mediana",
+     "qwk": 0.4606,
+     "exactitud_pm1": 1.0,
+     "mae": 0.5636
+    },
+    "polite-cortesia": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.16,
+      "oraculo_test_exactitud": 0.335
+     },
+     "exactitud": 0.43,
+     "exactitud_cubiertas": 0.43,
+     "ic95_filas": [
+      0.365,
+      0.5
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 245.5,
+     "lat_ms_p95": 287.05,
+     "modo_score": "mediana",
+     "qwk": 0.5917,
+     "exactitud_pm1": 0.91,
+     "mae": 0.67
+    },
+    "promise-requisitos": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "A",
+      "exactitud_test": 0.026,
+      "oraculo_test_exactitud": 0.426
+     },
+     "exactitud": 0.674,
+     "exactitud_cubiertas": 0.674,
+     "ic95_filas": [
+      0.634,
+      0.718
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 2602.0,
+     "lat_ms_p95": 4610.0
+    },
+    "ropa-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.472,
+     "exactitud_cubiertas": 0.472,
+     "ic95_filas": [
+      0.428,
+      0.516
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 477.0,
+     "lat_ms_p95": 525.05,
+     "modo_score": "mediana",
+     "qwk": 0.787,
+     "exactitud_pm1": 0.95,
+     "mae": 0.586
+    },
+    "rtp-toxicidad": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.328,
+     "exactitud_cubiertas": 0.328,
+     "ic95_filas": [
+      0.288,
+      0.37
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 171.0,
+     "lat_ms_p95": 200.0,
+     "modo_score": "mediana",
+     "qwk": 0.4531,
+     "exactitud_pm1": 0.722,
+     "mae": 1.028
+    },
+    "unlu-consultas": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Boleto Universitario",
+      "exactitud_test": 0.24,
+      "oraculo_test_exactitud": 0.24
+     },
+     "exactitud": 0.6,
+     "exactitud_cubiertas": 0.6,
+     "ic95_filas": [
+      0.53,
+      0.67
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 4658.5,
+     "lat_ms_p95": 11923.05
+    }
+   },
+   "macro": {
+    "valor": 0.4506,
+    "ic95_tareas": [
+     0.3606,
+     0.5398
+    ],
+    "n_tareas": 8
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.4506,
+    "ic95_tareas": [
+     0.3606,
+     0.5398
+    ],
+    "n_tareas": 8
+   },
+   "cobertura_total": 1.0,
+   "invalidas_total": 0,
+   "macro_score": {
+    "n_tareas": 4,
+    "exactitud": 0.4166,
+    "qwk": 0.5731,
+    "mae": 0.7119,
+    "exactitud_pm1": 0.8955,
+    "exactitud_sin_sinteticas": 0.4166,
+    "qwk_sin_sinteticas": 0.5731
+   },
+   "macro_tipo": {
+    "choice": {
+     "valor": 0.4845,
+     "ic95_tareas": [
+      0.312,
+      0.637
+     ],
+     "n_tareas": 4
+    },
+    "score": {
+     "valor": 0.4166,
+     "ic95_tareas": [
+      0.3551,
+      0.4615
+     ],
+     "n_tareas": 4
+    }
+   }
+  },
+  "fs8-azar": {
+   "tareas": {
+    "arxiv-categoria": {
+     "n_test": 500,
+     "cobertura": 0.942,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "astro-ph.GA",
+      "exactitud_test": 0.054,
+      "oraculo_test_exactitud": 0.056
+     },
+     "exactitud": 0.614,
+     "exactitud_cubiertas": 0.6518,
+     "ic95_filas": [
+      0.572,
+      0.658
+     ],
+     "invalidas": 29,
+     "lat_ms_p50": 112174.0,
+     "lat_ms_p95": 116580.0
+    },
+    "congreso-grupo": {
+     "n_test": 500,
+     "cobertura": 0.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "GEH Bildu",
+      "exactitud_test": 0.11,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.0,
+     "exactitud_cubiertas": null,
+     "ic95_filas": [
+      0.0,
+      0.0
+     ],
+     "invalidas": 500,
+     "lat_ms_p50": null,
+     "lat_ms_p95": null
+    },
+    "disco-soneto-valencia": {
+     "n_test": 55,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.0364,
+      "oraculo_test_exactitud": 0.4727
+     },
+     "exactitud": 0.4182,
+     "exactitud_cubiertas": 0.4182,
+     "ic95_filas": [
+      0.2909,
+      0.5455
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 960.0,
+     "lat_ms_p95": 1577.0,
+     "modo_score": "mediana",
+     "qwk": 0.5414,
+     "exactitud_pm1": 0.8909,
+     "mae": 0.6909
+    },
+    "polite-cortesia": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.16,
+      "oraculo_test_exactitud": 0.335
+     },
+     "exactitud": 0.41,
+     "exactitud_cubiertas": 0.41,
+     "ic95_filas": [
+      0.3449,
+      0.48
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 258.5,
+     "lat_ms_p95": 508.05,
+     "modo_score": "mediana",
+     "qwk": 0.4965,
+     "exactitud_pm1": 0.8,
+     "mae": 0.805
+    },
+    "promise-requisitos": {
+     "n_test": 500,
+     "cobertura": 0.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "A",
+      "exactitud_test": 0.026,
+      "oraculo_test_exactitud": 0.426
+     },
+     "exactitud": 0.0,
+     "exactitud_cubiertas": null,
+     "ic95_filas": [
+      0.0,
+      0.0
+     ],
+     "invalidas": 500,
+     "lat_ms_p50": null,
+     "lat_ms_p95": null
+    },
+    "ropa-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.548,
+     "exactitud_cubiertas": 0.548,
+     "ic95_filas": [
+      0.504,
+      0.592
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 4026.5,
+     "lat_ms_p95": 8971.75,
+     "modo_score": "mediana",
+     "qwk": 0.8169,
+     "exactitud_pm1": 0.948,
+     "mae": 0.51
+    },
+    "rtp-toxicidad": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.328,
+     "exactitud_cubiertas": 0.328,
+     "ic95_filas": [
+      0.286,
+      0.37
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 215.0,
+     "lat_ms_p95": 328.0,
+     "modo_score": "mediana",
+     "qwk": 0.4597,
+     "exactitud_pm1": 0.704,
+     "mae": 1.118
+    },
+    "unlu-consultas": {
+     "n_test": 200,
+     "cobertura": 0.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Boleto Universitario",
+      "exactitud_test": 0.24,
+      "oraculo_test_exactitud": 0.24
+     },
+     "exactitud": 0.0,
+     "exactitud_cubiertas": null,
+     "ic95_filas": [
+      0.0,
+      0.0
+     ],
+     "invalidas": 200,
+     "lat_ms_p50": null,
+     "lat_ms_p95": null
+    }
+   },
+   "macro": {
+    "valor": 0.2898,
+    "ic95_tareas": [
+     0.1208,
+     0.4553
+    ],
+    "n_tareas": 8
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.2898,
+    "ic95_tareas": [
+     0.1208,
+     0.4553
+    ],
+    "n_tareas": 8
+   },
+   "cobertura_total": 0.5841,
+   "invalidas_total": 1229,
+   "macro_score": {
+    "n_tareas": 4,
+    "exactitud": 0.4261,
+    "qwk": 0.5786,
+    "mae": 0.781,
+    "exactitud_pm1": 0.8357,
+    "exactitud_sin_sinteticas": 0.4261,
+    "qwk_sin_sinteticas": 0.5786
+   },
+   "macro_tipo": {
+    "choice": {
+     "valor": 0.1535,
+     "ic95_tareas": [
+      0.0,
+      0.4605
+     ],
+     "n_tareas": 4
+    },
+    "score": {
+     "valor": 0.4261,
+     "ic95_tareas": [
+      0.3506,
+      0.5135
+     ],
+     "n_tareas": 4
+    }
+   }
+  },
+  "final": {
+   "tareas": {
+    "arxiv-categoria": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "astro-ph.GA",
+      "exactitud_test": 0.054,
+      "oraculo_test_exactitud": 0.056
+     },
+     "exactitud": 0.758,
+     "exactitud_cubiertas": 0.758,
+     "ic95_filas": [
+      0.72,
+      0.796
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 141904.5,
+     "lat_ms_p95": 144321.75
+    },
+    "congreso-grupo": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "GEH Bildu",
+      "exactitud_test": 0.11,
+      "oraculo_test_exactitud": 0.112
+     },
+     "exactitud": 0.316,
+     "exactitud_cubiertas": 0.316,
+     "ic95_filas": [
+      0.278,
+      0.356
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 26906.0,
+     "lat_ms_p95": 54611.55
+    },
+    "disco-soneto-valencia": {
+     "n_test": 55,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.0364,
+      "oraculo_test_exactitud": 0.4727
+     },
+     "exactitud": 0.2727,
+     "exactitud_cubiertas": 0.2727,
+     "ic95_filas": [
+      0.1636,
+      0.3818
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 747.0,
+     "lat_ms_p95": 974.6,
+     "modo_score": "umbrales",
+     "qwk": 0.4372,
+     "exactitud_pm1": 0.8909,
+     "mae": 0.8364
+    },
+    "polite-cortesia": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.16,
+      "oraculo_test_exactitud": 0.335
+     },
+     "exactitud": 0.43,
+     "exactitud_cubiertas": 0.43,
+     "ic95_filas": [
+      0.365,
+      0.5
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 286.0,
+     "lat_ms_p95": 396.05,
+     "modo_score": "umbrales",
+     "qwk": 0.4615,
+     "exactitud_pm1": 0.79,
+     "mae": 0.795
+    },
+    "promise-requisitos": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "A",
+      "exactitud_test": 0.026,
+      "oraculo_test_exactitud": 0.426
+     },
+     "exactitud": 0.59,
+     "exactitud_cubiertas": 0.59,
+     "ic95_filas": [
+      0.546,
+      0.634
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 21425.5,
+     "lat_ms_p95": 55694.05
+    },
+    "ropa-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.532,
+     "exactitud_cubiertas": 0.532,
+     "ic95_filas": [
+      0.488,
+      0.576
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 489.0,
+     "lat_ms_p95": 547.35,
+     "modo_score": "umbrales",
+     "qwk": 0.8161,
+     "exactitud_pm1": 0.924,
+     "mae": 0.55
+    },
+    "rtp-toxicidad": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "mayoritaria": {
+      "clase": "1",
+      "exactitud_test": 0.2,
+      "oraculo_test_exactitud": 0.2
+     },
+     "exactitud": 0.322,
+     "exactitud_cubiertas": 0.322,
+     "ic95_filas": [
+      0.282,
+      0.364
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 186.0,
+     "lat_ms_p95": 229.1,
+     "modo_score": "umbrales",
+     "qwk": 0.5588,
+     "exactitud_pm1": 0.744,
+     "mae": 1.006
+    },
+    "unlu-consultas": {
+     "n_test": 200,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "mayoritaria": {
+      "clase": "Boleto Universitario",
+      "exactitud_test": 0.24,
+      "oraculo_test_exactitud": 0.24
+     },
+     "exactitud": 0.79,
+     "exactitud_cubiertas": 0.79,
+     "ic95_filas": [
+      0.735,
+      0.845
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 75602.5,
+     "lat_ms_p95": 95118.15
+    }
+   },
+   "macro": {
+    "valor": 0.5013,
+    "ic95_tareas": [
+     0.376,
+     0.6363
+    ],
+    "n_tareas": 8
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.5013,
+    "ic95_tareas": [
+     0.376,
+     0.6363
+    ],
+    "n_tareas": 8
+   },
+   "cobertura_total": 1.0,
+   "invalidas_total": 0,
+   "macro_score": {
+    "n_tareas": 4,
+    "exactitud": 0.3892,
+    "qwk": 0.5684,
+    "mae": 0.7969,
+    "exactitud_pm1": 0.8372,
+    "exactitud_sin_sinteticas": 0.3892,
+    "qwk_sin_sinteticas": 0.5684
+   },
+   "macro_tipo": {
+    "choice": {
+     "valor": 0.6135,
+     "ic95_tareas": [
+      0.4265,
+      0.774
+     ],
+     "n_tareas": 4
+    },
+    "score": {
+     "valor": 0.3892,
+     "ic95_tareas": [
+      0.285,
+      0.481
+     ],
+     "n_tareas": 4
+    }
+   }
+  }
+ },
+ "umbrales": {
+  "disco-soneto-valencia": [
+   2.499986,
+   2.999986,
+   3.003346
+  ],
+  "polite-cortesia": [
+   1.999952,
+   2.999952,
+   3.00261
+  ],
+  "ropa-resenas": [
+   1.500048,
+   2.250024,
+   3.499832,
+   3.999832
+  ],
+  "rtp-toxicidad": [
+   1.000003,
+   1.754498,
+   2.508992,
+   3.25291
+  ]
+ },
+ "cascada_informativa": {
+  "u": 0.039217,
+  "l3": "final",
+  "en_final": false,
+  "por_tarea": {
+   "arxiv-categoria": {
+    "cascada": 0.694,
+    "escalado": 0.456,
+    "knn": 0.528,
+    "final": 0.758,
+    "tipo": "choice"
+   },
+   "congreso-grupo": {
+    "cascada": 0.328,
+    "escalado": 0.542,
+    "knn": 0.332,
+    "final": 0.316,
+    "tipo": "choice"
+   },
+   "disco-soneto-valencia": {
+    "cascada": 0.3273,
+    "escalado": 0.9273,
+    "knn": 0.4727,
+    "final": 0.2727,
+    "tipo": "score"
+   },
+   "polite-cortesia": {
+    "cascada": 0.33,
+    "escalado": 0.69,
+    "knn": 0.28,
+    "final": 0.43,
+    "tipo": "score"
+   },
+   "promise-requisitos": {
+    "cascada": 0.578,
+    "escalado": 0.544,
+    "knn": 0.418,
+    "final": 0.59,
+    "tipo": "choice"
+   },
+   "ropa-resenas": {
+    "cascada": 0.47,
+    "escalado": 0.718,
+    "knn": 0.296,
+    "final": 0.532,
+    "tipo": "score"
+   },
+   "rtp-toxicidad": {
+    "cascada": 0.3,
+    "escalado": 0.486,
+    "knn": 0.23,
+    "final": 0.322,
+    "tipo": "score"
+   },
+   "unlu-consultas": {
+    "cascada": 0.775,
+    "escalado": 0.39,
+    "knn": 0.655,
+    "final": 0.79,
+    "tipo": "choice"
+   }
+  },
+  "macro": {
+   "choice": {
+    "cascada": 0.5938,
+    "escalado": 0.483
+   },
+   "score": {
+    "cascada": 0.3568,
+    "escalado": 0.7053
+   }
+  }
+ },
+ "diferencias_final_menos": {
+  "mayoritaria": {
+   "choice": {
+    "dif": 0.506,
+    "ic95_tareas": [
+     0.2955,
+     0.6655
+    ],
+    "ic95_filas": [
+     0.506,
+     0.4788,
+     0.5308
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "arxiv-categoria": 0.704,
+     "congreso-grupo": 0.206,
+     "promise-requisitos": 0.564,
+     "unlu-consultas": 0.55
+    }
+   },
+   "score": {
+    "dif": 0.2401,
+    "ic95_tareas": [
+     0.159,
+     0.3081
+    ],
+    "ic95_filas": [
+     0.2401,
+     0.2,
+     0.2797
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "disco-soneto-valencia": 0.2364,
+     "polite-cortesia": 0.27,
+     "ropa-resenas": 0.332,
+     "rtp-toxicidad": 0.122
+    }
+   },
+   "global": {
+    "dif": 0.373,
+    "ic95_tareas": [
+     0.244,
+     0.5088
+    ],
+    "ic95_filas": [
+     0.373,
+     0.3504,
+     0.3973
+    ],
+    "n_tareas": 8,
+    "por_tarea": {
+     "arxiv-categoria": 0.704,
+     "congreso-grupo": 0.206,
+     "disco-soneto-valencia": 0.2364,
+     "polite-cortesia": 0.27,
+     "promise-requisitos": 0.564,
+     "ropa-resenas": 0.332,
+     "rtp-toxicidad": 0.122,
+     "unlu-consultas": 0.55
+    }
+   }
+  },
+  "knn": {
+   "choice": {
+    "dif": 0.1303,
+    "ic95_tareas": [
+     0.031,
+     0.2063
+    ],
+    "ic95_filas": [
+     0.1303,
+     0.1022,
+     0.1578
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "arxiv-categoria": 0.23,
+     "congreso-grupo": -0.016,
+     "promise-requisitos": 0.172,
+     "unlu-consultas": 0.135
+    }
+   },
+   "score": {
+    "dif": 0.0695,
+    "ic95_tareas": [
+     -0.127,
+     0.2
+    ],
+    "ic95_filas": [
+     0.0695,
+     0.0186,
+     0.1204
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "disco-soneto-valencia": -0.2,
+     "polite-cortesia": 0.15,
+     "ropa-resenas": 0.236,
+     "rtp-toxicidad": 0.092
+    }
+   },
+   "global": {
+    "dif": 0.0999,
+    "ic95_tareas": [
+     -0.0003,
+     0.1835
+    ],
+    "ic95_filas": [
+     0.0999,
+     0.0716,
+     0.1276
+    ],
+    "n_tareas": 8,
+    "por_tarea": {
+     "arxiv-categoria": 0.23,
+     "congreso-grupo": -0.016,
+     "disco-soneto-valencia": -0.2,
+     "polite-cortesia": 0.15,
+     "promise-requisitos": 0.172,
+     "ropa-resenas": 0.236,
+     "rtp-toxicidad": 0.092,
+     "unlu-consultas": 0.135
+    }
+   }
+  },
+  "zs": {
+   "choice": {
+    "dif": 0.129,
+    "ic95_tareas": [
+     -0.0155,
+     0.28
+    ],
+    "ic95_filas": [
+     0.129,
+     0.103,
+     0.154
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "arxiv-categoria": 0.31,
+     "congreso-grupo": 0.1,
+     "promise-requisitos": -0.084,
+     "unlu-consultas": 0.19
+    }
+   },
+   "score": {
+    "dif": -0.0274,
+    "ic95_tareas": [
+     -0.1242,
+     0.0435
+    ],
+    "ic95_filas": [
+     -0.0274,
+     -0.0664,
+     0.0096
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "disco-soneto-valencia": -0.1636,
+     "polite-cortesia": 0.0,
+     "ropa-resenas": 0.06,
+     "rtp-toxicidad": -0.006
+    }
+   },
+   "global": {
+    "dif": 0.0508,
+    "ic95_tareas": [
+     -0.0432,
+     0.1553
+    ],
+    "ic95_filas": [
+     0.0508,
+     0.027,
+     0.0735
+    ],
+    "n_tareas": 8,
+    "por_tarea": {
+     "arxiv-categoria": 0.31,
+     "congreso-grupo": 0.1,
+     "disco-soneto-valencia": -0.1636,
+     "polite-cortesia": 0.0,
+     "promise-requisitos": -0.084,
+     "ropa-resenas": 0.06,
+     "rtp-toxicidad": -0.006,
+     "unlu-consultas": 0.19
+    }
+   }
+  },
+  "fs8-azar": {
+   "choice": {
+    "dif": 0.46,
+    "ic95_tareas": [
+     0.23,
+     0.69
+    ],
+    "ic95_filas": [
+     0.46,
+     0.4367,
+     0.4827
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "arxiv-categoria": 0.144,
+     "congreso-grupo": 0.316,
+     "promise-requisitos": 0.59,
+     "unlu-consultas": 0.79
+    }
+   },
+   "score": {
+    "dif": -0.0369,
+    "ic95_tareas": [
+     -0.1106,
+     0.011
+    ],
+    "ic95_filas": [
+     -0.0369,
+     -0.0884,
+     0.0123
+    ],
+    "n_tareas": 4,
+    "por_tarea": {
+     "disco-soneto-valencia": -0.1455,
+     "polite-cortesia": 0.02,
+     "ropa-resenas": -0.016,
+     "rtp-toxicidad": -0.006
+    }
+   },
+   "global": {
+    "dif": 0.2116,
+    "ic95_tareas": [
+     0.006,
+     0.4241
+    ],
+    "ic95_filas": [
+     0.2116,
+     0.1851,
+     0.2396
+    ],
+    "n_tareas": 8,
+    "por_tarea": {
+     "arxiv-categoria": 0.144,
+     "congreso-grupo": 0.316,
+     "disco-soneto-valencia": -0.1455,
+     "polite-cortesia": 0.02,
+     "promise-requisitos": 0.59,
+     "ropa-resenas": -0.016,
+     "rtp-toxicidad": -0.006,
+     "unlu-consultas": 0.79
+    }
+   }
+  }
+ },
+ "macro_global": {
+  "mayoritaria": {
+   "valor": 0.1283,
+   "ic95_tareas": [
+    0.0748,
+    0.1818
+   ]
+  },
+  "knn": {
+   "valor": 0.4015,
+   "ic95_tareas": [
+    0.3111,
+    0.4964
+   ]
+  },
+  "zs": {
+   "valor": 0.4506,
+   "ic95_tareas": [
+    0.3606,
+    0.5398
+   ]
+  },
+  "fs8-azar": {
+   "valor": 0.2898,
+   "ic95_tareas": [
+    0.1208,
+    0.4553
+   ]
+  },
+  "final": {
+   "valor": 0.5013,
+   "ic95_tareas": [
+    0.376,
+    0.6363
+   ]
+  }
+ },
+ "cobertura": {
+  "mayoritaria": {
+   "arxiv-categoria": 1.0,
+   "congreso-grupo": 1.0,
+   "disco-soneto-valencia": 1.0,
+   "polite-cortesia": 1.0,
+   "promise-requisitos": 1.0,
+   "ropa-resenas": 1.0,
+   "rtp-toxicidad": 1.0,
+   "unlu-consultas": 1.0
+  },
+  "knn": {
+   "arxiv-categoria": 1.0,
+   "congreso-grupo": 1.0,
+   "disco-soneto-valencia": 1.0,
+   "polite-cortesia": 1.0,
+   "promise-requisitos": 1.0,
+   "ropa-resenas": 1.0,
+   "rtp-toxicidad": 1.0,
+   "unlu-consultas": 1.0
+  },
+  "zs": {
+   "arxiv-categoria": 1.0,
+   "congreso-grupo": 1.0,
+   "disco-soneto-valencia": 1.0,
+   "polite-cortesia": 1.0,
+   "promise-requisitos": 1.0,
+   "ropa-resenas": 1.0,
+   "rtp-toxicidad": 1.0,
+   "unlu-consultas": 1.0
+  },
+  "fs8-azar": {
+   "arxiv-categoria": 0.942,
+   "congreso-grupo": 0.0,
+   "disco-soneto-valencia": 1.0,
+   "polite-cortesia": 1.0,
+   "promise-requisitos": 0.0,
+   "ropa-resenas": 1.0,
+   "rtp-toxicidad": 1.0,
+   "unlu-consultas": 0.0
+  },
+  "final": {
+   "arxiv-categoria": 1.0,
+   "congreso-grupo": 1.0,
+   "disco-soneto-valencia": 1.0,
+   "polite-cortesia": 1.0,
+   "promise-requisitos": 1.0,
+   "ropa-resenas": 1.0,
+   "rtp-toxicidad": 1.0,
+   "unlu-consultas": 1.0
+  }
+ },
+ "veredicto": {
+  "estado": "medido",
+  "motivo": "final y 4B zs cubren el 100 % de las tareas selladas",
+  "invalidas": {
+   "final": 0,
+   "zs": 0
+  },
+  "lectura": {
+   "choice": {
+    "final": {
+     "valor": 0.6135,
+     "ic95_tareas": [
+      0.4265,
+      0.774
+     ],
+     "n_tareas": 4
+    },
+    "zs": {
+     "valor": 0.4845,
+     "ic95_tareas": [
+      0.312,
+      0.637
+     ],
+     "n_tareas": 4
+    },
+    "mayoritaria": {
+     "valor": 0.1075,
+     "ic95_tareas": [
+      0.04,
+      0.1935
+     ],
+     "n_tareas": 4
+    },
+    "final_menos_zs": {
+     "dif": 0.129,
+     "ic95_tareas": [
+      -0.0155,
+      0.28
+     ],
+     "ic95_filas": [
+      0.129,
+      0.103,
+      0.154
+     ],
+     "n_tareas": 4,
+     "por_tarea": {
+      "arxiv-categoria": 0.31,
+      "congreso-grupo": 0.1,
+      "promise-requisitos": -0.084,
+      "unlu-consultas": 0.19
+     }
+    },
+    "final_menos_mayoritaria": {
+     "dif": 0.506,
+     "ic95_tareas": [
+      0.2955,
+      0.6655
+     ],
+     "ic95_filas": [
+      0.506,
+      0.4788,
+      0.5308
+     ],
+     "n_tareas": 4,
+     "por_tarea": {
+      "arxiv-categoria": 0.704,
+      "congreso-grupo": 0.206,
+      "promise-requisitos": 0.564,
+      "unlu-consultas": 0.55
+     }
+    }
+   },
+   "score": {
+    "final": {
+     "valor": 0.3892,
+     "ic95_tareas": [
+      0.285,
+      0.481
+     ],
+     "n_tareas": 4
+    },
+    "zs": {
+     "valor": 0.4166,
+     "ic95_tareas": [
+      0.3551,
+      0.4615
+     ],
+     "n_tareas": 4
+    },
+    "mayoritaria": {
+     "valor": 0.1491,
+     "ic95_tareas": [
+      0.0773,
+      0.2
+     ],
+     "n_tareas": 4
+    },
+    "final_menos_zs": {
+     "dif": -0.0274,
+     "ic95_tareas": [
+      -0.1242,
+      0.0435
+     ],
+     "ic95_filas": [
+      -0.0274,
+      -0.0664,
+      0.0096
+     ],
+     "n_tareas": 4,
+     "por_tarea": {
+      "disco-soneto-valencia": -0.1636,
+      "polite-cortesia": 0.0,
+      "ropa-resenas": 0.06,
+      "rtp-toxicidad": -0.006
+     }
+    },
+    "final_menos_mayoritaria": {
+     "dif": 0.2401,
+     "ic95_tareas": [
+      0.159,
+      0.3081
+     ],
+     "ic95_filas": [
+      0.2401,
+      0.2,
+      0.2797
+     ],
+     "n_tareas": 4,
+     "por_tarea": {
+      "disco-soneto-valencia": 0.2364,
+      "polite-cortesia": 0.27,
+      "ropa-resenas": 0.332,
+      "rtp-toxicidad": 0.122
+     }
+    }
+   },
+   "global": {
+    "final": {
+     "valor": 0.5013,
+     "ic95_tareas": [
+      0.376,
+      0.6363
+     ],
+     "n_tareas": 8
+    },
+    "zs": {
+     "valor": 0.4506,
+     "ic95_tareas": [
+      0.3606,
+      0.5398
+     ],
+     "n_tareas": 8
+    },
+    "mayoritaria": {
+     "valor": 0.1283,
+     "ic95_tareas": [
+      0.0748,
+      0.1818
+     ],
+     "n_tareas": 8
+    },
+    "final_menos_zs": {
+     "dif": 0.0508,
+     "ic95_tareas": [
+      -0.0432,
+      0.1553
+     ],
+     "ic95_filas": [
+      0.0508,
+      0.027,
+      0.0735
+     ],
+     "n_tareas": 8,
+     "por_tarea": {
+      "arxiv-categoria": 0.31,
+      "congreso-grupo": 0.1,
+      "disco-soneto-valencia": -0.1636,
+      "polite-cortesia": 0.0,
+      "promise-requisitos": -0.084,
+      "ropa-resenas": 0.06,
+      "rtp-toxicidad": -0.006,
+      "unlu-consultas": 0.19
+     }
+    },
+    "final_menos_mayoritaria": {
+     "dif": 0.373,
+     "ic95_tareas": [
+      0.244,
+      0.5088
+     ],
+     "ic95_filas": [
+      0.373,
+      0.3504,
+      0.3973
+     ],
+     "n_tareas": 8,
+     "por_tarea": {
+      "arxiv-categoria": 0.704,
+      "congreso-grupo": 0.206,
+      "disco-soneto-valencia": 0.2364,
+      "polite-cortesia": 0.27,
+      "promise-requisitos": 0.564,
+      "ropa-resenas": 0.332,
+      "rtp-toxicidad": 0.122,
+      "unlu-consultas": 0.55
+     }
+    }
+   }
+  }
+ }
+}

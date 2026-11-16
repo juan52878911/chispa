@@ -1,0 +1,133 @@
+{
+ "regla": "Por nivel: descripción = la de la propia opción si las filas traen `descripciones` (texto no vacío); si no, «Etiqueta N = nivel N de K.». Ejemplo = la primera fila del soporte de oro (split train) de ese nivel por id (orden natural), con espacios normalizados y recortada a 130 caracteres terminando en «…». En el prompt cada descripción lleva «Ejemplo: «…»». `fuente_ejemplo` = id de esa fila. Se genera dentro de la instancia (apertura_v2.py preparar → rubrica-mecanica.json); nadie la escribe ni la lee antes.",
+ "tareas": {
+  "disco-soneto-valencia": {
+   "pregunta": "¿Qué valencia afectiva (1 muy negativa a 4 muy positiva) evoca este soneto, según jueces expertos?",
+   "niveles": {
+    "1": {
+     "descripcion": "valencia muy negativa: el soneto evoca un afecto desagradable o triste",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "disco-soneto-valencia:train:0"
+    },
+    "2": {
+     "descripcion": "valencia algo negativa",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "disco-soneto-valencia:train:8"
+    },
+    "3": {
+     "descripcion": "valencia algo positiva",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "disco-soneto-valencia:train:16"
+    },
+    "4": {
+     "descripcion": "valencia muy positiva: el soneto evoca un afecto agradable o alegre",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "disco-soneto-valencia:train:24"
+    }
+   }
+  },
+  "polite-cortesia": {
+   "pregunta": "¿Qué nivel de cortesía (1 descortés a 4 cortés) tiene este mensaje de atención al cliente?",
+   "niveles": {
+    "1": {
+     "descripcion": "impolite: rude, hostile or disrespectful",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "polite-cortesia:train:0"
+    },
+    "2": {
+     "descripcion": "neutral: neither polite nor impolite",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "polite-cortesia:train:8"
+    },
+    "3": {
+     "descripcion": "somewhat polite: courteous but plain or hedged",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "polite-cortesia:train:16"
+    },
+    "4": {
+     "descripcion": "polite: clearly courteous and respectful",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "polite-cortesia:train:24"
+    }
+   }
+  },
+  "ropa-resenas": {
+   "pregunta": "¿Cuántas estrellas (1 a 5) da el cliente a esta prenda en su reseña de una tienda en línea?",
+   "niveles": {
+    "1": {
+     "descripcion": "very negative review (1 star)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "ropa-resenas:train:0"
+    },
+    "2": {
+     "descripcion": "negative review (2 stars)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "ropa-resenas:train:8"
+    },
+    "3": {
+     "descripcion": "mixed or lukewarm review (3 stars)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "ropa-resenas:train:16"
+    },
+    "4": {
+     "descripcion": "positive review (4 stars)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "ropa-resenas:train:24"
+    },
+    "5": {
+     "descripcion": "excellent review (5 stars)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "ropa-resenas:train:32"
+    }
+   }
+  },
+  "rtp-toxicidad": {
+   "pregunta": "¿Cuánta toxicidad (1 casi nula a 5 muy alta) tiene este fragmento de texto de la web, medida con Perspective API?",
+   "niveles": {
+    "1": {
+     "descripcion": "casi nada tóxico (puntuación Perspective < 0,2)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "rtp-toxicidad:train:0"
+    },
+    "2": {
+     "descripcion": "poco tóxico (0,2 a 0,4)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "rtp-toxicidad:train:8"
+    },
+    "3": {
+     "descripcion": "algo tóxico (0,4 a 0,6)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "rtp-toxicidad:train:16"
+    },
+    "4": {
+     "descripcion": "bastante tóxico (0,6 a 0,8)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "rtp-toxicidad:train:24"
+    },
+    "5": {
+     "descripcion": "muy tóxico (>= 0,8)",
+     "descripcion_origen": "opcion",
+     "ejemplo": "(texto omitido: fila del soporte, ver fuente_ejemplo)",
+     "fuente_ejemplo": "rtp-toxicidad:train:32"
+    }
+   }
+  }
+ }
+}
