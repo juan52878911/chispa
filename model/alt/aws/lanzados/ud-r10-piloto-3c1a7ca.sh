@@ -1,5 +1,5 @@
 #!/bin/bash
-CHISPA_S3=s3://chispa-pruebas-cuenta-aws/r10-piloto-e11aee1
+CHISPA_S3=s3://chispa-pruebas-cuenta-aws/r10-piloto-3c1a7ca
 CRIT_SHA=d9ee43f584f54b6eb44bf3e0ab542cf0495fc24ccea1a2a0b78e667d2df00299
 # R10, PILOTO de destilación 4B -> biencoder de Chispa (L2). UNA g5.xlarge BAJO DEMANDA (DLAMI GPU PyTorch AL2023), root, rol con s3:Get/PutObject
 # por nombre exacto (sin ListBucket). Tope duro CHISPA_MIN=110 min (shutdown -h +110 al arrancar, instancia con terminate): ~1,85 USD.
@@ -85,12 +85,12 @@ print(snapshot_download("intfloat/multilingual-e5-small", revision="$E5_REV", al
 PYEOF
 )
   [ -f "$CHISPA_E5/config.json" ] || { tail -3 "$OUT/hf-e5.log"; fallo "descarga de e5"; estado hf "FALLO e5"; cierre; }
+  # NO se bajan (textos de X/Twitter y Reddit, términos de plataforma): ciberacoso, toxicidad_protestas, toxicidad_constitucion, goemociones_es
   "$PY" -I - <<'PYEOF' || { fallo "descarga de HF"; estado hf "FALLO"; cierre; }
 import sys
 from huggingface_hub import snapshot_download as s
 bad = []
-for d in ("bgonzalezbustamante/toxicity-protests-ES", "bgonzalezbustamante/toxicity-Constitution-ES", "mrm8488/go_emotions-es-mt", "tanaos/synthetic-spam-detection-dataset-spanish",
-          "tasksource/it-support-tickets", "FelipeGuerra/Colombian_Spanish_Cyberbullying_Dataset_1", "FelipeGuerra/Colombian_Spanish_Cyberbullying_Dataset_2"):
+for d in ("tanaos/synthetic-spam-detection-dataset-spanish", "tasksource/it-support-tickets"):
     try: s(d, repo_type="dataset")
     except Exception as e: bad.append(d); print("aviso:", d, e)
 print("fallos:", bad or "ninguno"); sys.exit(1 if bad else 0)
@@ -99,9 +99,10 @@ PYEOF
   for f in $("$PY" -I -c 'import json,sys; print("\n".join(f for f in json.load(open(sys.argv[1]))["ficheros"] if f.startswith(("tsjev/train-", "tsjev/dev-"))))' model/meta/resultados/conversion-20261027.json); do
     s3cp "$META_S3/$f" "$BASE/$f" || { NF=$((NF+1)); echo "no se pudo bajar $f"; }; done
   [ "$NF" = 0 ] || { fallo "$NF ficheros de tsjev sin bajar"; estado tsjev "FALLO"; cierre; }
-  "$PY" -m model.datos.convertir --salida "$BASE/conv" --fuentes toxicidad_protestas,toxicidad_constitucion,goemociones,spam_tanaos,soporte_ti,ciberacoso > "$OUT/convertir.log" 2>&1 \
+  "$PY" -m model.datos.convertir --salida "$BASE/conv" --fuentes spam_tanaos,soporte_ti > "$OUT/convertir.log" 2>&1 \
     || { tail -8 "$OUT/convertir.log"; fallo "convertir"; estado datos "FALLO convertir"; cierre; }
-  for par in toxicidad_protestas:toxicidad_protestas toxicidad_constitucion:toxicidad_constitucion goemociones:goemociones_es spam_tanaos:spam_tanaos soporte_ti:soporte_ti ciberacoso:ciberacoso; do
+  for f in toxicidad_protestas toxicidad_constitucion goemociones_es ciberacoso; do : | gzip -n > "$RAIZ/datos/$f.jsonl.gz"; done   # vacíos: el manifiesto los lista
+  for par in spam_tanaos:spam_tanaos soporte_ti:soporte_ti; do
     [ -s "$BASE/conv/${par%%:*}.jsonl" ] || { fallo "sin filas de ${par%%:*}"; estado datos "FALLO"; cierre; }; gzip -n -c "$BASE/conv/${par%%:*}.jsonl" > "$RAIZ/datos/${par#*:}.jsonl.gz"; done
   "$PY" -m model.alt.manifiesto filtrar --entrada "$BASE/tsjev" --salida "$RAIZ/datos/tsjev-admitido.jsonl.gz" | tee "$OUT/tsjev-filtrado.txt" || { fallo "filtrar tsjev"; estado tsjev "FALLO"; cierre; }
   s3cp "$BL_S3/blandas.jsonl.gz" "$BASE/blandas.jsonl.gz" && s3cp "$BL_S3/destilacion.json" "$OUT/destilacion-origen.json" || { fallo "blandas de S3"; estado blandas "FALLO"; cierre; }
@@ -113,7 +114,7 @@ PYEOF
 fi
 "$PY" -m model.alt.manifiesto validar > /dev/null || { fallo "manifiesto"; estado manifiesto "FALLO"; cierre; }
 MAN=model/alt/manifiesto-entrenamiento.json
-"$PY" -m model.alt.destilar --datos "$RAIZ" --manifiesto "$MAN" --aplicar "$BASE/blandas.jsonl.gz" --resumen "$OUT/blandas.json" > "$OUT/blandas.log" 2>&1 \
+"$PY" -m model.alt.destilar --datos "$RAIZ" --manifiesto "$MAN" --aplicar "$BASE/blandas.jsonl.gz" --minimo-escritas 0 --resumen "$OUT/blandas.json" > "$OUT/blandas.log" 2>&1 \
   || { tail -3 "$OUT/blandas.log"; fallo "aplicar blandas"; estado blandas "FALLO"; cierre; }
 NDEV=$(ls "$DEV"/*.jsonl 2>/dev/null | wc -l | tr -d " "); [ "$NDEV" = 6 ] || { fallo "dev: $NDEV ficheros y deben ser 6"; estado dev "FALLO"; cierre; }
 estado datos "OK blandas $(cat "$OUT/blandas.json") · dev $NDEV tareas · quedan $(quedan_min) min"
@@ -127,7 +128,7 @@ BASEPID=$!
 
 # --- 5. entrenar (destilar_biencoder: KL(T=2)+CE oro+contrastivo, 20 % de episodios con prototipos de 8, penalidad a e5 original)
 echo "== 5. entrenar $(date -u +%T), quedan $(quedan_min) min"
-"$PY" -m model.alt.destilar_biencoder entrenar --datos "$RAIZ" --manifiesto "$MAN" --partida e5 --salida "$CK" --dev-dir "$DEV" "${LRS[@]}" "${TRAIN_EXTRA[@]}" \
+"$PY" -m model.alt.destilar_biencoder entrenar --datos "$RAIZ" --manifiesto "$MAN" --partida e5 --salida "$CK" --dev-dir "$DEV" --blandas-resumen "$OUT/blandas.json" "${LRS[@]}" "${TRAIN_EXTRA[@]}" \
   > "$OUT/entrenar.log" 2>&1; RC=$?
 tail -4 "$OUT/entrenar.log"; { [ "$RC" = 0 ] || [ "$RC" = 143 ]; } && [ -f "$CK/final.pt" ] || { fallo "entrenar (rc $RC)"; estado entrenar "FALLO"; cierre; }
 estado entrenar "OK rc=$RC (143 = tope de tiempo) $(grep -c '^paso' "$OUT/entrenar.log") líneas de paso · $(grep '^datos:' "$OUT/entrenar.log" | cut -c1-300)"

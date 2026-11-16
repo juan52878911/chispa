@@ -128,14 +128,14 @@ def leer(ruta):
         return {r["id"]: r["blanda"] for r in map(json.loads, f)}
 
 
-def aplicar(m, raiz, ruta, resumen):
+def aplicar(m, raiz, ruta, resumen, minimo=0.99):
     """Reescribe con etiquetas ya destiladas. Falla (1) si menos del 99 % encuentra su fila train: los datos no son los de entonces."""
     blandas = leer(ruta)
     escritas = reescribir(m, raiz, blandas)
     res = {"reutilizadas": True, "en_fichero": len(blandas), "escritas": escritas}
     Path(resumen).write_text(json.dumps(res, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(res, ensure_ascii=False))
-    return 0 if blandas and escritas >= 0.99 * len(blandas) else 1
+    return 0 if blandas and escritas >= minimo * len(blandas) else 1
 
 
 def main(argv=None):
@@ -149,11 +149,12 @@ def main(argv=None):
     ap.add_argument("--minutos", type=float, default=55)
     ap.add_argument("--resumen", required=True)
     ap.add_argument("--guardar", help="fichero .jsonl.gz donde dejar las etiquetas")
+    ap.add_argument("--minimo-escritas", type=float, default=0.99, help="con --aplicar: fracción mínima de las etiquetas que debe encontrar su fila (0 = no exigir)")
     ap.add_argument("--aplicar", help="fichero .jsonl.gz con etiquetas ya destiladas: no se usa vLLM")
     a = ap.parse_args(argv)
     m = cargar(a.manifiesto) if a.manifiesto else cargar()
     if a.aplicar:
-        return aplicar(m, a.datos, a.aplicar, a.resumen)
+        return aplicar(m, a.datos, a.aplicar, a.resumen, a.minimo_escritas)
     filas = elegir(m, a.datos, a.max_filas, a.tope_tarea, a.semilla)
     print("a etiquetar: %d filas" % len(filas), flush=True)
     blandas, seg, largas = etiquetar(filas, a.modelo, a.minutos, log=lambda s: print(s, flush=True))

@@ -317,6 +317,27 @@ class DeExtremoAExtremo(unittest.TestCase):
             res = EV.evaluar_e5(dev, None, None, 1, [], 48, log=lambda s: None)
             self.assertEqual(sorted(res["tareas"]), sorted(EV.tareas_dev_v2()))
 
+    def test_conjuntos_de_plataforma_se_excluyen_y_se_cuentan(self):
+        import gzip, shutil
+        from model.alt.manifiesto import cargar
+        with tempfile.TemporaryDirectory() as t:
+            raiz = Path(t) / "raiz"
+            shutil.copytree(self.d / "raiz", raiz)
+            filas = [con_blanda(fila(i, "choice", 3, tarea="ciber")) for i in range(5)] + [fila(9, "choice", 3, tarea="ciber")]
+            for i, r in enumerate(filas):
+                r.update(id="ciberacoso:%d" % i, split="train", licencia="mit", uso_comercial=True)
+            with gzip.open(raiz / "datos" / "ciberacoso.jsonl.gz", "wt") as f:
+                f.writelines(json.dumps(r) + "\n" for r in filas)
+            cuenta = {}
+            train, dev, _ = DB.cargar_filas(cargar(), raiz, False, cuenta)
+            self.assertFalse([r for r in train if r["id"].startswith("ciberacoso")])
+            self.assertEqual(cuenta["ciberacoso"]["filas_train"], 6)
+            self.assertEqual(cuenta["ciberacoso"]["con_blanda"], 5)
+            self.assertEqual(sorted(cuenta), ["ciberacoso", "goemociones_es", "toxicidad_constitucion", "toxicidad_protestas"])
+        d = json.loads((self.d / "out" / "datos.json").read_text())
+        self.assertIn("spam_tanaos", d["fuentes_sinteticas"])
+        self.assertIn("tsjev_tareas_twitter_reddit", d)
+
     def test_leer_dev_rechaza_lo_que_no_es_dev(self):
         with tempfile.TemporaryDirectory() as t:
             for f in (self.d / "dev").glob("*.jsonl"):
