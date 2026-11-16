@@ -1405,3 +1405,62 @@ AUROC del margen en B por tarea: inyecciones 0,90, massive-esc 0,76, jailbreak 0
   - latencia de L3 p50 0,69 s.
   - La espera en el semáforo satura el histograma: el último bucket es de 1 s y los percentiles salen todos en 1 000 ms. Su media es de 3,28 s. Se corrige en el barrido de T4b.
 - **(b)**, la cascada por defecto con un cliente: **omitida por tiempo**. Pasa a T4b.
+
+### 17.3 T2, batería v2 (i7, 0 USD; código en `bateria-v2`, fusionada)
+
+`model/alt/bateria_v2.py` construye 14 tareas, cada una con su manifiesto de licencias (`model/alt/bateria-v2-manifiesto.json`).
+- Ninguna fuente ni familia aparece en el entrenamiento, en la batería v1 ni en las tareas nuevas.
+- Se dedupliqua por familia, con una tarea por familia.
+- Test de hasta 500 filas y 8 ejemplos de soporte por clase.
+- La partición dev/sellada se sorteó solo con metadatos y la semilla 20261115, antes de ver resultados.
+- Las selladas solo publican su sha256. Se abren con `abrir_sellada(ruta, motivo)`, que deja constancia en `model/alt/bateria-v2-aperturas.jsonl` (vacío por ahora).
+- Salida en el i7: `/mnt/pve/nfs-ascci/chispa-audio/bateria-v2/{dev,selladas}/`.
+
+| tarea | partición | dominio | tipo | idioma | licencia | test / soporte |
+|---|---|---|---|---|---|---|
+| finanzas-documentos | dev | banca | choice (59) | es | Apache-2.0 (sintético, Gretel) | 461 / 472 |
+| horeca-resenas | dev | reseñas | score 1–5 | es | MIT (sintético, GPT-5/Gemini 3) | 500 / 40 |
+| jql-valor-educativo | dev | educación | score 1–5 | es | ODC-By (traducción DeepL) | 469 / 40 |
+| cfpb-quejas | dev | quejas | choice (9) | en | CC0 (dominio público EE. UU.) | 500 / 72 |
+| usajobs-nivel | dev | empleo | score (11) | en | CC0 | 500 / 88 |
+| congreso-eeuu-partido | dev | política | choice (2) | en | CC0 | 500 / 16 |
+| unlu-consultas | sellada | soporte | choice (16) | es | CC BY 4.0 | 200 / 124 |
+| disco-soneto-valencia | sellada | emoción | score 1–4 | es | Apache-2.0 + CC BY | 55 / 32 |
+| congreso-grupo | sellada | política | choice (9) | es | CC BY 4.0 | 500 / 72 |
+| promise-requisitos | sellada | software | choice (11) | es | CC BY 4.0 (traducción; licencia del original sin verificar) | 500 / 88 |
+| ropa-resenas | sellada | reseñas | score 1–5 | en | CC0 (Kaggle sin verificar en origen) | 500 / 40 |
+| rtp-toxicidad | sellada | toxicidad | score (5 tramos) | en | Apache-2.0 (texto de OpenWebText, puntuación de Perspective) | 500 / 40 |
+| polite-cortesia | sellada | soporte | score 1–4 | en | CDLA-Permissive-2.0 (soporte sintético con Llama 3.1, «Built with Llama») | 200 / 32 |
+| arxiv-categoria | sellada | ciencia | choice (18) | en | CC0 (solo artículos con licencia CC BY 4.0 o CC0) | 500 / 144 |
+
+- **Composición:** 7 en español y 7 en inglés; 7 de tipo `score`; 11 dominios no legales.
+- **Falta el dominio de noticias:** ninguna fuente en español tiene una licencia verificable.
+- **Pocas filas:** disco solo tiene 55 filas de test, y unlu y polite 200. En jql falta el nivel 5 en test.
+- **Licencias por revisar (Juan):**
+  - tres tareas sintéticas generadas con LLM;
+  - promise y ropa-resenas, con el original sin verificar;
+  - rtp, por el texto de origen;
+  - CFPB, que no declara licencia explícita (es dominio público de EE. UU.).
+
+### 17.4 T4: cliente L3 endurecido (fusionado) y ud del barrido de caudal (código 8a7e74e)
+
+Cliente L3 del servidor Go (`l3-endurecido`, con `go test -race`, vet, `make test` y smoke en verde):
+- cortacircuitos con estado semiabierto;
+- reintento con espera exponencial y jitter, respetando Retry-After en los 429;
+- cola acotada (`max_cola` 64) que descarta al llenarse;
+- cupo por lote proporcional (min 8, max 256);
+- multi por logprobs, con una llamada S/N por opción; es una extensión que solo existe en Go;
+- `forzar_l3` exige el flag `-pruebas`;
+- métricas de semáforo, cola, circuito, reintentos, descartes y filas parciales;
+- histogramas hasta 30 s y cabeceras `X-Chispa-L3-Espera-Ms` y `X-Chispa-L3-Ms`.
+
+**Causa de la «novena fila»:** `max_por_peticion` (8) era un tope por petición HTTP entera. Desde la 9.ª pregunta de un lote, L3 contestaba «presupuesto» sin llamar al LLM.
+
+**R10-caudal**, en una g5 con tope de 30 min. Cubre la fase (b) que R9 no llegó a hacer y un barrido de caudal.
+- **(b):** la cascada por defecto con 1 cliente sobre 600 filas intercaladas.
+- **Barrido:** con L3 forzado, `max_concurrente` 8, 16 y 32 combinado con 8, 16, 32 y 64 clientes, en puntos de 50 s. Primero van los más informativos; calculo que caben entre 8 y 10 de los 12.
+- **Datos:**
+  - User-data: `lanzados/ud-r10-caudal-8a7e74e.sh` (sha256 `0b721058…`, 14 502 bytes).
+  - Entradas en `s3://…/r10-caudal-8a7e74e/`.
+  - Prueba en seco local con el vLLM falso: OK.
+  - `--dry-run`: DryRunOperation.
