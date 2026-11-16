@@ -37,6 +37,7 @@ Las respuestas de Jev en JevBench solo sirven para medir (MCA 2.3(b)): este scri
 import argparse
 import json
 import math
+import random
 import string
 import threading
 import time
@@ -70,6 +71,54 @@ def preparar(f):
         o["etiqueta"] = c
     sistema = jb.PROMPT[:jb.PROMPT.index("Responde SOLO")] + INSTRUCCION
     return [{"role": "system", "content": sistema}, {"role": "user", "content": json.dumps(entrada, ensure_ascii=False)}], dict(zip(cods, ids))
+
+
+NOTA_EJEMPLOS = (' Los turnos previos de usuario/asistente son ejemplos resueltos de la misma tarea: el asistente respondió con la etiqueta correcta de cada texto; '
+                 'el último mensaje de usuario es el caso nuevo y trae sus opciones con etiqueta completas.')
+
+
+def elegir_ejemplos(soporte, k, semilla, excluir=()):
+    """k ejemplos del soporte de oro (split train), estratificados por clase y deterministas: las clases se barajan con `semilla` y se toma
+    uno por clase, al azar dentro de la clase, vuelta tras vuelta hasta k; el orden final también se baraja con la misma semilla. Nunca filas de test."""
+    rng = random.Random(semilla)
+    por = {}
+    for r in soporte:
+        if r.get("split", "train") != "train":
+            continue
+        if r["id"] in excluir:
+            raise ValueError("el ejemplo %s también está en las filas a puntuar" % r["id"])
+        por.setdefault(r["etiqueta"], []).append(r)
+    cl = sorted(por)
+    rng.shuffle(cl)
+    for c in cl:
+        por[c] = sorted(por[c], key=lambda r: r["id"])
+        rng.shuffle(por[c])
+    out, i = [], 0
+    while len(out) < k and any(por.values()):
+        c = cl[i % len(cl)]
+        i += 1
+        if por[c]:
+            out.append(por[c].pop())
+    rng.shuffle(out)
+    return out
+
+
+def turnos_ejemplos(ejemplos, max_chars):
+    """[mensajes usuario/asistente]: cada ejemplo con las opciones solo como id→etiqueta (sin descripciones: con 59 opciones no cabrían 8) y la etiqueta correcta."""
+    out = []
+    for e in ejemplos:
+        msgs, etq = preparar(e)
+        entrada = json.loads(msgs[1]["content"])
+        entrada["opciones"] = [{"id": o["id"], "etiqueta": o["etiqueta"]} for o in entrada["opciones"]]
+        entrada["texto"] = "‹dato›" + e["texto"][:max_chars].translate(jb.ESCAPE) + "‹/dato›"
+        cod = next(c for c, i in etq.items() if i == e["etiqueta"])
+        out += [{"role": "user", "content": json.dumps(entrada, ensure_ascii=False)}, {"role": "assistant", "content": cod}]
+    return out
+
+
+def con_ejemplos(msgs, turnos):
+    """Mismo sistema (+ la nota), los turnos de ejemplo y el caso nuevo tal cual lo prepara `preparar`."""
+    return [{"role": "system", "content": msgs[0]["content"] + NOTA_EJEMPLOS}] + turnos + [msgs[1]]
 
 
 def post(url, cuerpo, timeout):
@@ -153,6 +202,10 @@ def main(argv=None):
     ap.add_argument("--reintentos", type=int, default=1, help="reintentos si falla la llamada principal")
     ap.add_argument("--max-extra", type=int, default=4, help="etiquetas fuera del top 20 que se puntúan exactas por prefijo; el resto recibe el piso")
     ap.add_argument("--max", type=int, help="solo los primeros N casos (pruebas)")
+    ap.add_argument("--ejemplos", help="few-shot: .jsonl con el soporte de oro de la tarea (split train); por defecto apagado (camino zero-shot intacto)")
+    ap.add_argument("--k", type=int, default=8, help="nº de ejemplos con --ejemplos")
+    ap.add_argument("--semilla", type=int, default=20261115, help="semilla de la elección de ejemplos")
+    ap.add_argument("--ejemplo-max-chars", type=int, default=1200, help="tope de caracteres del texto de cada ejemplo")
     ap.add_argument("--sin-pensar", action="store_true", help="chat_template_kwargs enable_thinking=false (Qwen3 híbridos)")
     a = ap.parse_args(argv)
     filas = [json.loads(l) for l in open(a.filas, encoding="utf-8") if l.strip()][:a.max]
@@ -161,6 +214,10 @@ def main(argv=None):
     except FileNotFoundError:
         hechos = set()
     cola = [f for f in filas if f["id"] not in hechos]
+    turnos = None
+    if a.ejemplos:
+        sop = [json.loads(l) for l in open(a.ejemplos, encoding="utf-8") if l.strip()]
+        turnos = turnos_ejemplos(elegir_ejemplos(sop, a.k, a.semilla, {f["id"] for f in filas}), a.ejemplo_max_chars)
     cerrojo, out = threading.Lock(), open(a.salida, "a", encoding="utf-8")
 
     def trabajo(url):
@@ -172,6 +229,8 @@ def main(argv=None):
             t0, err, probs, raw, intentos = time.perf_counter(), "", None, "", 0
             try:
                 msgs, etq = preparar(f)
+                if turnos is not None:
+                    msgs = con_ejemplos(msgs, turnos)
             except ValueError as e:
                 msgs, etq, err, intentos = None, None, str(e)[:120], 1
             while msgs is not None and intentos <= a.reintentos and probs is None:
