@@ -228,3 +228,12 @@ def test_ud_t3a():
 def test_ud_t3b():
     ud = ud_ok("r10_t3b.sh", {"__CHISPA_S3__", "__CRIT_SHA__", "__N_TEST__", "__N_SOP__"}, ["MIN=${CHISPA_MIN:-45}", "t3.tgz", "entradas_t3_sha256", "rubricas_sha256", "--max-logprobs 20", "cdbee75f"])
     assert "14b" not in ud.lower() and ud.index("lp zs-sop") < ud.index("lp rub-sop") < ud.index("lp rub \"") < ud.index("lp zs-topk") < ud.index("lp fs8-topk") < ud.index("lp fs8rub")
+
+
+def test_calibracion_sin_soporte_completo_es_no_medido(tmp_path):
+    dev, t3, pred = montar(tmp_path, 0.9, sop_ok=False)
+    out = tmp_path / "c.json"
+    vb.main(["medir", "--dev", str(dev), "--pred", str(pred), "--t3", str(t3), "--salida", str(out)])
+    r = json.loads(out.read_text(encoding="utf-8"))
+    assert r["veredictos"]["base+cal"]["veredicto"] == "no medido" and r["veredictos"]["rub+cal"]["veredicto"] == "no medido"
+    assert r["veredictos"]["rub"]["veredicto"] in ("PASA", "NO PASA")   # lo que no necesita el soporte se mide igual
