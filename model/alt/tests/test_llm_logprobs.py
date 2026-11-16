@@ -2,6 +2,8 @@
 import json
 import math
 import threading
+
+import pytest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from model.alt import llm_logprobs as lg
@@ -186,3 +188,58 @@ def test_reanuda_y_respeta_max(tmp_path):
     finally:
         srv.cerrar()
     assert [x["id"] for x in r] == ["x0", "x1", "x2"]
+
+
+# ---------------------------------------------------------------- R10-T3: ejemplos en contexto (few-shot), apagado por defecto
+def soporte(n_por_clase=5, clases=("op0", "op1", "op2"), split="train"):
+    return [dict(fila(3, id_="s-%s-%d" % (c, i)), etiqueta=c, split=split, texto="texto %s %d" % (c, i)) for c in clases for i in range(n_por_clase)]
+
+
+def test_sin_ejemplos_el_prompt_es_identico_byte_a_byte(tmp_path):
+    import hashlib
+    f = fila()
+    msgs, etq = lg.preparar(f)
+    # huella calculada con `preparar` ANTES de añadir la opción de ejemplos (la función no se tocó)
+    assert hashlib.sha256(json.dumps([msgs, etq], ensure_ascii=False, sort_keys=True).encode()).hexdigest() == \
+        "5ecdfeb26ac88b18a31659febbe7dc45178629821679896206b25511213fbab0"
+    srv = Falso([("A", -0.5), ("B", -1.5)])
+    try:
+        correr(tmp_path, [f], srv)
+        c = srv.cuerpos[0]
+    finally:
+        srv.cerrar()
+    assert c["messages"] == msgs and len(c["messages"]) == 2
+    assert json.dumps(c["messages"], ensure_ascii=False) == json.dumps(msgs, ensure_ascii=False)
+
+
+def test_ejemplos_estratificados_deterministas_y_solo_train():
+    sop = soporte() + soporte(split="test", n_por_clase=2)
+    a = lg.elegir_ejemplos(sop, 8, 7)
+    b = lg.elegir_ejemplos(list(reversed(sop)), 8, 7)
+    assert [e["id"] for e in a] == [e["id"] for e in b] and len(a) == 8
+    assert all(e["split"] == "train" for e in a)
+    cuenta = {c: sum(1 for e in a if e["etiqueta"] == c) for c in ("op0", "op1", "op2")}
+    assert sorted(cuenta.values()) == [2, 3, 3]
+    assert [e["id"] for e in a] != [e["id"] for e in lg.elegir_ejemplos(sop, 8, 8)]
+    assert len(lg.elegir_ejemplos(soporte(1), 8, 0)) == 3   # menos soporte que k: todo
+    with pytest.raises(ValueError):
+        lg.elegir_ejemplos(sop, 8, 7, {"s-op0-0"})
+
+
+def test_con_ejemplos_turnos_previos_con_la_etiqueta_correcta(tmp_path):
+    p = tmp_path / "sop.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in soporte()), encoding="utf-8")
+    srv = Falso([("A", -0.5), ("B", -1.5)])
+    try:
+        correr(tmp_path, [fila()], srv, "--ejemplos", str(p), "--k", "8")
+        m = srv.cuerpos[0]["messages"]
+    finally:
+        srv.cerrar()
+    assert len(m) == 1 + 16 + 1 and m[0]["role"] == "system" and m[-1] == lg.preparar(fila())[0][1]
+    for u, a in zip(m[1:-1:2], m[2:-1:2]):
+        assert u["role"] == "user" and a["role"] == "assistant"
+        ent = json.loads(u["content"])
+        assert all(set(o) == {"id", "etiqueta"} for o in ent["opciones"])
+        gold = ent["texto"].split()[1]   # «‹dato›texto opN i›»
+        assert a["content"] == {"op0": "A", "op1": "B", "op2": "C"}[gold]
+    assert m[0]["content"].startswith(lg.preparar(fila())[0][0]["content"])
