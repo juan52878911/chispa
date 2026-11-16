@@ -1,0 +1,46 @@
+{
+ "clientes": 32,
+ "segundos": 184.4,
+ "peticiones": 1336,
+ "por_segundo": 7.25,
+ "total_ms_cliente": {
+  "n": 1336,
+  "p50": 4237.872,
+  "p95": 8289.97,
+  "p99": 10782.802,
+  "media": 4376.893
+ },
+ "http": {
+  "200": 1336
+ },
+ "capas": {
+  "L3": 1336
+ },
+ "escaladas_por_motivo": {},
+ "invalidas": 0,
+ "espera_cola_l3_ms": {
+  "": {
+   "n": 1336,
+   "media": 3275.649,
+   "p50": 1000.0,
+   "p95": 1000.0,
+   "p99": 1000.0
+  }
+ },
+ "latencia_l3_ms": {
+  "": {
+   "n": 1336,
+   "media": 1100.238,
+   "p50": 693.182,
+   "p95": 1000.0,
+   "p99": 1000.0
+  }
+ },
+ "l3_llamadas": {
+  "ok": 1336.0,
+  "invalida": 0.0,
+  "error": 0.0,
+  "timeout": 0.0,
+  "presupuesto": 0.0
+ }
+}

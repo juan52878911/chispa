@@ -1386,3 +1386,22 @@ AUROC del margen en B por tarea: inyecciones 0,90, massive-esc 0,76, jailbreak 0
 - Como las clases van 286/286, sale exactamente 0,500.
 - En el prequential, el banco recibe etiquetas del LLM, pero con retraso 50 y voto ponderado sigue en 0,500–0,504.
 - **Corrección:** las cifras de kNN en fakenews de §14.8, §14.12 y §15.5 no miden nada. Solo cuenta el LLM directo: 0,682 por logprobs (predice `true` en 414 de 572) y 0,559 en JSON.
+
+### 17.2 Resultados de R9-m y R9-e2e (2026-11-16)
+
+**R9-m** (EC2 inst-07, ≈ 0,45 USD): `verificado`, sin respuestas inválidas. Etiquetó 704 textos por logprobs, todos massive-es del fondo de R1. Ese fondo queda reetiquetado en 1 743 de 2 000. De massive-es de fondo2 no llegó ninguno.
+
+**R9-e2e** (EC2 inst-30, ≈ 0,41 USD; criterio `7a6cd978…`): **PASA.**
+- La g5 tardó 13 min en preparar vLLM y el servidor Go, que se montó con Go 1.27.1, ORT 1.31.1 y `.chispa` y tokenizador con su sha256 comprobado.
+- **(a)** Con L3 forzado en el servidor, la agrupada sale **0,7301**, frente a 0,7294 en Python (+0,07 puntos; el límite es ≤ 0,5). Por tarea, macro sin hatecheck: inyecciones 0,767, jailbreak 0,920, massive-es 0,656, massive-esc 0,684, tuits-es 0,640. No hubo inválidas en las 3 116 filas.
+- **Paridad fila a fila con R5:** el top-1 coincide en el 99,84 % de las filas, y la diferencia máxima de probabilidad por fila tiene p50 0,0 y p95 0,0002.
+- **(d) Tope de tiempo** en la fila de massive-es de 60 opciones:
+  - Con el tope normal responde en 1,40–1,64 s, con la respuesta correcta y 15 probabilidades distintas.
+  - Con `timeout_fila` = 150 ms, en 3 de 5 repeticiones devuelve parciales con piso en 151 ms (correctas, 11 probabilidades distintas). En las otras 2 escala con motivo `incompleta` y sin probs. Siempre responde HTTP 200 en ≈ 151 ms.
+- **(c) Cola:** con 32 clientes y `max_concurrente` 8 (código 4669b60, antes del endurecimiento):
+  - 7,25 peticiones/s;
+  - total p50 4,24 s, p95 8,29 s, p99 10,78 s;
+  - sin errores ni descartes;
+  - latencia de L3 p50 0,69 s.
+  - La espera en el semáforo satura el histograma: el último bucket es de 1 s y los percentiles salen todos en 1 000 ms. Su media es de 3,28 s. Se corrige en el barrido de T4b.
+- **(b)**, la cascada por defecto con un cliente: **omitida por tiempo**. Pasa a T4b.

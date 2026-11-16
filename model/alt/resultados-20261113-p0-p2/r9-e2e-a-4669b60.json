@@ -1,0 +1,65 @@
+{
+ "por_tarea": {
+  "hatecheck-es": {
+   "n": 2000,
+   "validas": 2000,
+   "exactitud_answer": 0.8325,
+   "exactitud_argmax": 0.8325,
+   "peso": 2000
+  },
+  "inyecciones": {
+   "n": 116,
+   "validas": 116,
+   "exactitud_answer": 0.7672,
+   "exactitud_argmax": 0.7672,
+   "peso": 116
+  },
+  "jailbreak": {
+   "n": 250,
+   "validas": 250,
+   "exactitud_answer": 0.92,
+   "exactitud_argmax": 0.92,
+   "peso": 400
+  },
+  "massive-es": {
+   "n": 250,
+   "validas": 250,
+   "exactitud_answer": 0.656,
+   "exactitud_argmax": 0.656,
+   "peso": 1503
+  },
+  "massive-esc": {
+   "n": 250,
+   "validas": 250,
+   "exactitud_answer": 0.684,
+   "exactitud_argmax": 0.684,
+   "peso": 1438
+  },
+  "tuits-es": {
+   "n": 250,
+   "validas": 250,
+   "exactitud_answer": 0.64,
+   "exactitud_argmax": 0.64,
+   "peso": 1194
+  }
+ },
+ "agrupada_ponderada": {
+  "exactitud_answer": 0.7301,
+  "exactitud_argmax": 0.7301
+ },
+ "tareas_sin_peso": [],
+ "n": 3116,
+ "segundos": 405.9,
+ "clientes": 16,
+ "ms_cliente": {
+  "n": 3116,
+  "p50": 92.353,
+  "p95": 18561.911,
+  "p99": 18880.904,
+  "media": 2083.414
+ },
+ "capas": {
+  "L3": 3116
+ },
+ "invalidas": 0
+}
