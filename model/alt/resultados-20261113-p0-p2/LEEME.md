@@ -2084,3 +2084,24 @@ Curva en B: la cascada no llega a todo-L3 hasta escalar el 60–70 % (0,489 con 
 - Con solo 8 de oro por clase, el margen del kNN apenas separa aciertos de fallos: el AUROC queda en 0,51–0,57 en 4 de las 6 tareas. Solo es una buena señal en finanzas (0,80) y cfpb (0,71).
 - Escalando la mitad de las filas, la cascada pierde 1,3 puntos frente a mandar todo a L3. **Queda escrito:** la cascada L2→L3 solo funciona cuando hay datos, es decir, un fondo etiquetado (el +2,7 de T1). Sin fondo, la configuración por defecto es todo a L3.
 - En jql y usajobs el kNN supera al 4B zero-shot, pero eso dejará de ser así con rúbrica + calibración (T3b: 0,478 y 0,222).
+
+### 17.24 Resultado de D (EC2 inst-24, g5, 54 min ≈ 1,0 USD; `verificado`; `d-cifras-91deb47.json`): **NO MEDIDO por cobertura (0,902 < 1); informativo: demos por kNN +5,5, la mezcla no aporta**
+
+Criterio `38bc5612…`. El veredicto formal es «no medido»: el fs8 de finanzas (59 opciones, 8 demostraciones) chocó con el tope de tiempo. fs8-topk se quedó en 277 de 461 filas y fs8-knn en 193 de 461. El sistema final elegido en A, fs8-knn+knn con w = 0,6, cubre el 90,2 %.
+
+Mitad B, exactitud por tarea:
+
+| tarea | zs | fs8 al azar | **fs8 por kNN** | fs8-knn + mezcla w 0,6 | kNN-oro |
+|---|---|---|---|---|---|
+| cfpb | 0,683 | 0,710 | **0,726** | 0,726 | 0,425 |
+| congreso | 0,614 | 0,646 | **0,663** | 0,663 | 0,524 |
+| horeca (sint.) | 0,500 | 0,630 | **0,689** | 0,689 | 0,343 |
+| jql | 0,190 | 0,086 | 0,185 | 0,215 | 0,194 |
+| usajobs | 0,160 | 0,151 | **0,237** | 0,211 | 0,151 |
+| finanzas (sint.) | 0,802 (100 %) | 0,502 (59 %) | 0,358 (41 %) | 0,358 (41 %) | 0,753 |
+
+**Lectura:**
+- **Demostraciones por kNN frente a al azar,** en las 5 tareas completas: **+5,5 de macro** (0,500 frente a 0,445), y ninguna tarea pierde (la que menos gana, +1,6). En las 4 tareas no sintéticas, el IC es [+1,6, +10,1]. Elegir las 8 demostraciones por vecindad es mejor que elegirlas al azar.
+- **Mezcla con la posterior del kNN-oro:** sin efecto. En B da +0,1 y en A la curva de w es plana hasta 0,7 y cae después. No entra en la configuración final.
+- **Cuello de botella:** fs8 con muchas opciones (≈ 1,3 s por fila en finanzas), incluso con top-k. En finanzas la mejor opción sigue siendo el zero-shot con top-k (0,802).
+- **Score:** fs8-knn da 0,370 de exactitud y 0,60 de QWK, por debajo de rúbrica + calibración (T3b: 0,419 y 0,70 de media). En score se queda rúbrica + calibración.
