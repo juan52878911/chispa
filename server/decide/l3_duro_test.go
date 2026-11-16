@@ -135,7 +135,7 @@ func TestL3CircuitoSeAbreRechazaSinLlamarYSemiabre(t *testing.T) {
 			t.Fatalf("fila %d: debía ser un fallo normal: %v", i, err)
 		}
 	}
-	metricaTiene(t, m,"chispa_l3_circuito_estado 1", "chispa_l3_circuito_aperturas_total 1")
+	metricaTiene(t, m, "chispa_l3_circuito_estado 1", "chispa_l3_circuito_aperturas_total 1")
 	antes := f.llamadas.Load()
 	for i := 0; i < 5; i++ {
 		if _, err := l.Decidir(ctx, opcs2()); !errors.Is(err, ErrCircuitoAbierto) || !errors.Is(err, ErrSinL3) {
@@ -145,7 +145,7 @@ func TestL3CircuitoSeAbreRechazaSinLlamarYSemiabre(t *testing.T) {
 	if f.llamadas.Load() != antes {
 		t.Fatalf("abierto no debe llamar al LLM: %d llamadas nuevas", f.llamadas.Load()-antes)
 	}
-	metricaTiene(t, m,`chispa_l3_descartes_total{causa="circuito_abierto"} 5`)
+	metricaTiene(t, m, `chispa_l3_descartes_total{causa="circuito_abierto"} 5`)
 	// pasado el plazo: semiabierto deja pasar UNA fila de prueba; si falla, vuelve a abrir
 	ahora = ahora.Add(2 * time.Minute)
 	if _, err := l.Decidir(ctx, opcs2()); errors.Is(err, ErrCircuitoAbierto) || err == nil {
@@ -154,14 +154,14 @@ func TestL3CircuitoSeAbreRechazaSinLlamarYSemiabre(t *testing.T) {
 	if _, err := l.Decidir(ctx, opcs2()); !errors.Is(err, ErrCircuitoAbierto) {
 		t.Fatalf("tras la prueba fallida vuelve a abrir: %v", err)
 	}
-	metricaTiene(t, m,"chispa_l3_circuito_aperturas_total 2")
+	metricaTiene(t, m, "chispa_l3_circuito_aperturas_total 2")
 	// el LLM se recupera: la prueba ok cierra
 	sano.Store(true)
 	ahora = ahora.Add(2 * time.Minute)
 	if r, err := l.Decidir(ctx, opcs2()); err != nil || r.Probs == nil {
 		t.Fatalf("la prueba ok: %v %+v", err, r)
 	}
-	metricaTiene(t, m,"chispa_l3_circuito_estado 0")
+	metricaTiene(t, m, "chispa_l3_circuito_estado 0")
 	for i := 0; i < 3; i++ {
 		if _, err := l.Decidir(ctx, opcs2()); err != nil {
 			t.Fatalf("cerrado de nuevo: %v", err)
@@ -212,7 +212,7 @@ func TestL3CircuitoPorTasaEnVentana(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		l.Decidir(context.Background(), opcs2())
 	}
-	metricaTiene(t, m,"chispa_l3_circuito_estado 1")
+	metricaTiene(t, m, "chispa_l3_circuito_estado 1")
 	if _, err := l.Decidir(context.Background(), opcs2()); !errors.Is(err, ErrCircuitoAbierto) {
 		t.Fatalf("2 de 4 fallos (50 %%) abren por tasa: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestL3ReintentoEsperaExponencialConJitter(t *testing.T) {
 	if fmt.Sprint(*esperas) != fmt.Sprint(want) || f.llamadas.Load() != 4 {
 		t.Fatalf("esperas %v (querido %v) llamadas %d", *esperas, want, f.llamadas.Load())
 	}
-	metricaTiene(t, m,`chispa_l3_reintentos_total{causa="5xx"} 3`)
+	metricaTiene(t, m, `chispa_l3_reintentos_total{causa="5xx"} 3`)
 	// jitter: con azar=0 la espera es la mitad
 	f2 := &srvLP{top: map[string]float64{"A": -1}, estado: func(n int64) (int, map[string]string) {
 		if n == 1 {
@@ -312,7 +312,7 @@ func TestL3Reintento429RespetaRetryAfterSegundos(t *testing.T) {
 	if len(*esperas) != 1 || (*esperas)[0] != 2*time.Second {
 		t.Fatalf("espera = Retry-After: %v", *esperas)
 	}
-	metricaTiene(t, m,`chispa_l3_reintentos_total{causa="429"} 1`)
+	metricaTiene(t, m, `chispa_l3_reintentos_total{causa="429"} 1`)
 }
 
 func TestL3Reintento429RetryAfterFechaHTTP(t *testing.T) {
@@ -343,7 +343,11 @@ func TestL3Reintento429NoSuperaElTopeDeLaFila(t *testing.T) {
 	}
 	// y una espera exponencial que no cabe en lo que queda tampoco se hace
 	f2 := &srvLP{top: map[string]float64{"A": -1}, estado: func(int64) (int, map[string]string) { return 500, nil }}
-	l2, _, e2 := l3Duro(t, f2, func(c *ConfigL3) { c.TimeoutFila = Duracion(100 * time.Millisecond); c.EsperaBase = Duracion(time.Second); c.MaxIntentos = 5 })
+	l2, _, e2 := l3Duro(t, f2, func(c *ConfigL3) {
+		c.TimeoutFila = Duracion(100 * time.Millisecond)
+		c.EsperaBase = Duracion(time.Second)
+		c.MaxIntentos = 5
+	})
 	l2.Decidir(context.Background(), opcs2())
 	if len(*e2) != 0 || f2.llamadas.Load() != 1 {
 		t.Fatalf("esperas que no caben: %v llamadas %d", *e2, f2.llamadas.Load())
@@ -389,7 +393,7 @@ func TestL3ColaAcotadaDescartaSinEsperar(t *testing.T) {
 	if f.llamadas.Load() != 2 {
 		t.Errorf("la fila descartada no llama al LLM: %d", f.llamadas.Load())
 	}
-	metricaTiene(t, m,`chispa_l3_descartes_total{causa="cola_llena"} 1`, "chispa_l3_cola_longitud 0", "chispa_l3_semaforo_en_uso 0", "chispa_l3_semaforo_capacidad 1")
+	metricaTiene(t, m, `chispa_l3_descartes_total{causa="cola_llena"} 1`, "chispa_l3_cola_longitud 0", "chispa_l3_semaforo_en_uso 0", "chispa_l3_semaforo_capacidad 1")
 }
 
 func TestL3SinColaDescartaEnCuantoNoHayHueco(t *testing.T) {
@@ -410,9 +414,9 @@ func TestL3MetricasDeOcupacionYCola(t *testing.T) {
 		go l.Decidir(context.Background(), opcs2())
 	}
 	time.Sleep(120 * time.Millisecond)
-	metricaTiene(t, m,"chispa_l3_semaforo_en_uso 2", "chispa_l3_semaforo_capacidad 2", "chispa_l3_cola_longitud 2")
+	metricaTiene(t, m, "chispa_l3_semaforo_en_uso 2", "chispa_l3_semaforo_capacidad 2", "chispa_l3_cola_longitud 2")
 	time.Sleep(900 * time.Millisecond)
-	metricaTiene(t, m,"chispa_l3_semaforo_en_uso 0", "chispa_l3_cola_longitud 0")
+	metricaTiene(t, m, "chispa_l3_semaforo_en_uso 0", "chispa_l3_cola_longitud 0")
 }
 
 // ---------- 4. cupo por lote ----------
@@ -522,7 +526,7 @@ func TestL3MultiPorLogprobsSiNoIndependientes(t *testing.T) {
 	if sum < 1.05 || sum > 2.9 { // independientes: no suman 1
 		t.Errorf("multi no suma 1: %v", r.Probs)
 	}
-	metricaTiene(t, m,"chispa_l3_filas_parciales_total 1") // «tres» usó el piso
+	metricaTiene(t, m, "chispa_l3_filas_parciales_total 1") // «tres» usó el piso
 	// el prompt es el de multi (una opción por llamada, etiquetas S/N), no el de choice
 	if !strings.Contains(f.cuerpos[0], "UNA sola opción") || !strings.Contains(f.cuerpos[0], `\"tipo\": \"multi\"`) || strings.Contains(f.cuerpos[0], `\"etiqueta\"`) {
 		t.Errorf("prompt multi: %s", f.cuerpos[0])
@@ -557,6 +561,6 @@ func TestL3MetricaFilasParcialesYEnumeracion(t *testing.T) {
 	l, m, _ := l3Duro(t, f, func(c *ConfigL3) { c.MaxExtra = new(int) })
 	l.Decidir(context.Background(), preguntaLP(2)) // A y B en el top: completa
 	l.Decidir(context.Background(), preguntaLP(3)) // C falta y max_extra = 0: parcial con piso
-	metricaTiene(t, m,"chispa_l3_filas_parciales_total 1", `chispa_l3_reintentos_total{causa="red"} 0`, `chispa_l3_descartes_total{causa="cola_llena"} 0`,
+	metricaTiene(t, m, "chispa_l3_filas_parciales_total 1", `chispa_l3_reintentos_total{causa="red"} 0`, `chispa_l3_descartes_total{causa="cola_llena"} 0`,
 		"chispa_l3_circuito_estado 0")
 }
