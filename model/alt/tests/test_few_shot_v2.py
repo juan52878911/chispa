@@ -74,6 +74,7 @@ def test_orden_g5():
     hechos, total, t_total, t_usado = fs.estimar(out, cost, 300)
     assert t_usado <= 300 and hechos["caro"] > 0 and hechos["a"] > 0 and total["caro"] == 500
     assert t_total == pytest.approx(500 * cost["caro"] + 1600 * 0.05)
+    assert {r["conjunto"] for r in out[-100:]} == {"a", "b"} or out[-1]["conjunto"] in ("a", "b", "caro")
 
 
 def test_dev32_y_medir(tmp_path, monkeypatch):
