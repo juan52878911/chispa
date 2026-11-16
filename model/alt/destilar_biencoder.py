@@ -57,6 +57,16 @@ EXCLUSIONES = (
     (r"^(prompt-injection|prompt-injections|promptshield)", "inyecciones y jailbreak (batería v1: deepset/prompt-injections, jackhhao)"),
     (r"hatecheck", "hatecheck-es (batería v1: Paul/hatecheck-spanish)"),
 )
+# Conjuntos del manifiesto que NO entran al piloto aunque su licencia declarada sea comercial: los textos son de plataformas (X/Twitter, Reddit)
+# cuyos términos prohíben redistribuirlos. Se excluyen por esta lista (nombre de conjunto del manifiesto), sin tocar el manifiesto; el ud tampoco los baja.
+EXCLUIDOS_PLATAFORMA = {
+    "ciberacoso": "tuits (FelipeGuerra/Colombian_Spanish_Cyberbullying_Dataset_1 y _2)",
+    "toxicidad_protestas": "tuits (bgonzalezbustamante/toxicity-protests-ES)",
+    "toxicidad_constitucion": "tuits de la Convención Constitucional de Chile (model/datos/toxicidad_constitucion.py)",
+    "goemociones_es": "comentarios de Reddit (mrm8488/go_emotions-es-mt)",
+}
+FUENTES_SINTETICAS = {"spam_tanaos": "sintético (tanaos/Artifex, MIT)"}
+RE_PLATAFORMA_TSJEV = re.compile(r"twitter|tweet|reddit|tuit", re.I)   # tareas de tsjev cuyo nombre sugiere X/Twitter o Reddit: solo se informan
 MEDICION_SOLO = {"massive", "clinc150", "hatecheck", "inyecciones"}   # D.conjunto de las filas por prefijo de id
 MANIFIESTOS_MEDICION = (("bateria-v2-manifiesto.json", "v2"), ("manifiesto-tareas-nuevas.json", "nuevas"),
                         ("resultados-20261113-p0-p2/bateria-manifiesto.json", "v1"))
@@ -104,10 +114,19 @@ def motivo_exclusion(fila, huellas):
 
 
 # ---------------------------------------------------------------------------------------------------------------- datos
-def cargar_filas(manifiesto, raiz, con_sin_blanda=False):
+def cargar_filas(manifiesto, raiz, con_sin_blanda=False, excluidos_cuenta=None):
     """(train, dev) de los ficheros del manifiesto: train con `blanda` (todas con `con_sin_blanda`), dev todas. Verificadas contra el manifiesto."""
     train, dev, n_train = [], [], 0
+    excluidos_cuenta = {} if excluidos_cuenta is None else excluidos_cuenta
     for c in manifiesto.conjuntos:
+        if c["nombre"] in EXCLUIDOS_PLATAFORMA:   # lista explícita: se cuentan las filas con blanda que se pierden
+            f = Path(raiz) / c["fichero"]
+            perdidas = excluidos_cuenta.setdefault(c["nombre"], {"motivo": EXCLUIDOS_PLATAFORMA[c["nombre"]], "filas_train": 0, "con_blanda": 0})
+            for r in (D.iterar([str(f)]) if f.is_file() else ()):
+                if r["split"] == "train":
+                    perdidas["filas_train"] += 1
+                    perdidas["con_blanda"] += bool(r.get("blanda"))
+            continue
         for r in D.iterar([str(Path(raiz) / c["fichero"])]):
             if r["split"] == "train":
                 n_train += 1
@@ -172,8 +191,15 @@ def casi_duplicados(ref, textos_train, textos_test, umbral=0.95, lote=256, max_t
 def preparar(a, ref, log=print):
     """(train, dev, informe): filas con blanda, sin exclusiones, con tope por tarea y sin casi-duplicados de DEV de v2."""
     man = cargar(a.manifiesto) if a.manifiesto else cargar()
-    train, dev, n_train = cargar_filas(man, a.datos, a.con_sin_blanda)
+    cuenta = {}
+    train, dev, n_train = cargar_filas(man, a.datos, a.con_sin_blanda, cuenta)
     inf = {"filas_train_totales": n_train, "filas_con_blanda": sum(1 for r in train if r.get("blanda"))}
+    inf["conjuntos_excluidos_por_plataforma"] = cuenta
+    inf["fuentes_sinteticas"] = {k: v for k, v in FUENTES_SINTETICAS.items() if k in {c["nombre"] for c in man.conjuntos}}
+    if a.blandas_resumen and Path(a.blandas_resumen).is_file():   # salida de `destilar --aplicar`: las blandas de los conjuntos no bajados no se escriben
+        b = json.loads(Path(a.blandas_resumen).read_text(encoding="utf-8"))
+        inf["blandas_en_fichero_origen"], inf["blandas_escritas"] = b.get("en_fichero"), b.get("escritas")
+        inf["blandas_perdidas_por_exclusion_de_conjuntos"] = (b.get("en_fichero") or 0) - (b.get("escritas") or 0)
     huellas = huellas_exclusion()
     motivos, tareas = Counter(), defaultdict(Counter)
     keep = []
@@ -187,6 +213,11 @@ def preparar(a, ref, log=print):
     dev_ok = [r for r in dev if not motivo_exclusion(r, huellas)]
     inf["excluidas"] = {"filas": sum(motivos.values()), "por_motivo": dict(motivos),
                         "tareas": {m: dict(c.most_common(8)) for m, c in tareas.items()}, "dev_quitadas": len(dev) - len(dev_ok)}
+    plat = defaultdict(int)   # tsjev: tareas cuyo nombre sugiere Twitter/Reddit (se informan; decide Juan)
+    for r in keep:
+        if str(r.get("id", "")).startswith("tsjev:") and RE_PLATAFORMA_TSJEV.search(r["tarea"]):
+            plat[r["tarea"]] += 1
+    inf["tsjev_tareas_twitter_reddit"] = {"filas_con_blanda_tras_exclusion": sum(plat.values()), "por_tarea": dict(sorted(plat.items()))}
     train = tope_por_tarea(keep, a.tope_tarea, a.semilla)
     inf["tras_exclusion"], inf["tras_tope"] = len(keep), len(train)
     if len(train) > a.max_filas:
@@ -596,6 +627,7 @@ def parser():
     e.add_argument("--partida", required=True, help="checkpoint .pt de L2 de partida, o «e5» (ranuras y torre nuevas)")
     e.add_argument("--salida", required=True)
     e.add_argument("--dev-dir", help="carpeta con las tareas DEV de v2 (.jsonl): solo para quitar casi-duplicados del train")
+    e.add_argument("--blandas-resumen", help="resumen de `destilar --aplicar` (para contar las blandas que se pierden por conjuntos excluidos)")
     e.add_argument("--umbral-dup", type=float, default=0.95, help="coseno e5 a partir del cual una fila de train se quita (> 1 = no filtrar)")
     e.add_argument("--con-sin-blanda", action="store_true", help="admite filas de train sin blanda (por defecto, solo con blanda)")
     e.add_argument("--tope-tarea", type=int, default=1000)
