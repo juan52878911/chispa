@@ -205,6 +205,65 @@ def evaluar(ckpt, dev, vocab=None, trabajo=None, hilos=2, rutas_vocab=(), log=pr
     return {"tareas": res, "info": inf}
 
 
+def evaluar_e5(dev, vocab=None, trabajo=None, hilos=2, rutas_vocab=(), max_tok=256, log=print):
+    """Base «e5 puro» (sin L2), en int8 con el mismo camino de export: zero-shot = coseno entre el vector e5 de «query: texto» y el de «passage:
+    pregunta · opción · descripción» de cada opción; k = 8 = coseno con el prototipo de clase (media normalizada de los vectores e5 de los 8 ejemplos
+    de oro). e5 va en ONNX int8 dinámico (media normalizada, sin ranuras ni torre)."""
+    import os
+    from transformers import AutoModel
+    from model.l2.modelo import texto_opcion
+    enc = Codificador(device="cpu", max_tok=max_tok)
+    ruta = os.environ.get("CHISPA_E5") or "intfloat/multilingual-e5-small"
+    local = os.environ.get("HF_HUB_OFFLINE") == "1" or Path(ruta).exists() or Path("~/hf/hub").expanduser().exists()
+    encoder = AutoModel.from_pretrained(ruta, attn_implementation="eager", local_files_only=local).eval()
+    inf = {"modelo": "e5 puro", "max_tok": max_tok}
+    if vocab and rutas_vocab:
+        vocab, inf["vocab_ampliado"] = E.ampliar_vocab(enc, vocab, list(rutas_vocab))
+    with tempfile.TemporaryDirectory() as t:
+        d = Path(trabajo or t)
+        d.mkdir(parents=True, exist_ok=True)
+        qenc, remap = E.podar(encoder, vocab) if vocab else (encoder, None)
+        n = len(remap) if vocab else encoder.get_input_embeddings().weight.shape[0]
+        f32, i8 = d / "e5-fp32.onnx", d / "e5-int8.onnx"
+        E.exportar_onnx(E.EnvolturaTorre(qenc, nn.Identity(), remap), f32, n, "h")
+        E.cuantizar(f32, i8, "todo", True)
+        f32.unlink()
+        inf["onnx_mb"] = round(i8.stat().st_size / 1e6, 1)
+        sess, cache = E.sesion(i8, hilos), {}
+
+        def vec(textos):
+            falta = [x for x in dict.fromkeys(textos) if x not in cache]
+            if falta:
+                ids = E.ids_torre(enc, falta, max_tok)
+                for x, v in zip(falta, E.correr_torre(sess, ids)):
+                    cache[x] = torch.from_numpy(v.astype(np.float32))
+            return torch.stack([cache[x] for x in textos])
+        q = lambda r: "query: " + normalizar_mayusculas(r["texto"])
+        res, filas_t, preds = {}, [r for _, test in dev.values() for r in test], {"zeroshot": [], "k8": []}
+        protos = {}
+        for sop, _ in dev.values():
+            v = torch.nn.functional.normalize(vec([q(r) for r in sop]), dim=-1)
+            cl = {}
+            for r, x in zip(sop, v):
+                cl.setdefault(r["etiqueta"], []).append(x)
+            protos[sop[0]["tarea"]] = {c: torch.nn.functional.normalize(torch.stack(xs).mean(0), dim=-1) for c, xs in cl.items()}
+        for r in filas_t:
+            qv = torch.nn.functional.normalize(vec([q(r)])[0], dim=-1)
+            dv = torch.nn.functional.normalize(vec([texto_opcion(r, o, "v1") for o in r["opciones"]]), dim=-1)
+            zs = dv @ qv
+            pr = protos[r["tarea"]]
+            k8 = torch.stack([(pr[o] @ qv) if o in pr else torch.tensor(-1.0) for o in r["opciones"]])
+            for nombre, sc in (("zeroshot", zs), ("k8", k8)):
+                p = torch.softmax(sc / 0.02, -1).tolist()
+                preds[nombre].append({"id": r["id"], "probs": dict(zip(r["opciones"], p))})
+        for nombre in ("zeroshot", "k8"):
+            ev = CE.evaluar(filas_t, preds[nombre])["por_tarea"]
+            for tarea, m in ev.items():
+                res.setdefault(tarea, {})[nombre] = {"macro_f1": m["macro_f1"], "exactitud": m["exactitud"], "n": m["n"]}
+            log("%s: macro-F1 medio %.4f" % (nombre, float(np.mean([m["macro_f1"] for m in ev.values()]))))
+    return {"tareas": res, "info": inf}
+
+
 # ---------------------------------------------------------------------------------------------------------------- criterio
 def macro(res, cfg, tareas):
     return 100.0 * float(np.mean([res["tareas"][t][cfg]["macro_f1"] for t in tareas]))
@@ -249,6 +308,7 @@ def comparar(base, dest, crit, sinteticas, sha_crit):
     out["veredicto"] = out["seis"]["veredicto"]
     out["veredicto_cambia_sin_sinteticas"] = out["seis"]["veredicto"] != out["sin_sinteticas"]["veredicto"]
     out["info"] = {"base": base["info"], "destilado": dest["info"]}
+    out["vs_l2_actual"] = {"medido_aqui": False, "fuente": "T3", "zeroshot_delta": None, "k8_delta": None}   # a rellenar con las cifras de T3
     return out
 
 
@@ -275,7 +335,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("medir")
-    m.add_argument("--ckpt", required=True)
+    m.add_argument("--ckpt", help="checkpoint de L2 (no con --e5-puro)")
+    m.add_argument("--e5-puro", action="store_true", help="la base: e5 sin L2 (coseno de pasaje; prototipos con k = 8)")
+    m.add_argument("--max-tok", type=int, default=256, help="solo con --e5-puro")
     m.add_argument("--etiqueta", default="modelo")
     m.add_argument("--dev", required=True)
     m.add_argument("--salida", required=True)
@@ -296,7 +358,14 @@ def main(argv=None):
     if a.cmd == "medir":
         dev = leer_dev(a.dev)
         vocab = None if a.sin_poda else json.loads(Path(a.vocab).read_text(encoding="utf-8"))
-        r = evaluar(a.ckpt, dev, vocab, a.trabajo, a.hilos, sorted(str(p) for p in Path(a.dev).glob("*.jsonl")), log=lambda s: print("[%s] %s" % (a.etiqueta, s), flush=True))
+        log = lambda s: print("[%s] %s" % (a.etiqueta, s), flush=True)
+        rutas = sorted(str(p) for p in Path(a.dev).glob("*.jsonl"))
+        if a.e5_puro:
+            r = evaluar_e5(dev, vocab, a.trabajo, a.hilos, rutas, a.max_tok, log=log)
+        elif a.ckpt:
+            r = evaluar(a.ckpt, dev, vocab, a.trabajo, a.hilos, rutas, log=log)
+        else:
+            raise SystemExit("falta --ckpt o --e5-puro")
         r["etiqueta"], r["criterio_sha256"] = a.etiqueta, a.sha_crit
         Path(a.salida).write_text(json.dumps(r, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         return 0
