@@ -17,7 +17,7 @@ rm -f "model/alt/aws/lanzados/ud-r10-t5e2e-$sha.sh"
 python3 model/alt/aws/r9_vllm_falso.py --puerto 8765 --ms 30 & FALSO=$!
 trap 'kill $FALSO 2>/dev/null' EXIT
 sleep 1
-git show "$sha:model/alt/aws/r10_t5e2e.sh" | sed -e "s#__CHISPA_S3__#$D/s3#" -e "s#__N_FILAS__#$(wc -l < "$D/s3/consultas.jsonl" | tr -d ' ')#" -e "s#__E5_SHA256__#local#" > "$D/ud.sh"
+git show "$sha:model/alt/aws/r10_t5e2e.sh" | sed -e "s#__CHISPA_S3__#$D/s3#" -e "s#__N_FILAS__#$(wc -l < "$D/s3/consultas.jsonl" | tr -d ' ')#" -e "s#__E5_SHA256__#local#" -e "s#__COD_SHA256__#local#" -e "s#__BAN_SHA256__#local#" -e "s#__CON_SHA256__#local#" > "$D/ud.sh"
 bash -n "$D/ud.sh"
 CHISPA_LOCAL=1 CHISPA_BASE="$D/base" CHISPA_LOCAL_URL=http://127.0.0.1:8765 CHISPA_MODELO_L3=qwen3-4b CHISPA_DURA_P=6 CHISPA_CARGA="4 8" CHISPA_N=${CHISPA_N:-60} \
   CHISPA_LOCAL_TAGS="-tags ort" CHISPA_LOCAL_ORT="$CHISPA_ORT_LIB" CHISPA_PAR_N=${CHISPA_PAR_N:-40} CHISPA_MOVIL_S3="$D/s3/movil" bash "$D/ud.sh" || true

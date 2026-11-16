@@ -1,70 +1,10 @@
 #!/bin/bash
-CHISPA_S3=s3://chispa-pruebas-879381269751/r10-t5e2e-5adf258bfc4abada23b70b0a5d2e053584efde55
-# R10-t5e2e: ronda e2e corta en una g5.xlarge BAJO DEMANDA (DLAMI GPU PyTorch AL2023 ami-004851d2e6f24b4b4), tope duro CHISPA_MIN=30 min.
-# Sirve /v1/decide con L2 = kNN por tarea (bancos de banco-paridad, codificador e5 fp32 en ORT dentro del servidor) y L3 por logprobs (vLLM 0.33.0
-# con Qwen3-4B-Instruct-2507 @ cdbee75f), servidor con -pruebas y -tags ort, y pasa las 4244 consultas por HTTP con su texto real.
-# Mide, por prioridad: (1) exactitud de la cascada (macro sin hatecheck frente a 0,7233 de Python), fracción escalada por tarea y motivo y p50/p95 por
-# capa (codificador e5, kNN, L3); (2) barrido corto de caudal con la mezcla real (16 y 64 clientes, max_concurrente 32); y, en segundo plano durante
-# la preparación: paridad de vectores Go/Python del e5 (criterio congelado model/alt/crit-r10-t5b.json) y la versión int8 del e5 (informativa).
-# Lee (nombre exacto): $CHISPA_S3/{codigo.tgz,bancos.tgz,consultas.jsonl,e5.onnx}; $MOVIL_S3/{modelo-int8.chispa,e5.chispa-tok} (sha256 comprobado).
-# Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar.
-MIN=${CHISPA_MIN:-30}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-3}; VLLM=${CHISPA_VLLM:-0.33.0}
-REV=cdbee75f17c01a7cc42f958dc650907174af0554
-N_FILAS=4244
-E5_SHA256=c30444b4558fd8dd8120e91b1b3ece1c1c5cd48f87959b4600b6dc393bf7faa3   # sha256 de e5.onnx (fp32), lo sustituye el empaquetador
-REF_PY=${CHISPA_REF_PY:-0.7233}
-GO_VERSION=1.27.1
-GO_SHA256=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445                  # go${GO_VERSION}.linux-amd64.tar.gz (de https://go.dev/dl/); lo sustituye empaquetar_r10_t5e2e.sh
-ORT_VERSION=1.31.1                       # onnxruntime_go v1.38.0 (server/go.mod; README del servidor)
-ORT_SHA256=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9   # onnxruntime-linux-x64-1.31.1.tgz (server/deploy/Dockerfile)
-MOVIL_S3=${CHISPA_MOVIL_S3:-s3://chispa-pruebas-879381269751/movil-90e3263c/movil}
-MOVIL_SHA=995dd6a7276a7026ce12ad3e04a5324714f62dc05a1c20b11141a580c30db6f4; MOVIL_BYTES=249716640   # model/bench/movil/resultados-20261102-210131/manifiesto.json
-TOK_SHA=356d7ef09425121e93a0a595ca5a4591fbebeb8785b0fc5f405a374459cd1ed6; TOK_BYTES=12111120        # e5.chispa-tok, mismo manifiesto
-DURA_P=${CHISPA_DURA_P:-50}; CARGA="${CHISPA_CARGA:-16 64}"; PAR_N=${CHISPA_PAR_N:-1000}; INT8_N=${CHISPA_INT8_N:-600}; INT8=${CHISPA_INT8:-1}
-LOCAL=${CHISPA_LOCAL:-0}
-if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-r10t5-s3; mkdir -p "$CHISPA_S3";; esac; MOVIL_S3=${CHISPA_MOVIL_S3:-$CHISPA_S3/movil}
-else shutdown -h +$MIN; fi
-set -uo pipefail
-export HOME="${HOME:-/root}"; T0=$(date +%s)
-BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/chispa-r10t5}
-mkdir -p "$BASE/res"; exec > >(tee -a "$BASE/log.txt") 2>&1
-echo "== arranque r10-t5e2e $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min"
-OUT=$BASE/res; FALLO=""; SRVPID=""
-quedan_min() { echo $(( MIN - ($(date +%s) - T0) / 60 )); }
-s3cp() { if [ "$LOCAL" = 1 ]; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; else aws s3 cp --only-show-errors "$1" "$2"; fi; }
-estado() { printf '%s\t%s\n' "$1" "$2" >> "$OUT/estado.tsv"; echo "[$1] $2"; }
-fallo() { echo "FALLO: $*"; FALLO="${FALLO:+$FALLO; }$*"; }
-hay_tiempo() { [ "$(quedan_min)" -gt $((ESPERA_MIN + $1)) ]; }
-parar_servidor() { [ -n "$SRVPID" ] && { kill "$SRVPID" 2>/dev/null; for _ in $(seq 20); do kill -0 "$SRVPID" 2>/dev/null || break; sleep 0.5; done; kill -KILL "$SRVPID" 2>/dev/null; wait "$SRVPID" 2>/dev/null; }; SRVPID=""; return 0; }
-subir_y_apagar() {
-  trap - EXIT; parar_servidor; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"; cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
-  for l in "$BASE"/vllm-*.log "$BASE"/servidor-*.log; do [ -f "$l" ] && tail -n 200 "$l" > "$OUT/$(basename "$l" .log)-cola.log"; done
-  ( cd "$BASE" && tar -czf resultados.tgz res ) && s3cp "$BASE/resultados.tgz" "$CHISPA_S3/resultados.tgz" || echo "no se pudo subir resultados.tgz"
-  s3cp "$BASE/log.txt" "$CHISPA_S3/log.txt" || echo "no se pudo subir log.txt"
-  if [ "$LOCAL" != 1 ]; then
-    echo listo > "$BASE/listo"; s3cp "$BASE/listo" "$CHISPA_S3/listo" || true
-    for _ in $(seq $((ESPERA_MIN * 2))); do aws s3 cp --only-show-errors "$CHISPA_S3/verificado" "$BASE/verificado" 2>/dev/null && break; sleep 30; done
-    shutdown -h now
-  fi
-}
-trap subir_y_apagar EXIT; trap 'exit 143' TERM INT HUP
-cierre() { echo "== listo $(date -u +%FT%TZ) fallo=${FALLO:-no} ($(( $(date +%s) - T0 )) s)"; exit 0; }
-# vigilante: a falta de ESPERA_MIN+2 min se cortan cliente y servidores y se sube lo que haya
-( while sleep 20; do [ "$(quedan_min)" -le $((ESPERA_MIN + 2)) ] && { echo "== tope: se cierra"; pkill -TERM -f r10_t5_cliente.py; pkill -TERM -f chispa-server; pkill -TERM -f vllm.entrypoints; break; }; done ) &
-sha_ok() { if command -v sha256sum >/dev/null; then echo "$1  $2" | sha256sum -c --quiet -; else [ "$(shasum -a 256 "$2" | cut -d' ' -f1)" = "$1" ]; fi; }
-
-# --- 1. entradas por nombre exacto
-echo "== 1. entradas $(date -u +%T)"
-mkdir -p "$BASE/in" "$BASE/codigo" "$BASE/bancos"
-for f in codigo.tgz bancos.tgz consultas.jsonl e5.onnx; do s3cp "$CHISPA_S3/$f" "$BASE/in/$f" || { fallo "no se pudo bajar $f"; estado entradas "FALLO $f"; cierre; }; done
-tar -xzf "$BASE/in/codigo.tgz" -C "$BASE/codigo" || { fallo "codigo.tgz"; cierre; }
-tar -xzf "$BASE/in/bancos.tgz" -C "$BASE/bancos" || { fallo "bancos.tgz"; cierre; }
-NF=$(wc -l < "$BASE/in/consultas.jsonl" | tr -d ' ')
-[ "$NF" = "$N_FILAS" ] || { fallo "consultas.jsonl tiene $NF filas, no $N_FILAS"; estado entradas "FALLO recuento"; cierre; }
-if [ "$LOCAL" != 1 ]; then sha_ok "$E5_SHA256" "$BASE/in/e5.onnx" || { fallo "e5.onnx: sha256 distinto de $E5_SHA256"; estado entradas "FALLO sha e5.onnx"; cierre; }; fi
-[ -f "$BASE/codigo/server/go.mod" ] && [ -f "$BASE/codigo/model/alt/aws/r10_t5_cliente.py" ] && [ -f "$BASE/bancos/referencia.json" ] || { fallo "codigo.tgz sin server/ o r10_t5_cliente.py, o bancos.tgz sin referencia.json"; cierre; }
-estado entradas "OK $NF consultas, $(ls "$BASE"/bancos/banco-*.npy | wc -l | tr -d ' ') bancos, e5.onnx sha256 ${E5_SHA256:0:12}"
-
+# R10-t5e2e: fases de la ronda e2e (kNN de L2 con codificador e5 + L3 por logprobs en una g5). Lo carga con `.` el user-data (r10_t5e2e.sh) tras bajar y
+# comprobar el sha256 de codigo.tgz; comparte sus variables y funciones (BASE, OUT, estado, fallo, hay_tiempo, cierre, sha_ok, s3cp, los pins de Go/ORT/.chispa/tok).
+# Orden: preparar Go + .chispa + tok y compilar (en segundo plano), cadena del e5 (paridad fp32 e int8, informativa), vLLM, configuración, e2e y carga.
+# El criterio de la paridad de vectores es model/alt/crit-r10-t5b.json; el macro de referencia de Python es REF_PY.
+fases_main() {
+DURA_P=${CHISPA_DURA_P:-50}; CARGA="${CHISPA_CARGA:-16 64}"; PAR_N=${CHISPA_PAR_N:-1000}; INT8_N=${CHISPA_INT8_N:-600}; INT8=${CHISPA_INT8:-1}; REF_PY=${CHISPA_REF_PY:-0.7233}
 # --- 2. servidor Go: .chispa y tok (con sha), Go y ORT (con sha), compilación. Corre en segundo plano mientras se instala vLLM.
 preparar_go() {
   set -u
@@ -199,3 +139,4 @@ for cl in $CARGA; do
 done
 wait $PE5 2>/dev/null; cat "$BASE/cadena-e5.log" 2>/dev/null
 cierre
+}
