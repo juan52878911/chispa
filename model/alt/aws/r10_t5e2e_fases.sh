@@ -91,12 +91,14 @@ wait $PGO 2>/dev/null; RC=$(cat "$BASE/preparar-go.rc" 2>/dev/null || echo 9); c
 [ "$RC" = 0 ] && [ -x "$BASE/chispa-server" ] || { fallo "servidor Go: preparar_go rc=$RC"; estado servidor "FALLO rc=$RC"; cierre; }
 ORTLIB=$(cat "$BASE/ort-lib"); estado servidor "OK Go $GO_VERSION (sha256 $GO_SHA256) ORT $ORT_VERSION; .chispa sha256 ${MOVIL_SHA:0:12} tok ${TOK_SHA:0:12}"
 
-# --- 4. configuración: knn con los bancos de banco-paridad y el e5 fp32; L3 por logprobs con top_k 256 (ve todas las opciones, como en Python) y tau 0
-# (la cascada de Python acepta siempre la respuesta de L3: sin tau 0 una L3 insegura escalaría y la respuesta sería la «mejor pista», no la de L3)
+# --- 4. configuración: knn con los bancos de banco-paridad y el e5 fp32; L3 por logprobs sin top_k (con knn L3 ve todas las opciones, como en Python) y tau 0
+# (la cascada de Python acepta siempre la respuesta de L3: sin tau 0 una L3 insegura escalaría y la respuesta sería la «mejor pista», no la de L3).
+# Dos configuraciones: «paridad» (timeout_fila 60 s: ninguna fila queda parcial por tiempo) y «capacidad» (timeout_fila 30 s).
 SERV=http://127.0.0.1:8090
-"$PY" - "$BASE" "$URL" "${CHISPA_MODELO_L3:-qwen3-4b}" <<'PYEOF'
+gen_cfg() {  # gen_cfg NOMBRE TIMEOUT_FILA
+  "$PY" - "$BASE" "$URL" "${CHISPA_MODELO_L3:-qwen3-4b}" "$1" "$2" <<'PYEOF'
 import json, sys
-base, url, modelo = sys.argv[1:4]
+base, url, modelo, nombre, tf = sys.argv[1:6]
 ref = json.load(open(base + "/bancos/referencia.json"))
 u = ref.get("u") or ref["regla"]["u"]
 tareas = {}
@@ -106,32 +108,43 @@ for l in open(base + "/in/consultas.jsonl", encoding="utf-8"):
     if r["pregunta"] not in t["preguntas"]:
         t["preguntas"].append(r["pregunta"])
 cfg = {"knn": {"umbral": u, "siempre": ref["siempre"], "tareas": tareas, "e5_onnx": base + "/in/e5.onnx"},
-       "l3": {"url": url + "/v1", "modelo": modelo, "modo": "logprobs", "tau": 0.0, "max_concurrente": 32, "timeout": "30s", "timeout_fila": "20s", "top_k": 256, "max_por_peticion": 256}}
-json.dump(cfg, open(base + "/cfg-knn.json", "w"), ensure_ascii=False)
-print("knn: u=%s siempre=%s tareas=%s" % (u, ref["siempre"], sorted(tareas)))
+       "l3": {"url": url + "/v1", "modelo": modelo, "modo": "logprobs", "tau": 0.0, "max_concurrente": 32, "timeout": "60s", "timeout_fila": tf, "max_por_peticion": 256}}
+json.dump(cfg, open(base + "/cfg-" + nombre + ".json", "w"), ensure_ascii=False)
+print("cfg %s: u=%s siempre=%s tareas=%s timeout_fila=%s" % (nombre, u, ref["siempre"], sorted(tareas), tf))
 PYEOF
-arrancar() {
-  parar_servidor
-  ARGS=(-addr 127.0.0.1:8090 -modelo "$BASE/modelo-int8.chispa" -config "$BASE/cfg-knn.json" -timeout 120s -pruebas)
+}
+gen_cfg paridad 60s; gen_cfg capacidad 30s
+arrancar() {  # arrancar NOMBRE_CFG
+  parar_servidor; CFG_ACT=""
+  ARGS=(-addr 127.0.0.1:8090 -modelo "$BASE/modelo-int8.chispa" -config "$BASE/cfg-$1.json" -timeout 120s -pruebas)
   [ -f "$BASE/e5.chispa-tok" ] && ARGS+=(-tok "$BASE/e5.chispa-tok"); [ -n "$ORTLIB" ] && ARGS+=(-ort-lib "$ORTLIB")
-  nohup "$BASE/chispa-server" "${ARGS[@]}" > "$BASE/servidor-knn.log" 2>&1 &
+  nohup "$BASE/chispa-server" "${ARGS[@]}" > "$BASE/servidor-$1.log" 2>&1 &
   SRVPID=$!
-  for _ in $(seq 180); do curl -s -m 2 $SERV/healthz > /dev/null && return 0; kill -0 $SRVPID 2>/dev/null || break; sleep 1; done
-  tail -5 "$BASE/servidor-knn.log"; return 1
+  for _ in $(seq 180); do curl -s -m 2 $SERV/healthz > /dev/null && { CFG_ACT=$1; return 0; }; kill -0 $SRVPID 2>/dev/null || break; sleep 1; done
+  tail -5 "$BASE/servidor-$1.log"; return 1
 }
 cli() { "$PY" "$BASE/codigo/model/alt/aws/r10_t5_cliente.py" "$@" --url $SERV --filas "$BASE/in/consultas.jsonl" --salida "$OUT" ${CHISPA_N:+--muestra $CHISPA_N}; }
+resumen_e2e() { "$PY" -c "import json;d=json.load(open('$OUT/e2e-$1-resumen.json'));print('macro sin hatecheck %s frente a %s (dif %s); %s filas por timeout' % (d['exactitud']['macro_sin_hatecheck'], d['referencia_python_macro_sin_hatecheck'], d['diferencia_macro_vs_python'], d.get('filas_por_timeout', {}).get('n')))"; }
 
 # --- 5. fases
 echo "== 5. fases $(date -u +%T) quedan $(quedan_min) min"
-arrancar || { fallo "servidor no arrancó"; estado servidor-knn "FALLO"; cierre; }
+arrancar paridad || { fallo "servidor no arrancó"; estado servidor-knn "FALLO"; cierre; }
 mkdir -p "$BASE/auto"
 "$PY" "$BASE/codigo/model/alt/aws/r10_t5_cliente.py" e2e --url $SERV --filas "$BASE/in/consultas.jsonl" --salida "$BASE/auto" --muestra 12 --clientes 2 > "$BASE/autoprueba.out" 2>&1 \
-  && grep -q '"n": 12' "$BASE/auto/e2e-resumen.json" && ! grep -q '"200": 0' "$BASE/auto/e2e-resumen.json" && grep -q '"200"' "$BASE/auto/e2e-resumen.json" || { head -c 900 "$BASE/autoprueba.out"; tail -5 "$BASE/servidor-knn.log"; fallo "autoprueba: el servidor no contesta con kNN"; estado prueba "FALLO"; cierre; }
+  && grep -q '"n": 12' "$BASE/auto/e2e-resumen.json" && grep -q '"200"' "$BASE/auto/e2e-resumen.json" || { head -c 900 "$BASE/autoprueba.out"; tail -5 "$BASE/servidor-paridad.log"; fallo "autoprueba: el servidor no contesta con kNN"; estado prueba "FALLO"; cierre; }
 estado prueba "OK 12 consultas por HTTP con el codificador e5 en el servidor"
+# (a) paridad: 4 clientes y timeout_fila 60 s, para que ninguna fila quede parcial por tiempo y la diferencia con Python sea solo de decisión
 T1=$(date +%s)
-cli e2e --clientes 16 --ref "$REF_PY" > "$OUT/e2e.out" 2>&1 && estado e2e "OK en $(( $(date +%s) - T1 )) s: $("$PY" -c "import json;d=json.load(open('$OUT/e2e-resumen.json'));print('macro sin hatecheck %s frente a %s (dif %s)' % (d['exactitud']['macro_sin_hatecheck'], d['referencia_python_macro_sin_hatecheck'], d['diferencia_macro_vs_python']))")" || { fallo "fase e2e"; estado e2e "FALLO"; }
+cli e2e --etiqueta paridad --clientes 4 --timeout-fila-ms 60000 --ref "$REF_PY" > "$OUT/e2e-paridad.out" 2>&1 && estado e2e-paridad "OK en $(( $(date +%s) - T1 )) s: $(resumen_e2e paridad)" || { fallo "fase e2e paridad"; estado e2e-paridad "FALLO"; }
+# (b) capacidad: 16 clientes y timeout_fila 30 s (el coste de capacidad queda aparte de la paridad); con ese servidor, el barrido de carga
+if hay_tiempo 6; then
+  arrancar capacidad || { fallo "servidor no arrancó (capacidad)"; estado e2e-capacidad "FALLO servidor"; cierre; }
+  T1=$(date +%s)
+  cli e2e --etiqueta capacidad --clientes 16 --timeout-fila-ms 30000 --ref "$REF_PY" > "$OUT/e2e-capacidad.out" 2>&1 && estado e2e-capacidad "OK en $(( $(date +%s) - T1 )) s: $(resumen_e2e capacidad)" || { fallo "fase e2e capacidad"; estado e2e-capacidad "FALLO"; }
+else estado e2e-capacidad "OMITIDO por tiempo (quedan $(quedan_min) min)"; fi
 for cl in $CARGA; do
   hay_tiempo 2 || { estado "carga-c$cl" "OMITIDO por tiempo (quedan $(quedan_min) min)"; continue; }
+  [ "${CFG_ACT:-}" = capacidad ] || arrancar capacidad || { fallo "servidor (carga)"; continue; }
   T1=$(date +%s)
   cli carga --clientes "$cl" --dura "$DURA_P" > "$OUT/carga-c$cl.out" 2>&1 \
     && estado "carga-c$cl" "OK en $(( $(date +%s) - T1 )) s: $("$PY" -c "import json;d=json.load(open('$OUT/carga-c$cl-resumen.json'));print('%s req/s total p50=%s p95=%s ms' % (d['por_segundo'], d['latencia_ms']['total_cliente']['p50'], d['latencia_ms']['total_cliente']['p95']))")" \

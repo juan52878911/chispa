@@ -24,8 +24,17 @@ from r10_cliente import Cliente, contador, delta_cont, delta_scalar, metricas, p
 CABS = {"cod_ms": "x-chispa-cod-ms", "knn_ms": "x-chispa-knn-ms", "l3_espera_ms": "x-chispa-l3-espera-ms", "l3_ms": "x-chispa-l3-ms"}
 
 
+DESC = Path(__file__).with_name("r10_t5e2e_descripciones.json")
+
+
 def leer(ruta, n=None):
+    """Filas del fixture con texto; si no traen las descripciones de las opciones se completan por tarea (r10_t5e2e_descripciones.json): el prompt de
+    L3 las lleva y sin ellas es otro (T5b-e2e: −3,2 puntos de macro por mandar las consultas sin descripciones)."""
     f = [json.loads(l) for l in open(ruta, encoding="utf-8") if l.strip()]
+    desc = json.load(open(DESC, encoding="utf-8")) if DESC.exists() else {}
+    for r in f:
+        if not r.get("descripciones") and desc.get(r["tarea"]):
+            r["descripciones"] = desc[r["tarea"]]
     return f[:n] if n else f
 
 
@@ -107,7 +116,8 @@ def e2e(filas, a):
     rs = en_paralelo(filas, a.clientes, a.url)
     seg = time.time() - t0
     despues = metricas(cli)
-    with open(a.salida + "/e2e-filas.jsonl", "w", encoding="utf-8") as o:
+    pre = "e2e-" + a.etiqueta if a.etiqueta else "e2e"
+    with open(a.salida + "/%s-filas.jsonl" % pre, "w", encoding="utf-8") as o:
         for r in rs:
             o.write(json.dumps(r, ensure_ascii=False) + "\n")
     ex = exactitud(rs)
@@ -126,8 +136,13 @@ def e2e(filas, a):
            "por_tarea": por_tarea, "latencia_ms": {"total_cliente": resumen_ms([r["ms"] for r in rs if r["http"] == 200]), **{k: lat(rs, k) for k in CABS}},
            "l3_llamadas": delta_cont(contador(antes, "chispa_l3_llamadas_total"), contador(despues, "chispa_l3_llamadas_total")),
            "descartes": delta_cont(contador(antes, "chispa_l3_descartes_total"), contador(despues, "chispa_l3_descartes_total")),
-           "knn_sin_vector": delta_scalar(antes, despues, "chispa_knn_sin_vector_total")}
-    return res, "e2e-resumen.json"
+           "knn_sin_vector": delta_scalar(antes, despues, "chispa_knn_sin_vector_total"),
+           "l3_filas_parciales": delta_scalar(antes, despues, "chispa_l3_filas_parciales_total")}
+    if a.timeout_fila_ms:   # filas que agotaron el tope de la fila (parciales con piso o sin L3): su respuesta puede diferir de la de Python por eso, no por el prompt
+        tf = [r for r in rs if r["l3_ms"] is not None and r["l3_ms"] >= 0.98 * a.timeout_fila_ms]
+        res["filas_por_timeout"] = {"timeout_fila_ms": a.timeout_fila_ms, "n": len(tf), "por_tarea": {t: sum(1 for r in tf if r["tarea"] == t) for t in sorted({r["tarea"] for r in tf})},
+                                    "ids": [r["id"] for r in tf][:400]}
+    return res, pre + "-resumen.json"
 
 
 def carga(filas, a):
@@ -167,8 +182,10 @@ def main():
     ap.add_argument("--salida", required=True)
     ap.add_argument("--clientes", type=int, default=16)
     ap.add_argument("--dura", type=float, default=50)
+    ap.add_argument("--etiqueta", default="", help="e2e: nombre de la pasada; escribe e2e-<etiqueta>-filas.jsonl y e2e-<etiqueta>-resumen.json")
     ap.add_argument("--n", type=int)
     ap.add_argument("--muestra", type=int, help="N filas repartidas a intervalos regulares por todo el fichero (todas las tareas)")
+    ap.add_argument("--timeout-fila-ms", type=float, default=0, help="timeout_fila del servidor (ms): las filas cuyo tiempo de L3 llega a él se listan como timeout")
     ap.add_argument("--ref", type=float, default=0.7233, help="macro sin hatecheck de la cascada de Python (referencia.json)")
     a = ap.parse_args()
     filas = leer(a.filas, a.n)
