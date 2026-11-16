@@ -151,7 +151,8 @@ wait $PGO 2>/dev/null; RC=$(cat "$BASE/preparar-go.rc" 2>/dev/null || echo 9); c
 [ "$RC" = 0 ] && [ -x "$BASE/chispa-server" ] || { fallo "servidor Go: preparar_go rc=$RC"; estado servidor "FALLO rc=$RC"; cierre; }
 ORTLIB=$(cat "$BASE/ort-lib"); estado servidor "OK Go $GO_VERSION (sha256 $GO_SHA256) ORT $ORT_VERSION; .chispa sha256 ${MOVIL_SHA:0:12} tok ${TOK_SHA:0:12}"
 
-# --- 4. configuración: knn con los bancos de banco-paridad y el e5 fp32; L3 por logprobs con top_k 256 (L3 ve todas las opciones, como en Python)
+# --- 4. configuración: knn con los bancos de banco-paridad y el e5 fp32; L3 por logprobs con top_k 256 (ve todas las opciones, como en Python) y tau 0
+# (la cascada de Python acepta siempre la respuesta de L3: sin tau 0 una L3 insegura escalaría y la respuesta sería la «mejor pista», no la de L3)
 SERV=http://127.0.0.1:8090
 "$PY" - "$BASE" "$URL" "${CHISPA_MODELO_L3:-qwen3-4b}" <<'PYEOF'
 import json, sys
@@ -165,7 +166,7 @@ for l in open(base + "/in/consultas.jsonl", encoding="utf-8"):
     if r["pregunta"] not in t["preguntas"]:
         t["preguntas"].append(r["pregunta"])
 cfg = {"knn": {"umbral": u, "siempre": ref["siempre"], "tareas": tareas, "e5_onnx": base + "/in/e5.onnx"},
-       "l3": {"url": url + "/v1", "modelo": modelo, "modo": "logprobs", "max_concurrente": 32, "timeout": "30s", "timeout_fila": "20s", "top_k": 256, "max_por_peticion": 256}}
+       "l3": {"url": url + "/v1", "modelo": modelo, "modo": "logprobs", "tau": 0.0, "max_concurrente": 32, "timeout": "30s", "timeout_fila": "20s", "top_k": 256, "max_por_peticion": 256}}
 json.dump(cfg, open(base + "/cfg-knn.json", "w"), ensure_ascii=False)
 print("knn: u=%s siempre=%s tareas=%s" % (u, ref["siempre"], sorted(tareas)))
 PYEOF

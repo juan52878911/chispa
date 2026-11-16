@@ -3,7 +3,7 @@
 # s3://chispa-pruebas-879381269751/r10-t5e2e-SHA/ los cuatro ficheros de DIR_SALIDA.
 #   codigo.tgz       server/, runtime/{l1,tok,torre}, format/chispa3, model/alt/aws/{r10_t5_cliente.py,r10_cliente.py} y gomod-proxy/ (kindling y
 #                    onnxruntime_go de la caché de módulos local); de `git archive SHA`, sin ._* ni xattrs. Comprueba que el servidor compila solo con gomod-proxy/.
-#   bancos.tgz       banco-<tarea>.npy/.jsonl y referencia.json del fixture de banco-paridad.
+#   bancos.tgz       banco-<tarea>.npy/.jsonl, referencia.json y consultas.npy (vectores de Python, para la paridad) del fixture de banco-paridad.
 #   consultas.jsonl  el consultas.jsonl del fixture con texto, pregunta y tipo (model/alt/consultas_con_texto.py), 4 244 filas.
 #   e5.onnx          el e5 fp32 (model/alt/exportar_e5_onnx.py), con su sha256 en el ud.
 #   model/alt/aws/lanzados/ud-r10-t5e2e-SHA.sh   r10_t5e2e.sh de SHA con __CHISPA_S3__, __N_FILAS__, __GO_SHA256__ y __E5_SHA256__ sustituidos.
@@ -50,7 +50,7 @@ tarz() { COPYFILE_DISABLE=1 tar --no-xattrs -czf "$1" -C "$2" "${@:3}" 2>/dev/nu
 rm -f "$sal/codigo.tgz" "$sal/bancos.tgz"
 tarz "$sal/codigo.tgz" "$t" server runtime format model gomod-proxy
 # --- bancos, consultas con texto y onnx
-mkdir -p "$t/bancos"; cp "$FIXTURE"/banco-*.npy "$FIXTURE"/banco-*.jsonl "$FIXTURE/referencia.json" "$t/bancos/"
+mkdir -p "$t/bancos"; cp "$FIXTURE"/banco-*.npy "$FIXTURE"/banco-*.jsonl "$FIXTURE/referencia.json" "$FIXTURE/consultas.npy" "$t/bancos/"
 tarz "$sal/bancos.tgz" "$t/bancos" .
 python3 "$t/model/alt/consultas_con_texto.py" --fixture "$FIXTURE" --bat "$BATS" --salida "$sal/consultas.jsonl"
 cp "$ONNX" "$sal/e5.onnx"
