@@ -2105,3 +2105,27 @@ Mitad B, exactitud por tarea:
 - **Mezcla con la posterior del kNN-oro:** sin efecto. En B da +0,1 y en A la curva de w es plana hasta 0,7 y cae después. No entra en la configuración final.
 - **Cuello de botella:** fs8 con muchas opciones (≈ 1,3 s por fila en finanzas), incluso con top-k. En finanzas la mejor opción sigue siendo el zero-shot con top-k (0,802).
 - **Score:** fs8-knn da 0,370 de exactitud y 0,60 de QWK, por debajo de rúbrica + calibración (T3b: 0,419 y 0,70 de media). En score se queda rúbrica + calibración.
+
+### 17.25 Apertura única de las selladas (preparada; configuración congelada en 29c441f)
+
+**Configuración final**, congelada con el criterio `crit-r10-apertura.json` (sha256 `a79d33a9712d4c5a02228509e951ecc3764235b6d3a56afe8503edbc0b77cc9d`, de la config de 1635175):
+- **choice:** 4B por logprobs con 8 demostraciones elegidas por kNN, sin mezcla (D).
+- **score:** rúbrica mecánica + umbrales isotónicos (T3b). La rúbrica no la escribe nadie: la descripción de cada nivel es la de la opción, o «Etiqueta N = nivel N de K.» si no la hay, y el ejemplo es la primera fila del soporte de ese nivel por id, recortada a 130 caracteres.
+- **top-k:** k = 10 si una tarea tiene más de 20 opciones. Ninguna sellada llega (arxiv tiene 18).
+- **Todo va a L3.** La cascada kNN + margen solo se reporta como informativa, con el u de E (0,039217), porque E dice que sin fondo no funciona.
+
+**Lectura (descriptiva):**
+- Se reporta la macro por tipo y la global, con IC por tareas, y las diferencias final − 4B zs y final − mayoritaria. También se dan, como referencia, final − kNN y final − fs8 al azar.
+- **Solo vale si el final y el 4B zs cubren el 100 % de cada tarea.** Si no, el resultado es «no medido» y las selladas no se reabren sin hablarlo.
+
+**Apertura:**
+- Se hizo una sola vez, el 2026-11-16 a las 00:43 (−05), con `bateria_v2.abrir_sellada` al empaquetar en el i7. Las 8 líneas están en `bateria-v2-aperturas.jsonl` y los 8 sha256 coinciden con el manifiesto.
+- Nadie leyó las filas.
+
+**Dos g5 en paralelo**, con tope de 110 min cada una (≈ 3,7 USD como máximo):
+- **a** (`r10-apertura-29c441f-a`, ud sha256 `d9a68a86…`, 15 074 bytes): el sistema final, con rub-sop 3 min, rub 8 min y fs8-knn 60 min. El kNN y la mayoritaria van en CPU.
+- **b** (`r10-apertura-29c441f-b`, ud sha256 `4292abe3…`, 15 074 bytes): primero el 4B zs (score 12 min, choice 20 min) y después fs8 al azar (score 15 min, choice 25 min).
+- Los topes salen de los ritmos de dev × 1,5. A fs8-knn se le dio más margen porque las choice selladas tienen 9–18 opciones, frente a 2–11 en dev.
+- Entradas: codigo.tgz `c6b57e16…` y selladas.tgz `a2bb334e…`, en los dos prefijos.
+- La prueba en seco se hizo en el i7 con vLLM falso: una tarea dev (horeca) y después dos, con las partes a y b. Salió «medido».
+- El `--dry-run` de las dos instancias da DryRunOperation.
