@@ -202,7 +202,13 @@ def evaluar(ckpt, dev, vocab=None, trabajo=None, hilos=2, rutas_vocab=(), log=pr
             log("%s: macro-F1 medio %.4f (%.0f s)" % (nombre, float(np.mean([m["macro_f1"] for m in ev.values()])), time.time() - t0))
         inf["segundos_evaluar"] = round(time.time() - t0, 1)
         inf["textos_consulta"], inf["textos_torre"] = len(eo.cs), len(eo.ct)
-    return {"tareas": res, "info": inf}
+    return {"tareas": por_nombre(res, dev), "info": inf}
+
+
+def por_nombre(res, dev):
+    """Las filas llevan su propio `tarea` (p. ej. producto_queja_financiera) y el criterio habla del nombre de la tarea de la batería (el fichero)."""
+    mapa = {rs[0]["tarea"]: nombre for nombre, (rs, _) in dev.items()}
+    return {mapa[t]: v for t, v in res.items()}
 
 
 def evaluar_e5(dev, vocab=None, trabajo=None, hilos=2, rutas_vocab=(), max_tok=256, log=print):
@@ -261,7 +267,7 @@ def evaluar_e5(dev, vocab=None, trabajo=None, hilos=2, rutas_vocab=(), max_tok=2
             for tarea, m in ev.items():
                 res.setdefault(tarea, {})[nombre] = {"macro_f1": m["macro_f1"], "exactitud": m["exactitud"], "n": m["n"]}
             log("%s: macro-F1 medio %.4f" % (nombre, float(np.mean([m["macro_f1"] for m in ev.values()]))))
-    return {"tareas": res, "info": inf}
+    return {"tareas": por_nombre(res, dev), "info": inf}
 
 
 # ---------------------------------------------------------------------------------------------------------------- criterio

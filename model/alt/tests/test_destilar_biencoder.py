@@ -309,6 +309,14 @@ class DeExtremoAExtremo(unittest.TestCase):
         self.assertIn("| 6 tareas | zeroshot |", EV.markdown(r))
         self.assertEqual(r["vs_l2_actual"]["fuente"], "T3")
 
+    def test_nombres_de_tarea_son_los_del_fichero(self):
+        with tempfile.TemporaryDirectory() as t:
+            for f in (self.d / "dev").glob("*.jsonl"):   # `tarea` distinta del nombre del fichero, como en la batería real
+                (Path(t) / f.name).write_text(f.read_text().replace('"tarea": "%s"' % f.stem, '"tarea": "otro_%s"' % f.stem.replace("-", "_")))
+            dev = EV.leer_dev(t)
+            res = EV.evaluar_e5(dev, None, None, 1, [], 48, log=lambda s: None)
+            self.assertEqual(sorted(res["tareas"]), sorted(EV.tareas_dev_v2()))
+
     def test_leer_dev_rechaza_lo_que_no_es_dev(self):
         with tempfile.TemporaryDirectory() as t:
             for f in (self.d / "dev").glob("*.jsonl"):
