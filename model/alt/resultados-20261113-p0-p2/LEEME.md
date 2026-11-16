@@ -1829,3 +1829,26 @@ Lectura informativa, que no es el veredicto:
 - **Decisión de la sesión madre:** T3 queda en **«no medido»** con su lectura congelada. El +1,3 de las 5 tareas completas es **informativo y no decide nada**. El 14B ya no entra.
   - **T3a:** NLI, L2 y kNN en una c7i con torch CPU fijado.
   - **T3b:** variantes de especificación del 4B en dev: rúbrica en las tareas score, esperanza ordinal, fs8 + rúbrica, y preselección top-k con kNN para muchas opciones.
+
+### 17.14 Resultado de la e2e corregida (EC2 inst-02, g5, ≈ 0,45 USD; `verificado`; `r10-t5e2e-082f6f2/`): **la cascada por HTTP iguala a Python**
+
+Cascada completa por HTTP: servidor Go, codificador e5 con un pool de 4 sesiones, kNN por tarea, L3 por logprobs con vLLM y el 4B, sobre 4 244 consultas con texto y descripciones.
+
+| pasada | macro sin hatecheck | frente a Python (0,7233) | filas por timeout |
+|---|---|---|---|
+| paridad (4 clientes, `timeout_fila` 60 s) | **0,7218** | −0,15 | 0 |
+| capacidad (16 clientes, `timeout_fila` 30 s) | 0,7241 | +0,08 | 0 |
+
+- Escalado: 47,6 %, igual que en Python. 2 223 filas se resuelven en L2 y 2 021 en L3.
+- Por tarea, en la pasada de paridad: fakenews 0,652, lexboe 0,636, massive-es 0,631, massive-esc 0,728, tuits 0,586, inyecciones 0,887, jailbreak 0,932 y hatecheck 0,826.
+
+**Latencia, p50 / p95:**
+
+| pasada | total | codificador e5 | kNN | L3 |
+|---|---|---|---|---|
+| 4 clientes | 70 ms / 2,2 s | 19 ms / 265 ms | 0,9 ms / 1,8 ms | 55 ms / 4,8 s |
+| 16 clientes | 154 ms / 9,0 s | 52 ms / 693 ms | — | 118 ms / 18,8 s |
+
+**Caudal con la mezcla real:** 10,6 req/s con 16 clientes y 12,4 req/s con 64. En R9 eran 17–20, pero entonces L3 iba sin descripciones y con un `timeout_fila` de 10 s. Con 64 clientes, la espera de L3 en el semáforo da p50 3,3 s.
+
+**Lectura:** la cascada que funciona ya está en el servidor y la exactitud coincide con Python. El cuello es L3: vLLM con una sola g5 y prompts largos (las descripciones y las 60 opciones de massive).
