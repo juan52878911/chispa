@@ -82,6 +82,8 @@ type Config struct {
 	// cola, tope de tiempo). Exige `l3`. En choice con más de top_k opciones L3 solo ve las top_k de una capa previa; como aquí no
 	// hay capas previas las ve todas.
 	ForzarL3 bool `json:"forzar_l3,omitempty"`
+	// KNN (opcional): L2 por kNN por tarea (L2KNN); sustituye al L2 de ONNX y, salvo conservar_l0_l1, salta L0 y L1. Ver ConfigKNN.
+	KNN *ConfigKNN `json:"knn,omitempty"`
 	// CapasExplicitas: el JSON de la config trae «capas». Solo entonces sus τ de L1 y L2 cuentan frente a los de CALIB, y solo para
 	// subirlos (ArmarDesde); sin «capas» (también con «{}») el τ es el de CALIB, igual que sin -config. Lo fija CargarConfig.
 	CapasExplicitas bool `json:"-"`
@@ -259,6 +261,11 @@ func (c Config) Validar() error {
 	}
 	if c.TextoLargo != nil {
 		if err := c.TextoLargo.Validar(); err != nil {
+			return err
+		}
+	}
+	if c.KNN != nil {
+		if err := c.KNN.validar(); err != nil {
 			return err
 		}
 	}
