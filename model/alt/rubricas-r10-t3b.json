@@ -36,27 +36,27 @@
    "pregunta": "¿Qué valor educativo tiene este texto de la web para enseñar (0 nulo a 5 excelente; el id es la nota más uno)?",
    "niveles": {
     "1": {
-     "descripcion": "Sin valor educativo (nota 0): foros, chats, ocio, anuncios o fichas de producto; no enseña nada ni explica conceptos.",
+     "descripcion": "Etiqueta 1 = nota 0. Sin valor educativo (nota 0): foros, chats, ocio, anuncios o fichas de producto; no enseña nada ni explica conceptos.",
      "ejemplo": "Días 4 y 5 - Jueves y viernes Mi única sesión programada para el jueves empezaba a las 14:00, así que no entré en la Uni hasta…",
      "fuente_ejemplo": "jql-valor-educativo:train:0"
     },
     "2": {
-     "descripcion": "Valor mínimo (nota 1): texto comercial o de marketing, noticia breve o pasos sueltos de soporte; algo de información pero sin enseñar.",
+     "descripcion": "Etiqueta 2 = nota 1. Valor mínimo (nota 1): texto comercial o de marketing, noticia breve o pasos sueltos de soporte; algo de información pero sin enseñar.",
      "ejemplo": "Lo que hay que saber - Una tercera causa posible de que un iPad air 3 no tenga pantalla es un problema de batería. - Una cuarta…",
      "fuente_ejemplo": "jql-valor-educativo:train:10"
     },
     "3": {
-     "descripcion": "Valor básico (nota 2): información práctica o divulgativa corriente (servicios, avisos, consejos) con poca profundidad ni estructura didáctica.",
+     "descripcion": "Etiqueta 3 = nota 2. Valor básico (nota 2): información práctica o divulgativa corriente (servicios, avisos, consejos) con poca profundidad ni estructura didáctica.",
      "ejemplo": "¿Necesita un servicio rápido y eficaz de recogida y eliminación de residuos en King's End? ¿Necesita un servicio que pueda…",
      "fuente_ejemplo": "jql-valor-educativo:train:16"
     },
     "4": {
-     "descripcion": "Valor bueno (nota 3): explica un tema con claridad y orden, útil para aprender aunque general o con partes publicitarias.",
+     "descripcion": "Etiqueta 4 = nota 3. Valor bueno (nota 3): explica un tema con claridad y orden, útil para aprender aunque general o con partes publicitarias.",
      "ejemplo": "Tal vez sin darse cuenta, es probable que en algún momento de su vida se haya topado con la radiografía, ya sea porque le…",
      "fuente_ejemplo": "jql-valor-educativo:train:24"
     },
     "5": {
-     "descripcion": "Valor muy bueno (nota 4): explicación didáctica de conceptos con definiciones, datos o ejemplos, aprovechable tal cual en clase.",
+     "descripcion": "Etiqueta 5 = nota 4. Valor muy bueno (nota 4): explicación didáctica de conceptos con definiciones, datos o ejemplos, aprovechable tal cual en clase.",
      "ejemplo": "Hay tantos animales salvajes que visitan o utilizan nuestras playas de los Outer Banks que es difícil saber por dónde empezar.…",
      "fuente_ejemplo": "jql-valor-educativo:train:32"
     }

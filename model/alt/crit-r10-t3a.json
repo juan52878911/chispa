@@ -1,0 +1,37 @@
+{
+ "ronda": "r10-t3a",
+ "descripcion": "Líneas base informativas de la batería v2 (6 tareas de DESARROLLO) en CPU: clase mayoritaria, mDeBERTa-NLI, L2 zero-shot y kNN-e5 k=8. No hay lectura de veredicto: son referencias para T3b y D.",
+ "datos": "Solo dev/: el ud solo recibe dev.tgz. Las tareas selladas de la bateria v2 NO se abren en T3 (ni se copian, ni se suben, ni se miden).",
+ "tareas_dev": [
+  "finanzas-documentos",
+  "horeca-resenas",
+  "jql-valor-educativo",
+  "cfpb-quejas",
+  "usajobs-nivel",
+  "congreso-eeuu-partido"
+ ],
+ "sinteticas": [
+  "finanzas-documentos",
+  "horeca-resenas"
+ ],
+ "referencia_sistema": "mayoritaria",
+ "sistemas": {
+  "mayoritaria": "clase mayoritaria del soporte de oro de cada tarea (empate: el menor id), medida en el test; el oráculo del test se informa aparte",
+  "mdeberta-nli": "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@b5113eb38ab63efdd7f280f8c144ea8b13f978ce, NLI zero-shot (informativo) (con tope de filas por tarea: la cobertura se informa y lo no puntuado cuenta como fallo; exactitud_cubiertas da la exactitud sobre lo puntuado)",
+  "l2-zs": "checkpoint L2 de Chispa ajuste-80ab8ef/ckpt/mejor.pt, sin soporte (informativo)",
+  "knn-e5-k8": "kNN e5 (614241f6...), 8 de oro por clase, 32 vecinos, temperatura 0,05 (informativo)"
+ },
+ "metrica": "exactitud por tarea (inválida = fallo); macro = media de las 6 exactitudes por tarea",
+ "ic95": {
+  "macro": "bootstrap sobre TAREAS: se remuestrean las 6 tareas con reemplazo y se promedia la exactitud de cada una (2000 remuestreos, semilla 0)",
+  "tarea": "bootstrap sobre filas (2000 remuestreos, semilla 0, percentil)",
+  "dif_pareada_tarea": "bootstrap pareado sobre las filas de la tarea frente al 4B zero-shot"
+ },
+ "score": "tareas score: exactitud, exactitud ±1 nivel, MAE y QWK (kappa ponderado cuadrático)",
+ "semillas": {
+  "bootstrap": 0,
+  "ejemplos_fewshot": 20261115,
+  "knn": 0
+ },
+ "cobertura": "las filas sin predicción cuentan como fallo y la cobertura se informa"
+}

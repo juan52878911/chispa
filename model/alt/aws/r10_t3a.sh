@@ -24,7 +24,7 @@ quedan_min() { echo $(( MIN - ($(date +%s) - T0) / 60 )); }
 s3cp() { if [ "$LOCAL" = 1 ]; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; else aws s3 cp --only-show-errors "$1" "$2"; fi; }
 estado() { printf '%s\t%s\n' "$1" "$2" >> "$OUT/estado.tsv"; echo "[$1] $2"; }
 fallo() { echo "FALLO: $*"; FALLO="${FALLO:+$FALLO; }$*"; }
-medir() { [ -d "$BASE/dev" ] && ( cd "$REPO" && PYTHONPATH=$REPO timeout 120 "${NPY:-python3}" -m model.alt.lineas_base_v2 medir --dev "$BASE/dev" --pred "$PRED" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null; }
+medir() { [ -d "$BASE/dev" ] && ( cd "$REPO" && PYTHONPATH=$REPO timeout 120 "${NPY:-python3}" -m model.alt.lineas_base_v2 medir --dev "$BASE/dev" --pred "$PRED" --crit "$REPO/model/alt/crit-r10-t3a.json" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null; }
 subir_y_apagar() {
   trap - EXIT; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"; medir; cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
   ( cd "$BASE" && tar -czf resultados.tgz res ) && s3cp "$BASE/resultados.tgz" "$CHISPA_S3/resultados.tgz" || echo "no se pudo subir resultados.tgz"
@@ -65,7 +65,7 @@ for f in codigo.tgz dev.tgz; do s3cp "$CHISPA_S3/$f" "$BASE/$f" || { fallo "no s
 mkdir -p "$REPO" "$BASE/dev" && tar -xzf "$BASE/codigo.tgz" -C "$REPO" && tar -xzf "$BASE/dev.tgz" -C "$BASE/dev" || { fallo "tgz"; estado entradas "FALLO tgz"; cierre; }
 rm -f "$BASE"/dev/._*; export PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}"
 [ "$(ls "$BASE"/dev/*.jsonl | wc -l | tr -d ' ')" = 6 ] || { fallo "dev.tgz no trae 6 jsonl"; estado entradas "FALLO dev"; cierre; }
-SC=$("$NPY" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$REPO/model/alt/crit-r10-t3.json")
+SC=$("$NPY" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$REPO/model/alt/crit-r10-t3a.json")
 [ "$SC" = "$CRIT_SHA" ] || { fallo "criterio distinto del congelado ($SC)"; estado entradas "FALLO criterio"; cierre; }
 CN=$(cd "$REPO" && "$NPY" -m model.alt.lineas_base_v2 filas --dev "$BASE/dev" --salida "$BASE/t")
 [ "$CN" = "tareas=6 test=$N_TEST soporte=$N_SOP" ] || { fallo "recuentos distintos: $CN"; estado entradas "FALLO recuentos"; cierre; }
