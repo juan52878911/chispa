@@ -115,7 +115,7 @@ fi
 MAN=model/alt/manifiesto-entrenamiento.json
 "$PY" -m model.alt.destilar --datos "$RAIZ" --manifiesto "$MAN" --aplicar "$BASE/blandas.jsonl.gz" --resumen "$OUT/blandas.json" > "$OUT/blandas.log" 2>&1 \
   || { tail -3 "$OUT/blandas.log"; fallo "aplicar blandas"; estado blandas "FALLO"; cierre; }
-NDEV=$(ls "$DEV"/*.jsonl 2>/dev/null | wc -l); [ "$NDEV" = 6 ] || { fallo "dev: $NDEV ficheros y deben ser 6"; estado dev "FALLO"; cierre; }
+NDEV=$(ls "$DEV"/*.jsonl 2>/dev/null | wc -l | tr -d " "); [ "$NDEV" = 6 ] || { fallo "dev: $NDEV ficheros y deben ser 6"; estado dev "FALLO"; cierre; }
 estado datos "OK blandas $(cat "$OUT/blandas.json") · dev $NDEV tareas · quedan $(quedan_min) min"
 
 # --- 4. base en int8, en CPU y en segundo plano mientras la GPU entrena
@@ -128,8 +128,8 @@ BASEPID=$!
 echo "== 5. entrenar $(date -u +%T), quedan $(quedan_min) min"
 "$PY" -m model.alt.destilar_biencoder entrenar --datos "$RAIZ" --manifiesto "$MAN" --partida "$PART" --salida "$CK" --dev-dir "$DEV" "${TRAIN_EXTRA[@]}" \
   > "$OUT/entrenar.log" 2>&1; RC=$?
-tail -4 "$OUT/entrenar.log"; [ "$RC" = 0 ] && [ -f "$CK/final.pt" ] || { fallo "entrenar (rc $RC)"; estado entrenar "FALLO"; cierre; }
-estado entrenar "OK $(grep -c '^paso' "$OUT/entrenar.log") líneas de paso · $(grep '^datos:' "$OUT/entrenar.log" | cut -c1-300)"
+tail -4 "$OUT/entrenar.log"; { [ "$RC" = 0 ] || [ "$RC" = 143 ]; } && [ -f "$CK/final.pt" ] || { fallo "entrenar (rc $RC)"; estado entrenar "FALLO"; cierre; }
+estado entrenar "OK rc=$RC (143 = tope de tiempo) $(grep -c '^paso' "$OUT/entrenar.log") líneas de paso · $(grep '^datos:' "$OUT/entrenar.log" | cut -c1-300)"
 
 # --- 6. destilado en int8 y veredicto
 echo "== 6. destilado int8 $(date -u +%T), quedan $(quedan_min) min"
