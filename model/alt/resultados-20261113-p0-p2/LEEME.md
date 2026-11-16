@@ -1561,3 +1561,33 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 - User-data: `lanzados/ud-r10-t3-9ca7524.sh` (sha256 `76a26cb5…`, 14 823 bytes).
 - Prueba en seco en el i7, con 10 filas por tarea y un servidor falso para los LLM: pasó.
 - Riesgos sin probar: vLLM con el 14B AWQ en la A10G, y NLI/L2 en CUDA.
+
+### 17.8 C: few-shot real en v2-dev (preparado; código 8e27680, rama `r10-c` fusionada)
+
+**Criterio congelado** (`model/alt/crit-r10-c.json`, sha256 `45cb5b048f26d3e4de3eed7dc451f77895486f3684df66154660c00d8df0b834`):
+- La métrica es kNN-e5 y la cabeza de prototipos se informa al lado.
+- Δ = macro(oro32 ∪ LLM) − macro(oro32) en las 6 tareas de dev.
+- **PASA** si Δ ≥ +4 y ninguna tarea cae más de 2 puntos. **REFUTADO** si Δ < +1. En otro caso, NO PASA.
+- Se informan también k = 8 y la macro sin sintéticas.
+
+**Datos**, construidos en el i7 desde el train de origen (sin el test ni el oro8, comparando por texto normalizado):
+
+| tarea | oro32 | fondo |
+|---|---|---|
+| cfpb | 288 | 2 000 |
+| congreso-eeuu | 64 | 2 000 |
+| finanzas (sintética) | 1 884 | 2 000 |
+| horeca (sintética) | 160 | 2 000 |
+| usajobs | 352 | 2 000 |
+| **jql** | 40 | **0** |
+
+- jql no tiene train suficiente: oro32 queda igual que oro8 y no hay fondo. En la macro entra con Δ = 0 por construcción, lo que diluye la Δ un sexto.
+- En cfpb, horeca y usajobs no hay split oficial: el «train de origen» es el resto del conjunto.
+
+**Etiquetado en la g5**:
+- Va con el ud de R7b sin cambios, tope de 35 min.
+- La cola (10 000 textos) está ordenada por coste: primero las tareas baratas, hasta 1 000 por tarea, y finanzas, con 59 opciones a ≈ 1,2 s por texto, intercalada.
+- Calculo que entran ≈ 4 500 textos y ≈ 416 de finanzas (unos 7 por clase).
+- Entradas en `s3://…/r10-c-lp-8e27680/`: reetiqueta.jsonl `1175ed52…`. User-data: `lanzados/ud-r10-c-lp-8e27680.sh`.
+
+**Medición en una c7i** (`r10_c_medir.sh`, tope 30 min, transformers 5.22.2 fijado): se empaqueta cuando la g5 esté verificada.
