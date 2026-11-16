@@ -1,0 +1,99 @@
+{
+ "ronda": "r10-d",
+ "descripcion": "D, el oro bien usado: demostraciones elegidas por kNN y mezcla de posteriores con el kNN-e5 de oro, con el 4B (cdbee75f) en las 6 tareas de DESARROLLO de la batería v2. Congelada ANTES de medir.",
+ "datos": "Solo dev/: el ud solo recibe dev.tgz. Las selladas NO se abren. Solo el 4B Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554.",
+ "tareas_dev": [
+  "finanzas-documentos",
+  "horeca-resenas",
+  "jql-valor-educativo",
+  "cfpb-quejas",
+  "usajobs-nivel",
+  "congreso-eeuu-partido"
+ ],
+ "sinteticas": [
+  "finanzas-documentos",
+  "horeca-resenas"
+ ],
+ "entradas_t3_sha256": {
+  "4b-zs/cfpb-quejas.jsonl": "fd535849fa6ecc2ade071c8f033b319a9779367e9d2b35c2a1cd1df20d96a62d",
+  "4b-zs/congreso-eeuu-partido.jsonl": "01c8cd564a591fb063b0816a9d98fc0286f2bcf155b5dc324023d6b7014b8483",
+  "4b-zs/finanzas-documentos.jsonl": "8c2b12c89009d52045730329e5d73bab370492e1ea24ce2e81bd9d6f3f8adcf7",
+  "4b-zs/horeca-resenas.jsonl": "9ef7aa744d0af7f35cf37129aafc575fc2d430b0168826329d5e2b85da954a6c",
+  "4b-zs/jql-valor-educativo.jsonl": "77e6d7550fc814216757749bb2ec87f018870173c55598d6a9f59c76f3d60711",
+  "4b-zs/usajobs-nivel.jsonl": "72635826f4264dcb5fb60c8720c9023018e9e7ffbe64a0b962444b228c68016c",
+  "4b-fs8/cfpb-quejas.jsonl": "358cf8e0b18b6a467e2fb64e7b1fe2448c3cf89dcc39406510920dbe1878715c",
+  "4b-fs8/congreso-eeuu-partido.jsonl": "15744cb43c705ab0ebed1b4676ff557a0e5a196a42a4f78826fbd6d6a86e0222",
+  "4b-fs8/horeca-resenas.jsonl": "4afe2bc2765dcf0863fc11ca36bf8124f13459e07a466d8d42555695149be009",
+  "4b-fs8/jql-valor-educativo.jsonl": "2fad8d6965c1bb0ab914782325b03b0c1d40810c942b38825e316e3435ddaace",
+  "4b-fs8/usajobs-nivel.jsonl": "ab95e8a7746ba7a050817eab895fe07e170f64c8430ed0096482e620202ac9a5"
+ },
+ "reutiliza_t3": "zero-shot (4b-zs) y 8 ejemplos al azar (4b-fs8) de T3 en las 5 tareas completas; en finanzas se vuelven a medir (zs-topk y fs8-topk) con las 10 candidatas del kNN, para que todos los sistemas usen el mismo recorte",
+ "topk": {
+  "k": 10,
+  "tareas": "las de más de 20 opciones (en dev solo finanzas, 59)",
+  "kNN": "e5 614241f622f53c4eeff9890bdc4f31cfecc418b3, 8 de oro por clase (semilla 0), 32 vecinos, temperatura 0,05",
+  "orden": "las 10 opciones por orden alfabético; desempate del ranking: similitud al centroide; oro forzado dentro de las 10 en los ejemplos del soporte (kNN sin la propia fila); en el test el oro puede faltar (fallo)",
+  "transformers": "5.22.2"
+ },
+ "demos": {
+  "k": 8,
+  "seleccion": "para cada fila de test, las 8 filas del soporte de oro más cercanas por coseno de e5 (vectores de knn_soporte_llm.cmd_vectores, transformers 5.22.2); si el nº de clases cabe en 8, al menos la más cercana de cada clase y el resto por cercanía; orden: de la más lejana a la más cercana",
+  "referencia": "8 ejemplos al azar estratificados (llm_logprobs --ejemplos --k 8, semilla 20261115), los de T3"
+ },
+ "mezcla": {
+  "formula": "p = w·p_kNN + (1−w)·p_4B sobre las opciones de la fila",
+  "p_kNN": "kNN-e5 con 8 de oro por clase (semilla 0), 32 vecinos, T = 0,05 sobre todas las opciones",
+  "w_grid": [
+   0.0,
+   0.1,
+   0.2,
+   0.3,
+   0.4,
+   0.5,
+   0.6,
+   0.7,
+   0.8,
+   0.9,
+   1.0
+  ],
+  "w": "UNO por base (zs, fs8-azar, fs8-knn), elegido en la mitad A como el de mayor exactitud macro de las 6 tareas; empate: el menor"
+ },
+ "particion": "auditoria.mitad(id) (sha256('auditoria-' + id) % 2): 0 = mitad A (se elige w y la variante de demostraciones), 1 = mitad B (se mide); la referencia también se mide en B",
+ "bases": {
+  "zs": {
+   "*": "t3:4b-zs",
+   "finanzas-documentos": "zs-topk"
+  },
+  "fs8-azar": {
+   "*": "t3:4b-fs8",
+   "finanzas-documentos": "fs8-topk"
+  },
+  "fs8-knn": {
+   "*": "fs8-knn"
+  }
+ },
+ "variantes_demos": [
+  "fs8-azar",
+  "fs8-knn"
+ ],
+ "knn": "knn-e5-k8",
+ "referencia": "fs8-azar",
+ "candidato_final": "la mezcla con el kNN-e5 de oro sobre la variante de demostraciones de mayor exactitud macro en la mitad A sin mezcla (fs8-azar o fs8-knn; empate: fs8-knn), con su w de A. Se decide en A y se evalúa una sola vez en B; zs+knn, las bases solas y el kNN solo se informan",
+ "pasa": {
+  "macro_min": 0.03,
+  "tarea_max_perdida": 0.02,
+  "lectura": "PASA si el sistema final gana al menos +3 puntos de exactitud macro de las 6 dev a fs8 al azar en la mitad B (valor puntual; el IC95 es bootstrap sobre tareas y se informa, también sin las 2 sintéticas), ninguna de las 6 tareas pierde más de 2 puntos en B y la cobertura de B es del 100 % (final y referencia); si no, «no medido»; si no cumple, NO PASA"
+ },
+ "score_aparte": "las 3 tareas score (horeca, jql, usajobs): exactitud, QWK, MAE y ±1 por sistema en B, macro y macro sin la sintética (horeca)",
+ "mayoritaria": "la clase mayoritaria del soporte de oro (empate: el menor id) y la calculada con el test (oráculo, dato) salen en mayoritaria de cada tarea",
+ "ic95": {
+  "tarea": "bootstrap sobre filas de B (2000, semilla 0)",
+  "macro": "bootstrap sobre tareas (2000, semilla 0)"
+ },
+ "semillas": {
+  "bootstrap": 0,
+  "ejemplos_azar": 20261115,
+  "knn": 0
+ },
+ "cobertura": "las filas sin predicción cuentan como fallo y la cobertura se informa"
+}
