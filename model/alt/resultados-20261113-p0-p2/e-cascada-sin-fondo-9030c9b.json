@@ -1,0 +1,174 @@
+{
+ "criterio": {
+  "l2": "kNN-e5 solo oro (8 por clase), 32 vecinos, T 0.05, sin fondo",
+  "l3": "4B zs logprobs (T3); finanzas: zs-topk (T3b)",
+  "senal": "margen",
+  "particion": "auditoria.mitad (hash del id): A selecciona u, B mide",
+  "seleccion": "u = cuantil global del margen en A con escalado medio por tarea <= 0.50 y mejor macro de la cascada",
+  "pasa_perdida_max": 0.01,
+  "pasa_escalado_max": 0.5,
+  "pasa_auroc_min": 0.7,
+  "macro": "media simple de las 6 tareas dev"
+ },
+ "criterio_sha256": "f85f635960d3a3999163a7ca1f79f35cb471563e50bdc5301a0883587cebf6ab",
+ "veredicto": {
+  "criterio_sha256": "f85f635960d3a3999163a7ca1f79f35cb471563e50bdc5301a0883587cebf6ab",
+  "f": 0.5,
+  "u": 0.039217,
+  "cascada": 0.4776,
+  "l3": 0.4908,
+  "l2": 0.4356,
+  "cascada_menos_l3": -0.0132,
+  "escalado_medio": 0.4912,
+  "auroc_margen_medio": 0.6081,
+  "estado": "NO PASA"
+ },
+ "por_tarea_B": {
+  "cfpb-quejas": {
+   "cascada": 0.5946,
+   "l2": 0.4247,
+   "l3": 0.6834,
+   "escalado": 0.4363,
+   "auroc": 0.7071,
+   "cobertura_l3": 1.0
+  },
+  "congreso-eeuu-partido": {
+   "cascada": 0.5813,
+   "l2": 0.5244,
+   "l3": 0.6138,
+   "escalado": 0.4106,
+   "auroc": 0.5059,
+   "cobertura_l3": 1.0
+  },
+  "finanzas-documentos": {
+   "cascada": 0.7984,
+   "l2": 0.7531,
+   "l3": 0.7984,
+   "escalado": 0.2181,
+   "auroc": 0.8039,
+   "cobertura_l3": 1.0
+  },
+  "horeca-resenas": {
+   "cascada": 0.4646,
+   "l2": 0.3858,
+   "l3": 0.5,
+   "escalado": 0.4685,
+   "auroc": 0.5306,
+   "cobertura_l3": 1.0
+  },
+  "jql-valor-educativo": {
+   "cascada": 0.2414,
+   "l2": 0.3319,
+   "l3": 0.1897,
+   "escalado": 0.7284,
+   "auroc": 0.5325,
+   "cobertura_l3": 1.0
+  },
+  "usajobs-nivel": {
+   "cascada": 0.1853,
+   "l2": 0.194,
+   "l3": 0.1595,
+   "escalado": 0.6853,
+   "auroc": 0.5687,
+   "cobertura_l3": 1.0
+  }
+ },
+ "curva_B": [
+  {
+   "f": 0.0,
+   "cascada_B": 0.4356,
+   "escalado_B": 0.0
+  },
+  {
+   "f": 0.05,
+   "cascada_B": 0.4374,
+   "escalado_B": 0.0477
+  },
+  {
+   "f": 0.1,
+   "cascada_B": 0.4404,
+   "escalado_B": 0.0925
+  },
+  {
+   "f": 0.15,
+   "cascada_B": 0.445,
+   "escalado_B": 0.1525
+  },
+  {
+   "f": 0.2,
+   "cascada_B": 0.4492,
+   "escalado_B": 0.2047
+  },
+  {
+   "f": 0.25,
+   "cascada_B": 0.457,
+   "escalado_B": 0.2465
+  },
+  {
+   "f": 0.3,
+   "cascada_B": 0.4639,
+   "escalado_B": 0.2909
+  },
+  {
+   "f": 0.35,
+   "cascada_B": 0.4677,
+   "escalado_B": 0.3452
+  },
+  {
+   "f": 0.4,
+   "cascada_B": 0.4721,
+   "escalado_B": 0.3977
+  },
+  {
+   "f": 0.45,
+   "cascada_B": 0.4737,
+   "escalado_B": 0.4482
+  },
+  {
+   "f": 0.5,
+   "cascada_B": 0.4776,
+   "escalado_B": 0.4912
+  },
+  {
+   "f": 0.6,
+   "cascada_B": 0.4889,
+   "escalado_B": 0.5767
+  },
+  {
+   "f": 0.7,
+   "cascada_B": 0.493,
+   "escalado_B": 0.6769
+  },
+  {
+   "f": 0.8,
+   "cascada_B": 0.4892,
+   "escalado_B": 0.781
+  },
+  {
+   "f": 0.9,
+   "cascada_B": 0.4908,
+   "escalado_B": 0.8925
+  },
+  {
+   "f": 1.0,
+   "cascada_B": 0.4908,
+   "escalado_B": 1.0
+  }
+ ],
+ "n_A": {
+  "cfpb-quejas": 241,
+  "congreso-eeuu-partido": 254,
+  "finanzas-documentos": 218,
+  "horeca-resenas": 246,
+  "jql-valor-educativo": 237,
+  "usajobs-nivel": 268
+ },
+ "n_B": {
+  "cfpb-quejas": 259,
+  "congreso-eeuu-partido": 246,
+  "finanzas-documentos": 243,
+  "horeca-resenas": 254,
+  "jql-valor-educativo": 232,
+  "usajobs-nivel": 232
+ }
+}

@@ -2058,3 +2058,29 @@ Exactitud por tarea, con QWK y MAE entre paréntesis:
 
 Si no pasa, queda escrito que la cascada solo funciona cuando hay datos (un fondo etiquetado).
 sha256 de CRIT_E: `f85f635960d3a3999163a7ca1f79f35cb471563e50bdc5301a0883587cebf6ab`.
+
+### 17.23 Resultado de E (i7, 0 USD; `e-cascada-sin-fondo-9030c9b.json`): **NO PASA — la cascada solo funciona con datos**
+
+Vectores e5 de v2-dev calculados en el i7 (transformers 4.46.3). En la mitad A se elige f = 0,50 (u = 0,0392), y la medida es sobre la mitad B (n entre 232 y 259 por tarea).
+
+| | cascada | todo-L3 | solo L2 (8/clase) | Δ cascada − L3 | escalado medio | AUROC medio del margen |
+|---|---|---|---|---|---|---|
+| macro de las 6 dev | 0,478 | 0,491 | 0,436 | **−1,3** (umbral −1,0) | 49,1 % | **0,608** (umbral 0,70) |
+
+Por tarea (mitad B):
+
+| tarea | cascada | L2 | L3 | escalado | AUROC |
+|---|---|---|---|---|---|
+| cfpb | 0,595 | 0,425 | 0,683 | 44 % | 0,71 |
+| congreso | 0,581 | 0,524 | 0,614 | 41 % | 0,51 |
+| finanzas (L3 con top-k) | 0,798 | 0,753 | 0,798 | 22 % | 0,80 |
+| horeca | 0,465 | 0,386 | 0,500 | 47 % | 0,53 |
+| jql | 0,241 | 0,332 | 0,190 | 73 % | 0,53 |
+| usajobs | 0,185 | 0,194 | 0,160 | 69 % | 0,57 |
+
+Curva en B: la cascada no llega a todo-L3 hasta escalar el 60–70 % (0,489 con el 58 % y 0,493 con el 68 %).
+
+**Lectura:**
+- Con solo 8 de oro por clase, el margen del kNN apenas separa aciertos de fallos: el AUROC queda en 0,51–0,57 en 4 de las 6 tareas. Solo es una buena señal en finanzas (0,80) y cfpb (0,71).
+- Escalando la mitad de las filas, la cascada pierde 1,3 puntos frente a mandar todo a L3. **Queda escrito:** la cascada L2→L3 solo funciona cuando hay datos, es decir, un fondo etiquetado (el +2,7 de T1). Sin fondo, la configuración por defecto es todo a L3.
+- En jql y usajobs el kNN supera al 4B zero-shot, pero eso dejará de ser así con rúbrica + calibración (T3b: 0,478 y 0,222).
