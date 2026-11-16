@@ -1,0 +1,574 @@
+{
+ "criterio_sha256": "45cb5b048f26d3e4de3eed7dc451f77895486f3684df66154660c00d8df0b834",
+ "tareas": [
+  "cfpb-quejas",
+  "congreso-eeuu-partido",
+  "finanzas-documentos",
+  "horeca-resenas",
+  "jql-valor-educativo",
+  "usajobs-nivel"
+ ],
+ "sinteticas": [
+  "finanzas-documentos",
+  "horeca-resenas"
+ ],
+ "etiquetador": {
+  "cfpb-quejas": {
+   "en_fondo": 2000,
+   "recibidos_de_la_g5": 1000,
+   "etiquetados": 1000,
+   "acierto_vs_fuente": 0.662
+  },
+  "congreso-eeuu-partido": {
+   "en_fondo": 2000,
+   "recibidos_de_la_g5": 1000,
+   "etiquetados": 1000,
+   "acierto_vs_fuente": 0.623
+  },
+  "finanzas-documentos": {
+   "en_fondo": 2000,
+   "recibidos_de_la_g5": 283,
+   "etiquetados": 283,
+   "acierto_vs_fuente": 0.6855
+  },
+  "horeca-resenas": {
+   "en_fondo": 2000,
+   "recibidos_de_la_g5": 1000,
+   "etiquetados": 1000,
+   "acierto_vs_fuente": 0.44
+  },
+  "jql-valor-educativo": {
+   "en_fondo": 0,
+   "recibidos_de_la_g5": 0,
+   "etiquetados": 0,
+   "acierto_vs_fuente": null
+  },
+  "usajobs-nivel": {
+   "en_fondo": 2000,
+   "recibidos_de_la_g5": 1100,
+   "etiquetados": 1100,
+   "acierto_vs_fuente": 0.1855
+  }
+ },
+ "por_tarea": {
+  "cfpb-quejas": {
+   "knn/oro8": {
+    "n": 500,
+    "acc": 0.39
+   },
+   "knn/oro32": {
+    "n": 500,
+    "acc": 0.606
+   },
+   "knn/oro8+llm": {
+    "n": 500,
+    "acc": 0.618
+   },
+   "knn/oro32+llm": {
+    "n": 500,
+    "acc": 0.646
+   },
+   "knn/llm": {
+    "n": 500,
+    "acc": 0.61
+   },
+   "proto/oro8": {
+    "n": 500,
+    "acc": 0.514
+   },
+   "proto/oro32": {
+    "n": 500,
+    "acc": 0.644
+   },
+   "proto/oro8+llm": {
+    "n": 500,
+    "acc": 0.652
+   },
+   "proto/oro32+llm": {
+    "n": 500,
+    "acc": 0.668
+   },
+   "proto/llm": {
+    "n": 500,
+    "acc": 0.666
+   }
+  },
+  "congreso-eeuu-partido": {
+   "knn/oro8": {
+    "n": 500,
+    "acc": 0.516
+   },
+   "knn/oro32": {
+    "n": 500,
+    "acc": 0.52
+   },
+   "knn/oro8+llm": {
+    "n": 500,
+    "acc": 0.6
+   },
+   "knn/oro32+llm": {
+    "n": 500,
+    "acc": 0.602
+   },
+   "knn/llm": {
+    "n": 500,
+    "acc": 0.602
+   },
+   "proto/oro8": {
+    "n": 500,
+    "acc": 0.478
+   },
+   "proto/oro32": {
+    "n": 500,
+    "acc": 0.552
+   },
+   "proto/oro8+llm": {
+    "n": 500,
+    "acc": 0.54
+   },
+   "proto/oro32+llm": {
+    "n": 500,
+    "acc": 0.54
+   },
+   "proto/llm": {
+    "n": 500,
+    "acc": 0.54
+   }
+  },
+  "finanzas-documentos": {
+   "knn/oro8": {
+    "n": 461,
+    "acc": 0.7613882863340564
+   },
+   "knn/oro32": {
+    "n": 461,
+    "acc": 0.8373101952277657
+   },
+   "knn/oro8+llm": {
+    "n": 461,
+    "acc": 0.6876355748373102
+   },
+   "knn/oro32+llm": {
+    "n": 461,
+    "acc": 0.824295010845987
+   },
+   "knn/llm": {
+    "n": 461,
+    "acc": 0.40130151843817785
+   },
+   "proto/oro8": {
+    "n": 461,
+    "acc": 0.8655097613882863
+   },
+   "proto/oro32": {
+    "n": 461,
+    "acc": 0.9088937093275488
+   },
+   "proto/oro8+llm": {
+    "n": 461,
+    "acc": 0.8503253796095445
+   },
+   "proto/oro32+llm": {
+    "n": 461,
+    "acc": 0.8980477223427332
+   },
+   "proto/llm": {
+    "n": 461,
+    "acc": 0.5249457700650759
+   }
+  },
+  "horeca-resenas": {
+   "knn/oro8": {
+    "n": 500,
+    "acc": 0.312,
+    "mas_menos_1": 0.812,
+    "mae": 0.896
+   },
+   "knn/oro32": {
+    "n": 500,
+    "acc": 0.414,
+    "mas_menos_1": 0.89,
+    "mae": 0.716
+   },
+   "knn/oro8+llm": {
+    "n": 500,
+    "acc": 0.364,
+    "mas_menos_1": 0.878,
+    "mae": 0.784
+   },
+   "knn/oro32+llm": {
+    "n": 500,
+    "acc": 0.392,
+    "mas_menos_1": 0.876,
+    "mae": 0.75
+   },
+   "knn/llm": {
+    "n": 500,
+    "acc": 0.356,
+    "mas_menos_1": 0.876,
+    "mae": 0.788
+   },
+   "proto/oro8": {
+    "n": 500,
+    "acc": 0.26,
+    "mas_menos_1": 0.682,
+    "mae": 1.062
+   },
+   "proto/oro32": {
+    "n": 500,
+    "acc": 0.234,
+    "mas_menos_1": 0.67,
+    "mae": 1.098
+   },
+   "proto/oro8+llm": {
+    "n": 500,
+    "acc": 0.236,
+    "mas_menos_1": 0.71,
+    "mae": 1.058
+   },
+   "proto/oro32+llm": {
+    "n": 500,
+    "acc": 0.238,
+    "mas_menos_1": 0.71,
+    "mae": 1.056
+   },
+   "proto/llm": {
+    "n": 500,
+    "acc": 0.242,
+    "mas_menos_1": 0.714,
+    "mae": 1.048
+   }
+  },
+  "jql-valor-educativo": {
+   "knn/oro8": {
+    "n": 469,
+    "acc": 0.21748400852878466,
+    "mas_menos_1": 0.7484008528784648,
+    "mae": 1.0341151385927505
+   },
+   "knn/oro32": {
+    "n": 469,
+    "acc": 0.21748400852878466,
+    "mas_menos_1": 0.7484008528784648,
+    "mae": 1.0341151385927505
+   },
+   "knn/oro8+llm": {
+    "n": 469,
+    "acc": 0.21748400852878466,
+    "mas_menos_1": 0.7484008528784648,
+    "mae": 1.0341151385927505
+   },
+   "knn/oro32+llm": {
+    "n": 469,
+    "acc": 0.21748400852878466,
+    "mas_menos_1": 0.7484008528784648,
+    "mae": 1.0341151385927505
+   },
+   "knn/llm": {
+    "n": 469,
+    "acc": 0.208955223880597,
+    "mas_menos_1": 0.6098081023454158,
+    "mae": 1.1812366737739872
+   },
+   "proto/oro8": {
+    "n": 469,
+    "acc": 0.208955223880597,
+    "mas_menos_1": 0.6183368869936035,
+    "mae": 1.1727078891257996
+   },
+   "proto/oro32": {
+    "n": 469,
+    "acc": 0.208955223880597,
+    "mas_menos_1": 0.6183368869936035,
+    "mae": 1.1727078891257996
+   },
+   "proto/oro8+llm": {
+    "n": 469,
+    "acc": 0.208955223880597,
+    "mas_menos_1": 0.6183368869936035,
+    "mae": 1.1727078891257996
+   },
+   "proto/oro32+llm": {
+    "n": 469,
+    "acc": 0.208955223880597,
+    "mas_menos_1": 0.6183368869936035,
+    "mae": 1.1727078891257996
+   },
+   "proto/llm": {
+    "n": 469,
+    "acc": 0.208955223880597,
+    "mas_menos_1": 0.6098081023454158,
+    "mae": 1.1812366737739872
+   }
+  },
+  "usajobs-nivel": {
+   "knn/oro8": {
+    "n": 500,
+    "acc": 0.144,
+    "mas_menos_1": 0.398,
+    "mae": 2.136
+   },
+   "knn/oro32": {
+    "n": 500,
+    "acc": 0.18,
+    "mas_menos_1": 0.474,
+    "mae": 1.764
+   },
+   "knn/oro8+llm": {
+    "n": 500,
+    "acc": 0.132,
+    "mas_menos_1": 0.378,
+    "mae": 2.162
+   },
+   "knn/oro32+llm": {
+    "n": 500,
+    "acc": 0.146,
+    "mas_menos_1": 0.406,
+    "mae": 2.078
+   },
+   "knn/llm": {
+    "n": 500,
+    "acc": 0.122,
+    "mas_menos_1": 0.368,
+    "mae": 2.228
+   },
+   "proto/oro8": {
+    "n": 500,
+    "acc": 0.088,
+    "mas_menos_1": 0.288,
+    "mae": 2.59
+   },
+   "proto/oro32": {
+    "n": 500,
+    "acc": 0.09,
+    "mas_menos_1": 0.284,
+    "mae": 2.656
+   },
+   "proto/oro8+llm": {
+    "n": 500,
+    "acc": 0.09,
+    "mas_menos_1": 0.278,
+    "mae": 2.692
+   },
+   "proto/oro32+llm": {
+    "n": 500,
+    "acc": 0.09,
+    "mas_menos_1": 0.274,
+    "mae": 2.688
+   },
+   "proto/llm": {
+    "n": 500,
+    "acc": 0.108,
+    "mas_menos_1": 0.296,
+    "mae": 2.524
+   }
+  }
+ },
+ "macro": {
+  "knn/oro8": {
+   "todas": [
+    0.39,
+    0.237,
+    0.564
+   ],
+   "sin_sinteticas": [
+    0.317,
+    0.181,
+    0.453
+   ]
+  },
+  "knn/oro32": {
+   "todas": [
+    0.462,
+    0.294,
+    0.651
+   ],
+   "sin_sinteticas": [
+    0.381,
+    0.199,
+    0.563
+   ]
+  },
+  "knn/oro8+llm": {
+   "todas": [
+    0.437,
+    0.266,
+    0.607
+   ],
+   "sin_sinteticas": [
+    0.392,
+    0.175,
+    0.609
+   ]
+  },
+  "knn/oro32+llm": {
+   "todas": [
+    0.471,
+    0.282,
+    0.664
+   ],
+   "sin_sinteticas": [
+    0.403,
+    0.182,
+    0.624
+   ]
+  },
+  "knn/llm": {
+   "todas": [
+    0.383,
+    0.243,
+    0.529
+   ],
+   "sin_sinteticas": [
+    0.386,
+    0.165,
+    0.606
+   ]
+  },
+  "proto/oro8": {
+   "todas": [
+    0.402,
+    0.219,
+    0.625
+   ],
+   "sin_sinteticas": [
+    0.322,
+    0.148,
+    0.496
+   ]
+  },
+  "proto/oro32": {
+   "todas": [
+    0.44,
+    0.226,
+    0.684
+   ],
+   "sin_sinteticas": [
+    0.374,
+    0.149,
+    0.598
+   ]
+  },
+  "proto/oro8+llm": {
+   "todas": [
+    0.43,
+    0.228,
+    0.659
+   ],
+   "sin_sinteticas": [
+    0.373,
+    0.149,
+    0.596
+   ]
+  },
+  "proto/oro32+llm": {
+   "todas": [
+    0.441,
+    0.231,
+    0.685
+   ],
+   "sin_sinteticas": [
+    0.377,
+    0.149,
+    0.604
+   ]
+  },
+  "proto/llm": {
+   "todas": [
+    0.382,
+    0.225,
+    0.551
+   ],
+   "sin_sinteticas": [
+    0.381,
+    0.158,
+    0.603
+   ]
+  }
+ },
+ "delta": {
+  "knn/oro32+llm": {
+   "delta_puntos": [
+    0.883,
+    -2.084,
+    4.333
+   ],
+   "delta_sin_sinteticas": [
+    2.2,
+    -1.7,
+    6.15
+   ],
+   "por_tarea": {
+    "cfpb-quejas": 4.0,
+    "congreso-eeuu-partido": 8.2,
+    "finanzas-documentos": -1.3,
+    "horeca-resenas": -2.2,
+    "jql-valor-educativo": 0.0,
+    "usajobs-nivel": -3.4
+   }
+  },
+  "knn/oro8+llm": {
+   "delta_puntos": [
+    4.637,
+    -2.192,
+    12.8
+   ],
+   "delta_sin_sinteticas": [
+    7.5,
+    -0.6,
+    17.1
+   ],
+   "por_tarea": {
+    "cfpb-quejas": 22.8,
+    "congreso-eeuu-partido": 8.4,
+    "finanzas-documentos": -7.38,
+    "horeca-resenas": 5.2,
+    "jql-valor-educativo": 0.0,
+    "usajobs-nivel": -1.2
+   }
+  },
+  "proto/oro32+llm": {
+   "delta_puntos": [
+    0.086,
+    -0.762,
+    1.067
+   ],
+   "delta_sin_sinteticas": [
+    0.3,
+    -0.9,
+    1.8
+   ],
+   "por_tarea": {
+    "cfpb-quejas": 2.4,
+    "congreso-eeuu-partido": -1.2,
+    "finanzas-documentos": -1.08,
+    "horeca-resenas": 0.4,
+    "jql-valor-educativo": 0.0,
+    "usajobs-nivel": 0.0
+   }
+  },
+  "proto/oro8+llm": {
+   "delta_puntos": [
+    2.714,
+    -1.273,
+    7.68
+   ],
+   "delta_sin_sinteticas": [
+    5.05,
+    0.1,
+    10.4
+   ],
+   "por_tarea": {
+    "cfpb-quejas": 13.8,
+    "congreso-eeuu-partido": 6.2,
+    "finanzas-documentos": -1.52,
+    "horeca-resenas": -2.4,
+    "jql-valor-educativo": 0.0,
+    "usajobs-nivel": 0.2
+   }
+  }
+ },
+ "veredicto": "REFUTADO",
+ "veredicto_informativo_k8": "NO PASA",
+ "veredicto_prototipos_oro32": "REFUTADO"
+}

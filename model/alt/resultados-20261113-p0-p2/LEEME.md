@@ -1714,3 +1714,27 @@ Evaluación y datos de la ronda:
   - Entradas en `s3://…/r10-piloto-3c1a7ca/`: codigo.tgz `1671bf09…`, dev.tgz `babc1c65…`.
   - El criterio sigue siendo `d9ee43f5…`.
   - Los ud `d8e7e67` y `e11aee1` quedan anulados.
+
+**Resultado de C** (EC2 i-0d09f19bea226be38, c7i, ≈ 0,05 USD; `verificado`; `c-few-shot-9590d2a.json`): **REFUTADO.**
+- Con el criterio congelado `45cb5b04…`, kNN, macro de 6 tareas: Δ = macro(oro32 ∪ LLM) − macro(oro32) = **+0,9 puntos [IC95 por tareas −2,1, +4,3]**. Queda por debajo de +1.
+- Sin sintéticas da +2,2 [−1,7, +6,2].
+- Con la cabeza de prototipos y oro32 ∪ LLM, +0,1.
+
+| tarea | acierto del etiquetador frente a la fuente | Δ kNN, oro32 ∪ LLM − oro32 | Δ kNN, oro8 ∪ LLM − oro8 (informativo) |
+|---|---|---|---|
+| cfpb-quejas | 0,662 | +4,0 | +22,8 |
+| congreso-eeuu-partido | 0,623 | +8,2 | +8,4 |
+| finanzas-documentos (sintética; 283 textos del LLM, ≈ 5 por clase) | 0,686 | −1,3 | −7,4 |
+| horeca-resenas (sintética) | **0,440** | −2,2 | +5,2 |
+| usajobs-nivel | **0,186** | −3,4 | −1,2 |
+| jql-valor-educativo (sin fondo) | — | 0 (por construcción) | 0 |
+
+**Macro kNN** (6 tareas): oro8 0,390, oro32 0,462, oro8 ∪ LLM 0,437, oro32 ∪ LLM 0,471, solo LLM 0,383.
+
+**Con k = 8** (informativo): Δ = +4,6 [−2,2, +12,8]. Da NO PASA porque finanzas cae 7,4 puntos.
+
+**Lectura:**
+- Las etiquetas del 4B ayudan cuando hay poco oro y el LLM acierta. cfpb y congreso suben entre 4 y 23 puntos.
+- Hunden las tareas `score`, donde el LLM falla: usajobs acierta un 19 % frente a la fuente y horeca un 44 %.
+- Con 32 de oro por clase, el soporte del LLM casi no aporta en media.
+- En v2-dev, un fondo del LLM solo sirve para las tareas en las que el LLM ya es bueno. Queda pendiente un filtro por tarea, a congelar aparte.
