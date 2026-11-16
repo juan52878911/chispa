@@ -318,6 +318,7 @@ func (s *Servidor) decide(w http.ResponseWriter, r *http.Request) {
 	idClave := cl.id()
 	out := respuestaHTTP{Results: make([]json.RawMessage, len(preguntas))}
 	ctx := conPresupuesto(r.Context())
+	presupuestoDe(ctx).lote.Store(int64(len(preguntas)))
 	for i, p := range preguntas {
 		if ctx.Err() != nil {
 			s.cuentaTimeout(ctx)
