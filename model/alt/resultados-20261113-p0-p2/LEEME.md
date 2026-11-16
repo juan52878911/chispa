@@ -1738,3 +1738,34 @@ Evaluación y datos de la ronda:
 - Hunden las tareas `score`, donde el LLM falla: usajobs acierta un 19 % frente a la fuente y horeca un 44 %.
 - Con 32 de oro por clase, el soporte del LLM casi no aporta en media.
 - En v2-dev, un fondo del LLM solo sirve para las tareas en las que el LLM ya es bueno. Queda pendiente un filtro por tarea, a congelar aparte.
+
+### 17.11 Resultado de T5b-e2e (EC2 i-094a1233db142cbd5, g5, ≈ 0,45 USD; `verificado`; `r10-t5e2e-0a55923/`)
+
+**Paridad de vectores en x86** (ORT oficial 1.31.1, 1 000 consultas): **PASA** el criterio `912ccec7…`.
+- fp32: coseno mín/p01 = 1,000000 y top-1 del kNN 100 %. Codificador en serie: p50 8,6 ms, p95 77 ms.
+- int8, informativo: p01 0,983, top-1 97,3 %, 118 MB. **No vale para móvil** sin calibrar.
+
+**Cascada por HTTP:** el servidor Go con el codificador e5, el kNN, L3 por logprobs y vLLM pasó las 4 244 consultas, todas con HTTP 200.
+- L2 y escalado coinciden con Python en el **100 %** de las filas: 2 223 en L2 y 2 021 en L3.
+- Macro sin hatecheck: **0,6918 frente a 0,7233 de Python, −3,2 puntos.**
+
+**La diferencia viene entera de L3 en modo cascada.** En las filas escaladas, la respuesta del servidor coincide con la L3 de Python así:
+
+| tarea | coincidencia | Go / Python |
+|---|---|---|
+| massive-es | 0,52 | 0,365 / 0,477 |
+| massive-esc | 0,58 | — |
+| lexboe | 0,72 | 0,403 / 0,487 |
+| fakenews | 0,78 | 0,516 / 0,669 |
+| tuits | 0,84 | — |
+| hatecheck | 0,98 | — |
+
+Con L3 forzado (R9-e2e) coincidía en el 99,84 %. Hipótesis: en cascada el servidor construye otro prompt para L3 (guía de capas previas, top_k, orden de las opciones o pista del kNN). El diagnóstico y la corrección van en **T5c**.
+
+**Latencia con 16 clientes:**
+- total p50 285 ms, p95 4,3 s;
+- **codificador e5: p50 202 ms, p95 1,3 s.** La sesión ORT única y serializada es el cuello de botella; T5c pone un pool;
+- kNN: 1 ms;
+- L3: p50 101 ms, p95 10,9 s, es decir, el timeout_fila.
+
+**Caudal con la mezcla real**, con un 47,6 % de escalado: **17 req/s con 16 clientes y 20 req/s con 64.** Con L3 forzado eran 7,5–10.

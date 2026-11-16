@@ -1,0 +1,161 @@
+{
+ "n": 4244,
+ "segundos": 291.7,
+ "clientes": 16,
+ "exactitud": {
+  "por_tarea": {
+   "fakenews-es": 0.5157,
+   "hatecheck-es": 0.818,
+   "inyecciones": 0.8871,
+   "jailbreak": 0.9324,
+   "lexboe": 0.611,
+   "massive-es": 0.5926,
+   "massive-esc": 0.7197,
+   "tuits-es": 0.5842
+  },
+  "n_por_tarea": {
+   "fakenews-es": 287,
+   "hatecheck-es": 978,
+   "inyecciones": 62,
+   "jailbreak": 207,
+   "lexboe": 964,
+   "massive-es": 567,
+   "massive-esc": 585,
+   "tuits-es": 594
+  },
+  "macro_sin_hatecheck": 0.6918,
+  "macro_todas": 0.7076
+ },
+ "referencia_python_macro_sin_hatecheck": 0.7233,
+ "diferencia_macro_vs_python": -0.0315,
+ "http": {
+  "200": 4244
+ },
+ "capas": {
+  "L2": 2223,
+  "L3": 2021
+ },
+ "por_tarea": {
+  "fakenews-es": {
+   "n": 287,
+   "fraccion_a_l3": 1.0,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "sin_oro": 287.0
+   },
+   "filas_knn": 287.0
+  },
+  "hatecheck-es": {
+   "n": 978,
+   "fraccion_a_l3": 1.0,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "siempre": 978.0
+   },
+   "filas_knn": 978.0
+  },
+  "inyecciones": {
+   "n": 62,
+   "fraccion_a_l3": 0.0484,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "margen": 3.0
+   },
+   "filas_knn": 62.0
+  },
+  "jailbreak": {
+   "n": 207,
+   "fraccion_a_l3": 0.0435,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "margen": 9.0
+   },
+   "filas_knn": 207.0
+  },
+  "lexboe": {
+   "n": 964,
+   "fraccion_a_l3": 0.2728,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "margen": 263.0
+   },
+   "filas_knn": 964.0
+  },
+  "massive-es": {
+   "n": 567,
+   "fraccion_a_l3": 0.3474,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "margen": 197.0
+   },
+   "filas_knn": 567.0
+  },
+  "massive-esc": {
+   "n": 585,
+   "fraccion_a_l3": 0.1573,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "margen": 92.0
+   },
+   "filas_knn": 585.0
+  },
+  "tuits-es": {
+   "n": 594,
+   "fraccion_a_l3": 0.3232,
+   "acuerdo_escala_con_python": 1.0,
+   "motivos_knn": {
+    "margen": 192.0
+   },
+   "filas_knn": 594.0
+  }
+ },
+ "latencia_ms": {
+  "total_cliente": {
+   "n": 4244,
+   "p50": 285.071,
+   "p95": 4265.56,
+   "p99": 11149.336,
+   "media": 1099.294
+  },
+  "cod_ms": {
+   "n": 4244,
+   "p50": 201.869,
+   "p95": 1286.438,
+   "p99": 1370.066,
+   "media": 416.411
+  },
+  "knn_ms": {
+   "n": 4244,
+   "p50": 1.07,
+   "p95": 7.873,
+   "p99": 13.036,
+   "media": 2.08
+  },
+  "l3_espera_ms": {
+   "n": 2021,
+   "p50": 0.0,
+   "p95": 0.0,
+   "p99": 0.0,
+   "media": 0.0
+  },
+  "l3_ms": {
+   "n": 2021,
+   "p50": 101.007,
+   "p95": 10886.28,
+   "p99": 11204.09,
+   "media": 1425.499
+  }
+ },
+ "l3_llamadas": {
+  "ok": 2021.0,
+  "invalida": 0.0,
+  "error": 0.0,
+  "timeout": 0.0,
+  "presupuesto": 0.0
+ },
+ "descartes": {
+  "cola_llena": 0.0,
+  "circuito_abierto": 0.0
+ },
+ "knn_sin_vector": 0.0
+}
