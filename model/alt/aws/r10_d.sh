@@ -15,12 +15,12 @@ REV4=cdbee75f17c01a7cc42f958dc650907174af0554; E5_REV=614241f622f53c4eeff9890bdc
 CRIT_SHA=__CRIT_SHA__; N_TEST=__N_TEST__; N_SOP=__N_SOP__
 ORDEN="horeca-resenas congreso-eeuu-partido usajobs-nivel cfpb-quejas jql-valor-educativo"; FIN=finanzas-documentos
 LOCAL=${CHISPA_LOCAL:-0}
-if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-t3b-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
+if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-d-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
 set -uo pipefail
 export HOME="${HOME:-/root}"; T0=$(date +%s)
-BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/chispa-t3b}
+BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/chispa-d}
 mkdir -p "$BASE/res/pred"; exec > >(tee -a "$BASE/log.txt") 2>&1
-echo "== arranque r10-t3b $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min hilos=$HILOS"
+echo "== arranque r10-d $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min hilos=$HILOS"
 OUT=$BASE/res; PRED=$OUT/pred; REPO=$BASE/repo; FALLO=""; VP=""
 quedan_min() { echo $(( MIN - ($(date +%s) - T0) / 60 )); }
 s3cp() { if [ "$LOCAL" = 1 ]; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; else aws s3 cp --only-show-errors "$1" "$2"; fi; }
