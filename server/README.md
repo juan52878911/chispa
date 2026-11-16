@@ -189,8 +189,16 @@ Con los τ de CALIB del `.chispa`, la cascada L0/L1/L2→L3 escala ≈ 98,8 % de
   El criterio (coseno p01 ≥ 0,999 y top-1 ≥ 99,5 %) está congelado en `model/alt/crit-r10-t5b.json`. El test es `TestE5ParidadVectoresYDecision` (`-tags ort`; variables `CHISPA_PARIDAD_DIR`,
   `CHISPA_CONSULTAS_TEXTO`, `CHISPA_E5_ONNX`, `CHISPA_E5_TOK`, `CHISPA_ORT_LIB`; `consultas_con_texto.py` añade el texto al fixture).
   Cabeceras y métricas del codificador: `X-Chispa-Cod-Ms` y `X-Chispa-KNN-Ms` (suma de las filas de la petición), `chispa_knn_codificador_segundos` y `chispa_knn_votacion_segundos`.
-  Para reproducir el escalado de Python con L3 real, configure también `"l3": {"tau": 0, "top_k": 256}`: la cascada de Python acepta siempre la respuesta de L3 y L3 ve todas las opciones
-  (con `top_k` por defecto, 8, L3 solo ve las 8 mejores del kNN).
+  **Pool de sesiones** (`knn.e5_sesiones`, por defecto min(4, núcleos)): una sola sesión ORT serializada era el cuello con 16 clientes (e5 p50 202 ms, p95 1,3 s en la g5, frente a 8,6 ms en serie).
+  Con N sesiones corren N consultas a la vez; cada una carga su copia de los pesos (≈ 470 MB en fp32; ≈ 120 MB en int8) y usa núcleos/N hilos intra-operador. Medido en local
+  (Mac, 10 núcleos, 16 clientes, 400 consultas, `TestE5ConcurrenciaLatenciaPorSesiones`): 1 sesión 23 consultas/s, p50 358 ms, p95 2 279 ms; 2 sesiones 69/s, p50 137, p95 556; 4 sesiones 104/s, p50 56, p95 521.
+- **El prompt de L3 en cascada es el de `llm_logprobs.py`** (T5c; `TestL3PromptCascadaIdenticoAPython`, 192 de 192 filas escaladas del fixture con el prompt idéntico byte a byte, 45 en el
+  testdata). Causas del −3,2 puntos de la primera ronda e2e en g5: (1) **las consultas se mandaron sin las descripciones de las opciones** (`consultas_con_texto.py` no las traía) y el prompt de
+  Python las lleva (`"descripcion"` en cada opción): sin ellas el prompt cambia en todas las filas con descripciones (`TestL3PromptSinDescripcionesNoEsElDePython`); es la causa de las 229 filas sin timeout que
+  respondían distinto (fakenews 2 opciones con descripción cada una, lexboe, massive-esc, tuits, hatecheck). Para quien llama: el prompt solo es el de Python si las opciones llevan la misma `description`.
+  (2) El recorte a `top_k` (8 por defecto) y la guía de la capa previa (aquí, las probabilidades del kNN) se aplican a las preguntas `choice` con más opciones: con `knn` y sin `l3.top_k` quedan APAGADOS
+  (`Config.DecisorL3` fija un top_k sin límite); con `l3.top_k` explícito vuelven a mandar. (3) El `timeout_fila` de 10 s dejaba parciales con piso a las filas de massive-es (60 opciones, relleno por `prompt_logprobs`):
+  la ronda e2e usa 60 s.
 - **Paridad.** `decide/knn_test.go`: `TestKNNSinteticoParidadConPython` (fixture sintético en `decide/testdata/knn`, generado por `generar.py`, una reimplementación literal de `escalado.l2` en Python; corre siempre) y
   `TestKNNParidadFixtureReal` (con `CHISPA_PARIDAD_DIR=<banco-paridad>`: 4 244 consultas de 8 tareas; compara L2 top-1, escala sí/no y motivo con Python, y la exactitud de la cascada usando la `l3` del fixture).
 

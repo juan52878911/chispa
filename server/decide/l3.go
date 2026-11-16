@@ -76,6 +76,8 @@ const (
 	// L3TopKPorDefecto: con 60 opciones L3 tenía p99 ≈ 120 s y solo opinaba en el 2,9 % de los casos (bench l3 de model/); la
 	// salida y la entrada del LLM crecen con las opciones.
 	L3TopKPorDefecto = 8
+	// L3TopKSinRecorte: top_k efectivo con `knn` y sin l3.top_k en la config (MaxOpciones del servidor es 256).
+	L3TopKSinRecorte = 1 << 20
 	maxRespuestaL3   = 1 << 20 // bytes leídos de la respuesta del LLM
 )
 
@@ -173,7 +175,13 @@ func (c Config) DecisorL3() (Decisor, error) {
 	if c.L3 == nil {
 		return NuevoL3(), nil
 	}
-	return NuevoL3LLM(*c.L3, nil)
+	cfg := *c.L3
+	if c.KNN != nil && cfg.TopK == 0 {
+		// Con knn la cascada es L2(kNN)→L3 como en Python: L3 ve TODAS las opciones y en su orden (llm_logprobs.py). El recorte a las top_k de una
+		// capa previa y su guía solo se aplican si la config fija l3.top_k a propósito.
+		cfg.TopK = L3TopKSinRecorte
+	}
+	return NuevoL3LLM(cfg, nil)
 }
 
 // L3LLM es el decisor L3 contra un endpoint compatible con OpenAI.
