@@ -8,6 +8,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 sha=${1:?SHA}; dev=${2:?DIR_DEV}; sal=${3:?DIR_SALIDA}
+dev=$(cd "$dev" && pwd); mkdir -p "$sal"; sal=$(cd "$sal" && pwd)
 git cat-file -e "$sha:model/alt/aws/r10_t3.sh" && git cat-file -e "$sha:model/alt/crit-r10-t3.json" || { echo "$sha no trae r10_t3.sh y crit-r10-t3.json" >&2; exit 1; }
 esperadas="cfpb-quejas congreso-eeuu-partido finanzas-documentos horeca-resenas jql-valor-educativo usajobs-nivel"
 hay=$(cd "$dev" && ls | grep -v '^\._' | tr '\n' ' ')
