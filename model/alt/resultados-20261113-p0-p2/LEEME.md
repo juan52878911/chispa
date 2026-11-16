@@ -1868,3 +1868,25 @@ Criterio `d9ee43f5…`: macro-F1 de las 6 tareas dev, en int8, comparado con e5 
 - **El entrenamiento estropea la geometría de e5:** k = 8 baja 14 puntos a pesar de la penalización por coseno contra e5.
 - **Cómo corrió:** fueron 7 605 pasos y el tope de tiempo cortó el entrenamiento. Las blandas reutilizadas fueron 166 362 (se perdieron 2 000 por excluir los conjuntos de tuits y Reddit).
 - **Lectura:** con esta receta y una hora de entrenamiento, la destilación del 4B en el biencoder **empeora** frente a e5 puro. Como fija el criterio, el plan completo (≈ 16 USD) **no se lanza**. Antes de pensar en volver a intentarlo habría que entender por qué se pierde el kNN: cuánto pesa la penalización, la tasa de aprendizaje del codificador o entrenar solo la torre. Sería una hipótesis nueva, que se congela aparte.
+
+### 17.16 Plan tras la segunda revisión (orden de la sesión madre)
+
+- **T3a** (c7i): NLI, L2 y kNN, con la clase mayoritaria de cada tarea como línea base.
+- **T3b, score ordinal calibrado:** sobre jql, usajobs y horeca se miden exactitud, QWK y MAE. Las variantes son:
+  1. argmax zero-shot, que es la base;
+  2. rúbrica por nivel;
+  3. esperanza ordinal sobre los logprobs;
+  4. esperanza ordinal con umbrales ajustados a partir de los 8 de oro.
+
+  **PASA** si la exactitud macro sube ≥ +5, el QWK ≥ +0,15 y ninguna tarea queda por debajo de la mayoritaria. Antes de congelar, hay que revisar el sesgo de nivel en jql: da 0,15, por debajo del azar, y con fs8 baja a 0,083.
+- **D, oro bien usado** (después de T3b): las demostraciones se eligen con kNN y la posterior del kNN-oro se mezcla con la del 4B. Hay un solo peso, elegido en una mitad de dev. La preselección top-k es obligatoria para que finanzas quede cubierta entera. **PASA** con ≥ +3 de macro frente a fs8 al azar, sin perder > 2 en ninguna tarea y con el 100 % de cobertura.
+- **E, cascada sin fondo** (i7 o c7i): un banco de solo 8 por clase, con los logprobs de T3b. **PASA** si, escalando ≤ 50 %, pierde ≤ 1 punto frente a «todo a L3» y el AUROC del margen es ≥ 0,70. Si no pasa, se deja escrito que la cascada solo funciona cuando hay datos.
+- **Selladas, una sola apertura**, después de D y con la configuración final congelada con su sha. Se miden a la vez:
+  - la clase mayoritaria;
+  - kNN con k = 8;
+  - el 4B en zero-shot;
+  - el 4B con fs8;
+  - el sistema final.
+
+  Los resultados se dan por tipo de tarea y con IC. Antes se hace una prueba en seco de tiempos en dev. Presupuesto reservado: ≈ 8 USD.
+- **Producto:** servidor con kNN + margen → 4B por logprobs con fs8 («trae 8–32 ejemplos por clase»). choice y noul se consideran estables y score, experimental. Si no hay oro, todo va siempre a L3. Se documenta el límite de opciones.
