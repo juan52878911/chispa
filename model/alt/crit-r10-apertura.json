@@ -2,8 +2,8 @@
  "ronda": "r10-apertura",
  "estado": "BORRADOR hasta que la sesión principal lo revise y lo congele (rellenar `congelado.commit` y commitear; el ud comprueba el sha256 de ESTE fichero)",
  "congelado": {
-  "commit": "__SHA_COMMIT_AL_CONGELAR__",
-  "fecha": "__FECHA_AL_CONGELAR__"
+  "commit": "1635175",
+  "fecha": "2026-11-16T00:39:27-0500"
  },
  "motivo": "Apertura única de las 8 tareas selladas de la batería v2 (R10): medir UNA vez el sistema final congelado (choice: 4B con 8 demostraciones elegidas por kNN; score: rúbrica mecánica + umbrales isotónicos) frente a sus líneas base, con el criterio fijado en dev y sin leer ninguna fila sellada",
  "descripcion": "Apertura de las selladas de la batería v2 con el 4B (Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554) por logprobs en dos g5.xlarge en paralelo (partes a y b). Nadie lee filas selladas: la rúbrica es mecánica y se genera dentro de la instancia desde el soporte.",
