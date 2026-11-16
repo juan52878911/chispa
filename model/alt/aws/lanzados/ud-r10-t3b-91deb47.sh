@@ -1,26 +1,27 @@
 #!/bin/bash
-CHISPA_S3=s3://chispa-pruebas-879381269751/r10-d-d1ca5de
-# R10-D: el oro bien usado con el 4B (Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f) por logprobs en las 6 tareas de DESARROLLO de la batería v2 (solo dev.tgz; las selladas no
-# se abren), en UNA g5.xlarge BAJO DEMANDA (A10G 24 GB), tope duro CHISPA_MIN=110 min (≈ 1,85 USD). user-data (DLAMI GPU PyTorch AL2023, rol chispa-pruebas-ec2 sin
-# ListBucket), terminate. Lectura congelada: model/alt/crit-r10-d.json (su sha256 y el de las predicciones de T3 se comprueban ANTES de medir). Corre, cada una con su tope:
-#   zs-topk / fs8-topk  finanzas con las 10 candidatas del kNN-e5 (zero-shot y 8 ejemplos al azar: el mismo recorte para todos)
-#   fs8-knn             8 demostraciones POR FILA, las más parecidas por coseno de e5 (vectores y demos se calculan aquí, en CPU, mientras se descarga y arranca el 4B)
-# El kNN-e5 de oro (p_kNN) y la mezcla de posteriores con w elegido en la mitad A se hacen al medir (lineas_base_v2d.py, solo numpy). Zero-shot y 8 al azar de las otras 5
-# tareas se reutilizan de T3.
+CHISPA_S3=s3://chispa-pruebas-879381269751/r10-t3b-91deb47
+# R10-T3b: variantes de ESPECIFICACIÓN del 4B (Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f) por logprobs en las 6 tareas de DESARROLLO de la batería v2 (solo dev.tgz;
+# las selladas no se abren), en UNA g5.xlarge BAJO DEMANDA (A10G 24 GB), tope duro CHISPA_MIN=45 min (≈ 0,76 USD). user-data (DLAMI GPU PyTorch AL2023, rol
+# chispa-pruebas-ec2 sin ListBucket), terminate. Lectura congelada: model/alt/crit-r10-t3b.json (su sha256 y el de la rúbrica y el de las predicciones de T3
+# se comprueban ANTES de medir). Corre, por orden de prioridad y cada una con su tope (lo hecho queda aunque se corte):
+#   zs-sop / rub-sop  zero-shot sin y con rúbrica sobre el SOPORTE de oro de las 3 score (para ajustar los umbrales)    rub  zero-shot con la rúbrica en el test de las 3 score
+#   zs-topk   4B zero-shot en finanzas con las 10 candidatas del kNN-e5      fs8-topk  8 ejemplos en finanzas con las 10 candidatas      fs8rub  8 ejemplos + rúbrica en las 3 score
+# La esperanza ordinal, los umbrales (isotónica sobre el soporte), QWK/MAE y la composición con las predicciones de T3 (4b-zs, 4b-fs8) se hacen al medir
+# (lineas_base_v2b.py, solo numpy, sin GPU). Cada fila guarda las probabilidades de TODOS los niveles (probs de llm_logprobs.py).
 # Lee:     $CHISPA_S3/{codigo.tgz,dev.tgz,t3.tgz}   (t3.tgz = 4b-zs/ y 4b-fs8/ de la ronda T3)
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar. Cifras: res/cifras.json.
-MIN=${CHISPA_MIN:-110}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-32}; VLLM=${CHISPA_VLLM:-0.33.0}
-DZ=${CHISPA_DZ:-4}; DF=${CHISPA_DF:-6}; DK=${CHISPA_DK:-50}; DKF=${CHISPA_DKF:-8}   # minutos máximos de zs-topk, fs8-topk, fs8-knn (5 tareas) y fs8-knn (finanzas)
+MIN=${CHISPA_MIN:-45}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-32}; VLLM=${CHISPA_VLLM:-0.33.0}
+DS=${CHISPA_DS:-2}; D2=${CHISPA_D2:-6}; D1=${CHISPA_D1:-3}; D4=${CHISPA_D4:-3}; D3=${CHISPA_D3:-6}   # minutos máximos de cada -sop, rub, zs-topk, fs8-topk, fs8rub
 REV4=cdbee75f17c01a7cc42f958dc650907174af0554; E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3; TORCH=2.7.1; TRANSFORMERS=5.22.2
-CRIT_SHA=38bc5612e580001b0f5d34f69abde105f5cdc1a1169a60c3a1acdb740f2f1585; N_TEST=2930; N_SOP=728
-ORDEN="horeca-resenas congreso-eeuu-partido usajobs-nivel cfpb-quejas jql-valor-educativo"; FIN=finanzas-documentos
+CRIT_SHA=823cf37adf04d635ab201cee40b44d8abc699f7082c4f07c79c01bb360083cfb; N_TEST=2930; N_SOP=728
+SCORE="horeca-resenas jql-valor-educativo usajobs-nivel"; FIN=finanzas-documentos
 LOCAL=${CHISPA_LOCAL:-0}
-if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-d-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
+if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-t3b-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
 set -uo pipefail
 export HOME="${HOME:-/root}"; T0=$(date +%s)
-BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/chispa-d}
+BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/chispa-t3b}
 mkdir -p "$BASE/res/pred"; exec > >(tee -a "$BASE/log.txt") 2>&1
-echo "== arranque r10-d $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min hilos=$HILOS"
+echo "== arranque r10-t3b $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min hilos=$HILOS"
 OUT=$BASE/res; PRED=$OUT/pred; REPO=$BASE/repo; FALLO=""; VP=""
 quedan_min() { echo $(( MIN - ($(date +%s) - T0) / 60 )); }
 s3cp() { if [ "$LOCAL" = 1 ]; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; else aws s3 cp --only-show-errors "$1" "$2"; fi; }
@@ -28,8 +29,8 @@ estado() { printf '%s\t%s\n' "$1" "$2" >> "$OUT/estado.tsv"; echo "[$1] $2"; }
 fallo() { echo "FALLO: $*"; FALLO="${FALLO:+$FALLO; }$*"; }
 lineas() { [ -f "$1" ] && wc -l < "$1" | tr -d ' ' || echo 0; }
 parar() { pkill -TERM -f "$1" 2>/dev/null; for _ in $(seq 30); do pgrep -f "$1" > /dev/null || return 0; sleep 2; done; pkill -KILL -f "$1" 2>/dev/null; sleep 3; }
-medir() { [ -d "$BASE/dev" ] && [ -d "$BASE/t3" ] && ( cd "$REPO" && PYTHONPATH=$REPO timeout 120 "${NPY:-python3}" -m model.alt.lineas_base_v2d medir --dev "$BASE/dev" --pred "$PRED" --t3 "$BASE/t3" \
-  --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null; }
+medir() { [ -d "$BASE/dev" ] && [ -d "$BASE/t3" ] && ( cd "$REPO" && PYTHONPATH=$REPO timeout 120 "${VPY:-python3}" -m model.alt.lineas_base_v2b medir --dev "$BASE/dev" --pred "$PRED" --t3 "$BASE/t3" \
+  --presel "$BASE/t/topk/preseleccion.json" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null; }
 subir_y_apagar() {
   trap - EXIT; [ -n "${WPID:-}" ] && kill $WPID 2>/dev/null; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"; medir; cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
   for l in "$BASE"/vllm-*.log; do [ -f "$l" ] && tail -n 200 "$l" > "$OUT/$(basename "$l" .log)-cola.log"; done
@@ -58,14 +59,14 @@ urls() { for _ in $(seq "$2"); do printf -- '--url %s ' "$1"; done; }
 validas() { [ -f "$1" ] || { echo 0; return; }; grep -c '"valida": true' "$1"; }
 bajar() {   # bajar REPO REV DIR PATRONES...
   local r=$1 v=$2 d=$3; shift 3; local pat; pat=$(printf "'%s'," "$@")
-  HF_HUB_ENABLE_HF_TRANSFER=0 "$NPY" -c "from huggingface_hub import snapshot_download as s; s('$r', revision='$v', local_dir='$d', allow_patterns=[${pat%,}])"
+  HF_HUB_ENABLE_HF_TRANSFER=0 "$VPY" -c "from huggingface_hub import snapshot_download as s; s('$r', revision='$v', local_dir='$d', allow_patterns=[${pat%,}])"
 }
-# sistema por logprobs: lp SISTEMA MIN DIR_FILAS "TAREAS" [DIR_EJEMPLOS [DIR_DEMOS]]; una pasada por tarea
+# sistema por logprobs: lp SISTEMA MIN DIR_FILAS "TAREAS" [DIR_EJEMPLOS]; una pasada por tarea
 lp() {
-  local s=$1 dur=$2 fdir=$3 tareas=$4 edir=${5:-} ddir=${6:-} dl t0=$(date +%s) t n=0; dl=$(limite "$dur"); mkdir -p "$PRED/$s"
+  local s=$1 dur=$2 fdir=$3 tareas=$4 edir=${5:-} dl t0=$(date +%s) t n=0; dl=$(limite "$dur"); mkdir -p "$PRED/$s"
   for t in $tareas; do
     [ "$(date +%s)" -ge "$dl" ] && { echo "== $s: sin tiempo para $t"; continue; }
-    local ej=(); [ -n "$edir" ] && ej=(--ejemplos "$edir/$t.jsonl" --k 8); [ -n "$ddir" ] && ej+=(--demos "$ddir/$t.jsonl")
+    local ej=(); [ -n "$edir" ] && ej=(--ejemplos "$edir/$t.jsonl" --k 8)
     cliente "$dl" --filas "$fdir/$t.jsonl" $(urls "$URL" "$HILOS") --modelo "$MOD" --salida "$PRED/$s/$t.jsonl" --timeout 600 --reintentos 1 "${ej[@]}" "${MAX[@]}"
     n=$(( n + $(lineas "$PRED/$s/$t.jsonl") ))
   done
@@ -78,12 +79,16 @@ if [ "$LOCAL" = 1 ]; then PY=${CHISPA_PY:-python3}; VPY=$PY; NPY=$PY
 else
   PY=""; for c in /opt/pytorch/bin/python /opt/conda/envs/pytorch/bin/python /usr/bin/python3; do [ -x "$c" ] && "$c" -c "import torch" 2>/dev/null && { PY=$c; break; }; done
   [ -n "$PY" ] && "$PY" -c "import torch; assert torch.cuda.is_available()" || { fallo "sin torch o sin GPU"; estado entorno "FALLO"; cierre; }
-  "$PY" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir "vllm==$VLLM" huggingface_hub || { fallo "pip install vllm==$VLLM"; estado entorno "FALLO pip"; cierre; }
   VPY=/opt/vllm/bin/python; NPY=/opt/nlp/bin/python
   ( for c in python3.12 python3.11 python3.10 "$PY" python3; do p=$(command -v "$c" 2>/dev/null) && "$p" -c "import sys; assert sys.version_info >= (3, 10)" 2>/dev/null && "$p" -m venv /opt/nlp 2>/dev/null && break; done
     /opt/nlp/bin/pip install -q --no-cache-dir "torch==$TORCH" --index-url https://download.pytorch.org/whl/cpu \
       && /opt/nlp/bin/pip install -q --no-cache-dir "transformers==$TRANSFORMERS" sentencepiece protobuf tiktoken numpy huggingface_hub \
-      && /opt/nlp/bin/python -c "import torch, transformers; assert torch.__version__.startswith('$TORCH') and transformers.__version__ == '$TRANSFORMERS'" && echo ok > "$BASE/nlp.ok" ) > "$BASE/pip-nlp.log" 2>&1 &
+      && /opt/nlp/bin/python -c "import torch, transformers, numpy, huggingface_hub, sentencepiece; assert torch.__version__.startswith('$TORCH') and transformers.__version__ == '$TRANSFORMERS'" && echo ok > "$BASE/nlp.ok" || echo fallo > "$BASE/nlp.fail" ) > "$BASE/pip-nlp.log" 2>&1 &
+  "$PY" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir "vllm==$VLLM" huggingface_hub || { fallo "pip install vllm==$VLLM"; estado entorno "FALLO pip"; cierre; }
+  VPY=/opt/vllm/bin/python
+  "$VPY" -c "import vllm, numpy, huggingface_hub" || { fallo "el venv de vLLM no importa vllm, numpy y huggingface_hub"; estado entorno "FALLO venv vllm"; cierre; }
+  for _ in $(seq 120); do [ -f "$BASE/nlp.ok" ] || [ -f "$BASE/nlp.fail" ] && break; sleep 5; done
+  [ -f "$BASE/nlp.ok" ] || { tail -3 "$BASE/pip-nlp.log"; fallo "el venv de transformers no importa torch, transformers, numpy, huggingface_hub y sentencepiece"; estado entorno "FALLO venv nlp"; cierre; }
   estado entorno "OK vllm $($VPY -c 'import vllm; print(vllm.__version__)' 2>/dev/null); $(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null)"
 fi
 
@@ -93,34 +98,35 @@ for f in codigo.tgz dev.tgz t3.tgz; do s3cp "$CHISPA_S3/$f" "$BASE/$f" || { fall
 mkdir -p "$REPO" "$BASE/dev" "$BASE/t3" && tar -xzf "$BASE/codigo.tgz" -C "$REPO" && tar -xzf "$BASE/dev.tgz" -C "$BASE/dev" && tar -xzf "$BASE/t3.tgz" -C "$BASE/t3" || { fallo "tgz"; estado entradas "FALLO tgz"; cierre; }
 rm -f "$BASE"/dev/._* "$BASE"/t3/._*; export PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}"
 [ "$(ls "$BASE"/dev/*.jsonl | wc -l | tr -d ' ')" = 6 ] || { fallo "dev.tgz no trae 6 jsonl"; estado entradas "FALLO dev"; cierre; }
-"$PY" - "$REPO/model/alt/crit-r10-d.json" "$BASE/t3" "$CRIT_SHA" <<'PY' || { fallo "criterio o predicciones de T3 distintos de los congelados"; estado entradas "FALLO criterio"; cierre; }
+"$VPY" - "$REPO/model/alt/crit-r10-t3b.json" "$REPO/model/alt/rubricas-r10-t3b.json" "$BASE/t3" "$CRIT_SHA" <<'PY' || { fallo "criterio, rúbrica o predicciones de T3 distintos de los congelados"; estado entradas "FALLO criterio"; cierre; }
 import hashlib, json, sys
 h = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()  # noqa: E731
 crit = json.load(open(sys.argv[1]))
-mal = [] if h(sys.argv[1]) == sys.argv[3] else ["criterio"]
-mal += [f for f, s in crit["entradas_t3_sha256"].items() if h(sys.argv[2] + "/" + f) != s]
-print("MAL:", mal) if mal else print("criterio y %d ficheros de T3 OK" % len(crit["entradas_t3_sha256"]))
+mal = [] if h(sys.argv[1]) == sys.argv[4] else ["criterio"]
+mal += [] if h(sys.argv[2]) == crit["rubricas_sha256"] else ["rubricas"]
+mal += [f for f, s in crit["entradas_t3_sha256"].items() if h(sys.argv[3] + "/" + f) != s]
+print("MAL:", mal) if mal else print("criterio, rúbrica y %d ficheros de T3 OK" % len(crit["entradas_t3_sha256"]))
 sys.exit(1 if mal else 0)
 PY
-CN=$(cd "$REPO" && "$PY" -m model.alt.lineas_base_v2 filas --dev "$BASE/dev" --salida "$BASE/t")
+CN=$(cd "$REPO" && "$VPY" -m model.alt.lineas_base_v2 filas --dev "$BASE/dev" --salida "$BASE/t")
 [ "$CN" = "tareas=6 test=$N_TEST soporte=$N_SOP" ] || { fallo "recuentos distintos: $CN"; estado entradas "FALLO recuentos"; cierre; }
+( cd "$REPO" && "$VPY" -m model.alt.lineas_base_v2b rubrica --dev "$BASE/dev" --rubricas "$REPO/model/alt/rubricas-r10-t3b.json" --salida "$BASE/t" ) || { fallo "rúbrica"; estado entradas "FALLO rubrica"; cierre; }
 estado entradas "OK $CN; criterio ${CRIT_SHA:0:12}"
 MAX=(); [ "$LOCAL" = 1 ] && MAX=(--max "${CHISPA_LOCAL_MAX:-10}")
-"$PY" - "$BASE/t/test" "$BASE/auto.jsonl" <<'PY'
+"$VPY" - "$BASE/t/test" "$BASE/auto.jsonl" <<'PY'
 import glob, sys
 open(sys.argv[2], "w").write("".join(open(f).readline() for f in sorted(glob.glob(sys.argv[1] + "/*.jsonl"))))
 PY
 
-# --- 3. CPU en segundo plano mientras el 4B se descarga y arranca: preselección top-k de finanzas (vectores solo de finanzas), luego vectores de todo dev, kNN-e5 k=8 y demostraciones por fila
+# --- 3. preselección top-k de finanzas (e5 en CPU, en segundo plano mientras el 4B se descarga y arranca)
 presel() {
   for _ in $(seq 120); do [ "$LOCAL" = 1 ] || [ -f "$BASE/nlp.ok" ] && break; sleep 5; done
   [ "$LOCAL" = 1 ] || [ -f "$BASE/nlp.ok" ] || { echo "sin venv de transformers"; return 1; }
   if [ "$LOCAL" = 1 ]; then export CHISPA_E5=${CHISPA_LOCAL_E5:?}; else
     bajar intfloat/multilingual-e5-small $E5_REV "$BASE/e5" '*.json' '*.safetensors' '*.txt' '*.model' 'tokenizer*' 'LICENSE*' || return 1; export CHISPA_E5=$BASE/e5; fi
-  export HF_HUB_OFFLINE=1; local TV P; TV=$("$NPY" -c "import transformers; print(transformers.__version__)"); P="$NPY -m model.alt.lineas_base_v2_pred"; cd "$REPO" || return 1
-  $P vectores --dev "$BASE/dev" --vec "$BASE/vec" --transformers "$TV" --hilos 4 --solo $FIN && $P topk --dev "$BASE/dev" --vec "$BASE/vec" --tarea $FIN --salida "$BASE/t/topk" && echo ok > "$BASE/topk.ok"
-  $P vectores --dev "$BASE/dev" --vec "$BASE/vec" --transformers "$TV" --hilos 4 && $P knn --dev "$BASE/dev" --vec "$BASE/vec" --salida "$PRED/knn-e5-k8" \
-    && $P demos --dev "$BASE/dev" --vec "$BASE/vec" --salida "$BASE/t/demos" --k 8 && echo ok > "$BASE/demos.ok"
+  export HF_HUB_OFFLINE=1; local TV; TV=$("$NPY" -c "import transformers; print(transformers.__version__)")
+  cd "$REPO" && "$NPY" -m model.alt.lineas_base_v2_pred vectores --dev "$BASE/dev" --vec "$BASE/vec" --transformers "$TV" --hilos 4 --solo $FIN \
+    && "$NPY" -m model.alt.lineas_base_v2_pred topk --dev "$BASE/dev" --vec "$BASE/vec" --tarea $FIN --salida "$BASE/t/topk" && echo ok > "$BASE/topk.ok"
 }
 presel > "$BASE/presel.log" 2>&1 & PP=$!
 
@@ -148,13 +154,12 @@ fi
 if [ $OK4 = 1 ]; then
   for _ in $(seq 120); do [ -f "$BASE/topk.ok" ] && break; kill -0 $PP 2>/dev/null || break; sleep 5; done
   if [ -f "$BASE/topk.ok" ]; then estado preseleccion "OK $(cat "$BASE/t/topk/preseleccion.json" | tr -d '\n ')"; else tail -3 "$BASE/presel.log"; fallo "preselección top-k"; estado preseleccion "FALLO"; fi
-  [ -f "$BASE/topk.ok" ] && lp zs-topk "$DZ" "$BASE/t/topk/test" $FIN
-  [ -f "$BASE/topk.ok" ] && lp fs8-topk "$DF" "$BASE/t/topk/test" $FIN "$BASE/t/topk/soporte"
-  for _ in $(seq 240); do [ -f "$BASE/demos.ok" ] && break; kill -0 $PP 2>/dev/null || break; sleep 5; done
-  if [ -f "$BASE/demos.ok" ]; then
-    lp fs8-knn "$DK" "$BASE/t/test" "$ORDEN" "$BASE/t/soporte" "$BASE/t/demos"
-    [ -f "$BASE/topk.ok" ] && lp fs8-knn "$DKF" "$BASE/t/topk/test" $FIN "$BASE/t/topk/soporte" "$BASE/t/demos"
-  else tail -3 "$BASE/presel.log"; fallo "vectores, kNN o demostraciones"; estado demos "FALLO"; fi
+  lp zs-sop "$DS" "$BASE/t/soporte" "$SCORE"
+  lp rub-sop "$DS" "$BASE/t/rub/soporte" "$SCORE"
+  lp rub "$D2" "$BASE/t/rub/test" "$SCORE"
+  [ -f "$BASE/topk.ok" ] && lp zs-topk "$D1" "$BASE/t/topk/test" $FIN
+  [ -f "$BASE/topk.ok" ] && lp fs8-topk "$D4" "$BASE/t/topk/test" $FIN "$BASE/t/topk/soporte"
+  lp fs8rub "$D3" "$BASE/t/rub/test" "$SCORE" "$BASE/t/soporte"
 fi
 [ -n "$VP" ] && parar vllm.entrypoints
 cierre
