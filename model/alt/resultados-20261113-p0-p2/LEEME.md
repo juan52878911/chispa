@@ -2040,3 +2040,21 @@ Exactitud por tarea, con QWK y MAE entre paréntesis:
 - En horeca, fs8 sigue siendo mejor (0,634).
 
 **Choice (informativo):** en finanzas, la preselección top-k con kNN (k = 10) seguida del 4B da **0,813**, frente a 0,703 del 4B con las 59 opciones. Son +10,9 puntos [+6,6, +15,6] sobre las 320 filas comunes, y la cobertura llega al 100 %.
+
+### 17.22 E: cascada sin fondo (i7, 0 USD) — criterio congelado antes de medir
+
+`model/alt/cascada_sin_fondo.py`, criterio `CRIT_E`: sha256 en `python -m model.alt.cascada_sin_fondo criterio`, que se repite abajo.
+
+**Sistemas:**
+- **L2:** kNN-e5 solo con los 8 de oro por clase, sin fondo.
+- **L3:** el 4B zero-shot por logprobs de T3. En finanzas se usa el zero-shot con preselección top-k de T3b, que tiene cobertura completa.
+
+**Regla de escalado:** se escala por margen. El umbral u se elige en la mitad A de la partición por hash: es el cuantil que da la mejor macro con un escalado medio ≤ 50 %. La medida se hace en la mitad B.
+
+**PASA** si se cumplen las tres condiciones:
+- la cascada pierde ≤ 1 punto de macro frente a mandar todo a L3;
+- el escalado medio es ≤ 50 %;
+- el AUROC medio del margen es ≥ 0,70.
+
+Si no pasa, queda escrito que la cascada solo funciona cuando hay datos (un fondo etiquetado).
+sha256 de CRIT_E: `f85f635960d3a3999163a7ca1f79f35cb471563e50bdc5301a0883587cebf6ab`.
