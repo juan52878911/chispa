@@ -634,9 +634,6 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 	// Sin sección L1 la cascada se salta la capa (L1 es opcional mientras se mide si sobra).
 	capas, decisores, sinL1 := decide.SinL1Ausente(cfg.CapasEfectivas(), []decide.Decisor{l0, capaL1, capaL2, capaL3})
 	casc, err := decide.NuevaCascadaConTauNuevo(capas, decisores, met, cfg.TauL2EsquemaNuevo)
-	if kn, ok := capaL2.(*decide.L2KNN); ok && err == nil {
-		casc.ConScoreCalibrado(func(q string) bool { return kn.UmbralesDe(q) != nil })
-	}
 	if err != nil {
 		if cerrar != nil {
 			cerrar()

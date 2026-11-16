@@ -20,7 +20,7 @@ El cliente trae unos pocos ejemplos de oro por clase; el servidor responde con u
   **u hay que calibrarlo por cliente** (el 0,06641 del ejemplo es el de la batería de R10: el cuantil 0,25 del margen sin hatecheck). Una tarea se fuerza a L3 con `knn.siempre`.
 
 ## Qué sale
-`POST /v1/decide` con el contrato de siempre: `answer`, `probs` (una por opción), `layer` (`L2` o `L3`), `escalate`, `ms`. En `score` sale además `experimental: true` solo si la tarea no tiene umbrales calibrados (`<banco>.umbrales.json`).
+`POST /v1/decide` con el contrato de siempre: `answer`, `probs` (una por opción), `layer` (`L2` o `L3`), `escalate`, `ms`. En `score` sale además `experimental: true`.
 Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`, `X-Chispa-L3-Espera-Ms` y `X-Chispa-L3-Ms`. Métricas Prometheus: `chispa_knn_*` (filas y escaladas por tarea y motivo
 `margen`/`sin_oro`/`siempre`/`incompleta`), `chispa_l3_*` (semáforo, cola, circuito, reintentos, descartes, parciales).
 
@@ -46,16 +46,19 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
 - El codificador carga una copia del e5 (≈ 470 MB) por sesión; `knn.e5_sesiones` (por defecto min(4, núcleos)).
 
 ## Estabilidad por tipo
-- **`choice` y `noul` (sí/no): estables.** Son los tipos de las baterías medidas.
-- **`score`: estable con calibración (requiere ≥ 8 de oro por nivel).** Se combinan dos cosas:
-  - La rúbrica por nivel va como descripción de cada opción, con un ejemplo corto.
-  - L3 lee la esperanza ordinal sobre los logprobs y la corta con los umbrales del banco (`<banco>.umbrales.json`).
-  - Los umbrales se ajustan con `cmd/ajustar-umbrales`, a partir del oro del soporte y las predicciones de L3 sobre él: mediana de la esperanza por nivel, PAV y puntos medios. Exige ≥ 8 de oro por nivel y deja fuera las filas que sirven de ejemplo en la rúbrica.
-  - Config: `knn.tareas.<t>.score_umbrales`. Sin la clave, los umbrales se usan si el fichero existe; con `true` se exigen; con `false` se ignoran.
-  - Cifras de T3b (4B, dev, rúbrica + umbrales frente a zero-shot): exactitud macro de las 3 score **+15,1** y QWK **+0,24**. Por tarea: jql 0,149 → 0,478 (QWK 0,07 → 0,66), usajobs 0,146 → 0,222 (QWK 0,55 → 0,67) y horeca (sintética) 0,506 → 0,556.
-  - Paridad Go = Python: 100 % del nivel en las 1 469 filas de test de las 3 tareas; umbrales idénticos y esperanza con diferencias < 4e-15.
-  - Una tarea score **sin** umbrales sigue siendo EXPERIMENTAL: lleva `experimental: true` y su exactitud está cerca del azar (T3: jql y usajobs, 0,15 las dos).
-  - En horeca, fs8 sin calibrar dio más (0,634).
+- **`choice` y `noul` (sí/no): estables, con demostraciones por kNN (fs8, `<banco>.ejemplos.jsonl`).**
+  - En la apertura única de las 8 tareas selladas de la batería v2 (R10, §17.26), el 4B con 8 demostraciones elegidas por kNN dio **0,614** de macro en choice, frente a 0,485 sin ejemplos: +12,9, IC por tareas [−1,6, +28,0] con 4 tareas.
+  - En dev (D), las demostraciones por kNN ganaron +5,5 a las elegidas al azar.
+- **`score`: EXPERIMENTAL.** La respuesta siempre lleva `experimental: true`.
+  - La calibración (esperanza ordinal + umbrales isotónicos del banco) **solo ayuda con una rúbrica por nivel escrita por el cliente**, nunca con una mecánica:
+    - **Dev (T3b), rúbrica escrita a partir del soporte:** +15,1 de exactitud macro y +0,24 de QWK frente al zero-shot (jql 0,149 → 0,478; usajobs 0,146 → 0,222; horeca 0,506 → 0,556).
+    - **Selladas (§17.26), rúbrica mecánica** (descripción de la opción + primer ejemplo del soporte): **−2,7** frente al zero-shot, IC [−12,4, +4,4]. En disco pierde 16,4 puntos, y con 4 niveles dos umbrales quedan casi pegados.
+  - Cómo se usa:
+    - La rúbrica va como descripción de cada opción, con un ejemplo corto.
+    - Los umbrales se ajustan con `cmd/ajustar-umbrales`, a partir del oro del soporte y de las predicciones de L3 sobre él (mediana de la esperanza por nivel, PAV y puntos medios). Exige ≥ 8 de oro por nivel y deja fuera las filas de ejemplo de la rúbrica.
+    - Config: `knn.tareas.<t>.score_umbrales`. Sin la clave, se usan si existe `<banco>.umbrales.json`; con `true` se exigen; con `false` se ignoran.
+  - Paridad Go = Python: el nivel coincide al 100 % en las 1 469 filas de test de T3b; los umbrales son idénticos y la esperanza difiere menos de 4e-15.
+  - Sin rúbrica ni calibración, la exactitud en dev está cerca del azar (T3: jql y usajobs, 0,15 las dos).
 - **`multi`: extensión solo de Go.** Sí/no independiente por opción (una llamada por opción con etiquetas S/N); `llm_logprobs.py` no lo tiene. Sin medir.
 
 ## Pendiente para producción
@@ -63,5 +66,5 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
 - Paridad fila a fila del top-k en Go con los vectores e5 reales de finanzas, que hoy solo está probado con datos sintéticos.
 - Calibrar u por cliente (hoy a mano); automatizarlo con un jsonl de validación.
 - Construir y probar la imagen `Dockerfile.producto` (aquí no hay demonio de Docker); firmar/versionar `e5.onnx` y los bancos; quitar `-pruebas` del arranque de cualquier ud (forzar_l3 es solo de pruebas).
-- Quedan sin cubrir: `score` sin umbrales (experimental), `multi` (sin medir), tokenizador de Go frente a HF con espacios finales (ya compensado en el codificador, `runtime/tok` sin tocar), autenticación por cliente en los bancos
+- Quedan sin cubrir: `score` (experimental; solo calibrable con rúbrica escrita por el cliente), `multi` (sin medir), tokenizador de Go frente a HF con espacios finales (ya compensado en el codificador, `runtime/tok` sin tocar), autenticación por cliente en los bancos
   (hoy un banco por tarea, compartido por todas las claves), y el cuello del codificador (una consulta por llamada; sin agrupar en lotes).
