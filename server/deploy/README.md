@@ -51,3 +51,6 @@ Detalle: `docs/06-despliegue.md`.
   (`contrato.py`: 18 a `/v1/decide`, `/healthz`, `/metrics`) → `carga` lote 1 y 16 (`carga.txt`) → `go build/test -tags ort` fuera de docker.
 - `CHISPA_LOCAL=1`: prueba en seco sin docker ni ORT (pasos 4 a 6, binario nativo sin etiqueta).
 - `mkmodelo`: genera el `.chispa` pequeño de reserva (L0 de `testdata` + L1 diminuto) y fusiona ficheros (`-unir`; une también los L0 en `L0MULTI`).
+
+## Imagen de producto (kNN + e5 + L3 fs8)
+`Dockerfile.producto` (sobre la imagen de arriba) y `config.ejemplo.json`: ver `server/PRODUCTO.md`.

@@ -53,25 +53,9 @@ var errMasDe62 = errors.New("más opciones que etiquetas de un carácter")
 // mensajesLogprobsL3 devuelve los dos mensajes (sistema, usuario) y las etiquetas en el orden de las opciones. Replica
 // `preparar` de llm_logprobs.py, incluido el formato de json.dumps(ensure_ascii=False) (separadores ", " y ": ", sin escapar < > &).
 func mensajesLogprobsL3(p Pregunta, ordenadas []Opcion) ([]msgL3, []string, error) {
-	n := len(ordenadas)
-	cods := make([]string, n)
-	digitos := p.Kind == KindScore
-	for _, o := range ordenadas {
-		if len(o.ID) != 1 || o.ID[0] < '0' || o.ID[0] > '9' {
-			digitos = false
-		}
-	}
-	switch {
-	case digitos:
-		for i, o := range ordenadas {
-			cods[i] = o.ID
-		}
-	case n <= len(etiquetasL3):
-		for i := range cods {
-			cods[i] = etiquetasL3[i : i+1]
-		}
-	default:
-		return nil, nil, errMasDe62
+	cods, err := codigosEtiquetaL3(p, ordenadas)
+	if err != nil {
+		return nil, nil, err
 	}
 	var b strings.Builder
 	b.WriteString(`{"pregunta": `)
@@ -92,6 +76,31 @@ func mensajesLogprobsL3(p Pregunta, ordenadas []Opcion) ([]msgL3, []string, erro
 	b.WriteString(`], "texto": ` + jsonPyL3(delimitaTextoL3(p.Estado)) + "}")
 	sistema := promptSistemaL3[:strings.Index(promptSistemaL3, "Responde SOLO")] + instruccionLPL3
 	return []msgL3{{"system", sistema}, {"user", b.String()}}, cods, nil
+}
+
+// codigosEtiquetaL3 asigna la etiqueta de un carácter de cada opción (en su orden): el propio nivel en score con niveles de una cifra, y si no A-Z, a-z, 0-9.
+func codigosEtiquetaL3(p Pregunta, ordenadas []Opcion) ([]string, error) {
+	n := len(ordenadas)
+	cods := make([]string, n)
+	digitos := p.Kind == KindScore
+	for _, o := range ordenadas {
+		if len(o.ID) != 1 || o.ID[0] < '0' || o.ID[0] > '9' {
+			digitos = false
+		}
+	}
+	switch {
+	case digitos:
+		for i, o := range ordenadas {
+			cods[i] = o.ID
+		}
+	case n <= len(etiquetasL3):
+		for i := range cods {
+			cods[i] = etiquetasL3[i : i+1]
+		}
+	default:
+		return nil, errMasDe62
+	}
+	return cods, nil
 }
 
 // jsonPyL3 codifica un string como json.dumps(s, ensure_ascii=False).
@@ -411,6 +420,9 @@ func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opc
 		if msgs, cods, err = mensajesLogprobsL3(p, ordenadas); err != nil {
 			l.met.l3Cuenta("invalida")
 			return Respuesta{Incompleto: true}, nil
+		}
+		if t := l.turnosParaL3(p.Texto); len(t) > 0 { // few-shot: ejemplos de oro de la tarea como turnos previos
+			msgs = conEjemplosL3(msgs, t)
 		}
 	}
 	ok, sonda := l.circ.permite()
