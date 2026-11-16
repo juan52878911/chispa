@@ -433,7 +433,9 @@ type presupuestoTorres struct {
 	// L3 suma aquí, por petición, la espera en el semáforo y el tiempo de puntuación de sus filas (ns); http.go los devuelve en las cabeceras
 	// X-Chispa-L3-Espera-Ms y X-Chispa-L3-Ms (suma de las filas: con una pregunta por petición, el valor de esa fila).
 	l3EsperaNs, l3Ns atomic.Int64
-	lote             atomic.Int64 // preguntas de la petición HTTP (0 = llamada directa); L3 reparte su cupo según él
+	// L2 kNN: tiempo del codificador e5 y de la votación de la petición (ns); cabeceras X-Chispa-Cod-Ms y X-Chispa-KNN-Ms.
+	knnCodNs, knnNs atomic.Int64
+	lote            atomic.Int64 // preguntas de la petición HTTP (0 = llamada directa); L3 reparte su cupo según él
 
 	mu     sync.Mutex
 	trozos [2]int                     // ventanas de texto largo ya decididas por la petición, por capa (capaL1, capaL2): L1 no gasta el cupo de L2

@@ -106,6 +106,7 @@ type Metricas struct {
 	knnFilas                   map[string]*atomic.Uint64    // chispa_knn_filas_total{tarea}, bajo mu
 	knnEsc                     map[[2]string]*atomic.Uint64 // chispa_knn_escaladas_total{tarea,motivo}, bajo mu
 	knnSinVec                  atomic.Uint64
+	knnCod, knnVot             histo                     // codificador e5 y votación del kNN de L2
 	l3Reint                    map[string]*atomic.Uint64 // chispa_l3_reintentos_total{causa}, bajo mu
 	l3Desc                     map[string]*atomic.Uint64 // chispa_l3_descartes_total{causa}, bajo mu
 
@@ -262,6 +263,18 @@ func (m *Metricas) knnFila(tarea, motivo string) {
 func (m *Metricas) knnIncompleta(tarea string) {
 	if m != nil {
 		contador(&m.mu, m.knnEsc, [2]string{tarea, MotivoKNNIncompleta}).Add(1)
+	}
+}
+
+func (m *Metricas) knnCodificador(d time.Duration) {
+	if m != nil {
+		m.knnCod.observa(d)
+	}
+}
+
+func (m *Metricas) knnVotacion(d time.Duration) {
+	if m != nil {
+		m.knnVot.observa(d)
 	}
 }
 
@@ -522,6 +535,12 @@ func (m *Metricas) Escribe(w io.Writer) {
 	for _, k := range ke {
 		fmt.Fprintf(w, "chispa_knn_escaladas_total{tarea=%q,motivo=%q} %d\n", k[0], k[1], contador(&m.mu, m.knnEsc, k).Load())
 	}
+	fmt.Fprintln(w, "# HELP chispa_knn_codificador_segundos Latencia del codificador e5 del kNN (una consulta).")
+	fmt.Fprintln(w, "# TYPE chispa_knn_codificador_segundos histogram")
+	m.knnCod.escribe(w, "chispa_knn_codificador_segundos")
+	fmt.Fprintln(w, "# HELP chispa_knn_votacion_segundos Latencia de la votación del kNN (similitudes con el banco y probabilidades).")
+	fmt.Fprintln(w, "# TYPE chispa_knn_votacion_segundos histogram")
+	m.knnVot.escribe(w, "chispa_knn_votacion_segundos")
 	fmt.Fprintln(w, "# HELP chispa_knn_sin_vector_total Filas con kNN configurado a las que no llegó vector de consulta (L2 no opinó y sigue L3).")
 	fmt.Fprintln(w, "# TYPE chispa_knn_sin_vector_total counter")
 	fmt.Fprintf(w, "chispa_knn_sin_vector_total %d\n", m.knnSinVec.Load())

@@ -24,15 +24,20 @@ type consultaKNN struct {
 	Escala   bool      `json:"escala"`
 	Motivo   string    `json:"motivo"`
 	Final    *string   `json:"final"`
+	Texto    string    `json:"texto"` // solo en consultas.jsonl con texto (consultas_con_texto.py)
 }
 
 func leerConsultasKNN(t *testing.T, dir string) ([]consultaKNN, []float32, int) {
+	return leerConsultasKNNDe(t, dir, "consultas.jsonl")
+}
+
+func leerConsultasKNNDe(t *testing.T, dir, jsonl string) ([]consultaKNN, []float32, int) {
 	t.Helper()
 	x, n, dim, err := leerNpyF32(filepath.Join(dir, "consultas.npy"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := os.Open(filepath.Join(dir, "consultas.jsonl"))
+	f, err := os.Open(jsonl2(dir, jsonl))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,4 +376,40 @@ func TestKNNConfigValida(t *testing.T) {
 			t.Errorf("%s debía fallar", nombre)
 		}
 	}
+}
+
+func jsonl2(dir, f string) string {
+	if filepath.IsAbs(f) {
+		return f
+	}
+	return filepath.Join(dir, f)
+}
+
+type referenciaKNN struct {
+	U       float64
+	Siempre []string
+}
+
+// leerReferenciaKNN lee u y las tareas «siempre» de referencia.json del fixture.
+func leerReferenciaKNN(t *testing.T, dir string) referenciaKNN {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(dir, "referencia.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var r struct {
+		Regla struct {
+			U float64 `json:"u"`
+		} `json:"regla"`
+		U       float64  `json:"u"`
+		Siempre []string `json:"siempre"`
+	}
+	if err := json.Unmarshal(b, &r); err != nil {
+		t.Fatal(err)
+	}
+	u := r.U
+	if u == 0 {
+		u = r.Regla.U
+	}
+	return referenciaKNN{U: u, Siempre: r.Siempre}
 }
