@@ -127,7 +127,7 @@ cfg b false 8 10s          # (b) cascada por defecto del servidor (top_k por def
 cfg c true 8 10s 256       # (c) cola: 8 filas a la vez contra 32 clientes
 arrancar() {  # arrancar CONFIG
   parar_servidor
-  ARGS=(-addr 127.0.0.1:8090 -modelo "$BASE/modelo-int8.chispa" -config "$BASE/cfg-$1.json" -timeout 120s)
+  ARGS=(-addr 127.0.0.1:8090 -modelo "$BASE/modelo-int8.chispa" -config "$BASE/cfg-$1.json" -timeout 120s -pruebas)
   [ -f "$BASE/e5.chispa-tok" ] && ARGS+=(-tok "$BASE/e5.chispa-tok"); [ -n "$ORTLIB" ] && ARGS+=(-ort-lib "$ORTLIB")
   nohup "$BASE/chispa-server" "${ARGS[@]}" > "$BASE/servidor-$1.log" 2>&1 &
   SRVPID=$!
