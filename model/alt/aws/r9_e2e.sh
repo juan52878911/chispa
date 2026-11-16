@@ -151,7 +151,7 @@ head -1 "$BASE/in/filas.jsonl" > "$BASE/in/una.jsonl"
   && grep -q '"validas": 1' "$BASE/a-resumen.json" 2>/dev/null || { cat "$BASE/autoprueba.out" | head -c 800; fallo "autoprueba: L3 no contesta"; estado prueba "FALLO"; cierre; }
 estado prueba "OK L3 contesta por el servidor"; rm -f "$BASE/a-resumen.json" "$BASE/a-l3.jsonl"
 T1=$(date +%s)
-cli a --clientes "$CLIENTES_A" > "$OUT/a.out" 2>&1 && estado a "OK en $(( $(date +%s) - T1 )) s: $(grep -o '"agrupada_ponderada": {[^}]*}' "$OUT/a-resumen.json" | tr -d '\n ')" || { fallo "fase a"; estado a "FALLO"; }
+cli a --clientes "$CLIENTES_A" > "$OUT/a.out" 2>&1 && estado a "OK en $(( $(date +%s) - T1 )) s: $("$PY" -c "import json;print(json.load(open('$OUT/a-resumen.json'))['agrupada_ponderada'])")" || { fallo "fase a"; estado a "FALLO"; }
 T1=$(date +%s); cli d --etiqueta normal --rep 5 > "$OUT/d-normal.out" 2>&1 && estado d-normal "OK en $(( $(date +%s) - T1 )) s" || { fallo "fase d normal"; estado d-normal "FALLO"; }
 fase d-bajo 4 dbajo cli d --etiqueta bajo --rep 5
 fase b 7 b cli b
