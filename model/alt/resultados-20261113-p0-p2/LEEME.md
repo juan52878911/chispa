@@ -1497,3 +1497,34 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 - Con 32 de concurrencia, el p95 de L3 se queda en 10,0 s: es el `timeout_fila`. Esas filas salen con parciales y piso.
 - No hubo ni un descarte por cola llena ni una apertura del circuito; todas las respuestas fueron HTTP 200.
 - **Lectura:** para tiempo real con L3 hay que acotar la fracción escalada. Con ≈ 8 pet/s de L3 por g5 y un 30 % escalado, la cascada aguanta ≈ 25 pet/s por g5. Si no, hay que usar más réplicas. Las filas de 60 opciones (massive) son las caras.
+
+### 17.6 T5: la cascada L2 (kNN) → L3 en el servidor Go (rama `r10-t5`, fusionada; sin AWS)
+
+**Referencia de Python** (`model/alt/exportar_banco.py`): 4 244 consultas de la mitad B de la partición por hash de §17.1 b, en 8 tareas (las 6 de la batería, lexboe y fakenews).
+- Hay un banco por tarea con el oro y el fondo etiquetado por el LLM, por logprobs donde lo hay.
+- Regla: margen < u, con u = 0,06641 (cuantil 0,25 de la mitad A sin hatecheck-es).
+- Se escalan **siempre** las tareas sin oro (fakenews-es) y las que tienen un AUROC del margen < 0,55 en la mitad A (hatecheck-es).
+- Python, macro sin hatecheck en B: **cascada 0,7233**, L2 0,6706, L3 0,692. Con hatecheck: 0,736 / 0,676 / 0,709.
+
+**Servidor Go:**
+- `decide/knn.go` y `decide/l2knn.go`, con la config `knn` documentada en server/README.md.
+- Los bancos van como ficheros `.npy` + `.jsonl` por tarea, con el oro primero.
+- La regla de oro usa el umbral 0,90.
+- El escalado tiene los motivos `margen`, `sin_oro`, `siempre` e `incompleta`, con métricas por tarea y motivo.
+
+**Paridad fila a fila con Python** (fixture real, en el i7 con Go 1.27.4):
+
+| | coincidencia o diferencia |
+|---|---|
+| top-1 de L2 | **100 %** |
+| escala sí/no | **100 %** |
+| motivo | **100 %** |
+| macro de la cascada | 0,7233 frente a 0,7233 (Δ 0,0000) |
+
+- La |Δp| máxima es 0,019, por el orden de la suma en float32. No cambia ninguna decisión.
+- Escala el 47,6 %: 756 filas por margen, 978 por «siempre» (hatecheck-es) y 287 por «sin oro» (fakenews-es).
+
+**Falta para servirlo por HTTP:** el servidor no tiene un codificador e5 puro.
+- El ONNX del `.chispa` es el L2 ajustado (ranuras y MaxSim), no los vectores de e5 congelado.
+- El kNN tiene una interfaz `ConVectorConsulta`. Sin el vector, no opina y todo va a L3 (`chispa_knn_sin_vector_total`).
+- Para completarlo hacen falta el ONNX de multilingual-e5-small sin ajustar (media de tokens, «query: », 256 tokens) y una prueba de paridad de vectores, con coseno ≥ 0,999 esperado.
