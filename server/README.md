@@ -151,6 +151,39 @@ Cortacircuitos, cola acotada, reintentos y multi valen en modo `logprobs`; el co
   del texto y mismo formato `json.dumps`) con la instrucción `S`/`N` y un campo `"opcion"` en lugar de `"opciones"`.
 - **`forzar_l3`** (solo pruebas): salta L0–L2 y manda todo a L3. El servidor **se niega a arrancar** (y a recargar) con él si no se le pasa `-pruebas`.
 
+### L2 por kNN por tarea (`knn`): la cascada L2→L3 de R8/R10
+Con los τ de CALIB del `.chispa`, la cascada L0/L1/L2→L3 escala ≈ 98,8 % de las filas a L3. La que funciona en Python (`model/alt/escalado.py`,
+`exportar_banco.py`) es **L2 = kNN por tarea → L3**: con `"knn": {...}` en la config, el servidor sustituye el L2 de ONNX por `L2KNN`
+(`decide/knn.go`, `decide/l2knn.go`) y, salvo `conservar_l0_l1`, salta L0 y L1 (como en Python).
+```json
+{"knn": {"umbral": 0.06641, "siempre": ["fakenews-es", "hatecheck-es"],
+         "tareas": {"massive-es": {"banco": "bancos/banco-massive-es", "preguntas": ["¿Qué intención tiene el mensaje?"]},
+                    "lexboe":     {"banco": "bancos/banco-lexboe", "preguntas": ["…"], "umbral": 0.08}}},
+ "l3": {"url": "http://vllm:8000/v1", "modelo": "qwen3-4b", "modo": "logprobs"}}
+```
+- **Tareas y preguntas.** Una pregunta se asigna a la tarea cuyo texto de `question` coincide exactamente con uno de sus `preguntas`; si no coincide con ninguna, L2 no opina y sigue L3.
+  Vale para `choice`, `noul` y `score`; `multi` no opina.
+- **Banco** (formato propio, el del exportador de Python): para cada tarea, `<banco>.npy` (matriz float32 little-endian en orden C, n × dim, .npy v1/v2/v3; vectores e5 YA
+  normalizados: si alguno no tiene norma 1 se normaliza al cargar) y `<banco>.jsonl` con una línea por fila, `{"etiqueta": "...", "es_oro": true|false}`, **el oro primero** y luego el fondo
+  etiquetado por el LLM (si el oro no va primero, el servidor no arranca). Las rutas son relativas al directorio de trabajo. Va como ficheros, no como sección del `.chispa`
+  (haría falta ampliar `format/chispa3`); un banco vacío o sin oro es válido (escala siempre).
+- **El kNN** es el de `escalado.l2`: similitud coseno (producto escalar) con el banco; si el oro más cercano tiene similitud ≥ `s_oro` (0,90) votan solo los ejemplos de oro; los
+  `vecinos` (32) más similares (a igualdad, el de menor índice) votan con peso exp((s − smax)/`temperatura`) (0,05) y solo cuentan los votos de las opciones de la fila; sin votos, uniforme.
+  Margen = p1 − p2.
+- **Escalado.** Se escala a L3 si margen < `umbral` (global, o `tareas.<t>.umbral`); SIEMPRE si la tarea no tiene oro, o si está en `siempre` (o `tareas.<t>.siempre`). En Python `umbral` es el cuantil 0,25 del margen
+  en la mitad de calibración sin hatecheck-es, y «siempre» son las tareas sin oro o con AUROC del margen < 0,55 en calibración; aquí ambos se configuran a mano (el fixture de paridad trae los valores).
+  Si L3 no contesta, la respuesta de la cascada es el top-1 del kNN, escalada.
+- **Motivos y métricas.** `chispa_knn_filas_total{tarea}` cuenta las filas que decidió el kNN y `chispa_knn_escaladas_total{tarea,motivo}` las que escalaron, con motivo `margen`, `sin_oro` o `siempre`;
+  `incompleta` cuenta las escaladas a las que L3 no pudo contestar (es un subconjunto de las anteriores, no se suma). Fracción escalada de una tarea = (margen + sin_oro + siempre) / filas.
+  `chispa_knn_sin_vector_total` cuenta las filas sin vector de consulta (L2 no opina y sigue L3).
+- **Vector de consulta.** El kNN necesita el vector e5 de la consulta (multilingual-e5-small, media de tokens normalizada a norma 1, prefijo «query: », 256 tokens). **El servidor no tiene ese codificador**:
+  el ONNX del `.chispa` es el L2 ajustado (ranuras S, MaxSim), no e5 puro; sí tiene el tokenizador de e5 (`-tok`) y ONNX Runtime. Por eso el vector se inyecta con `decide.ConVectorConsulta(ctx, v)` (código
+  que embeba el servidor) o con una implementación de `decide.Codificador` que se pase a `NuevoL2KNN`. Para que `/v1/decide` use el kNN por HTTP sin más, faltaría un `Codificador` hecho con el ONNX de
+  multilingual-e5-small sin ajustar (salida `last_hidden_state`), el tokenizador de `-tok`, pooling medio con máscara, normalización y el prefijo «query: »; y medir su paridad de vectores con Python (coseno).
+  Hoy, sin vector, L2 no opina y todo escala a L3.
+- **Paridad.** `decide/knn_test.go`: `TestKNNSinteticoParidadConPython` (fixture sintético en `decide/testdata/knn`, generado por `generar.py`, una reimplementación literal de `escalado.l2` en Python; corre siempre) y
+  `TestKNNParidadFixtureReal` (con `CHISPA_PARIDAD_DIR=<banco-paridad>`: 4 244 consultas de 8 tareas; compara L2 top-1, escala sí/no y motivo con Python, y la exactitud de la cascada usando la `l3` del fixture).
+
 ### Flags de `chispa-server`
 | flag | por defecto | uso |
 |---|---|---|

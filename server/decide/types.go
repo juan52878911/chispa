@@ -49,6 +49,12 @@ type Respuesta struct {
 	Senal *SenalTexto
 	// SinPresupuestoTorres: Incompleto por agotar el presupuesto de torres nuevas (de la petición o por segundo). Interno.
 	SinPresupuestoTorres bool
+	// TauPropio: la capa fija el τ de ESTA respuesta (el kNN: u de la tarea, o +Inf si escala siempre) y la cascada no aplica la
+	// calibración de CALIB a su confianza. Interno.
+	TauPropio *float64
+	// Tarea y MotivoKNN: tarea del kNN que contestó y motivo por el que escala a L3 («margen», «sin_oro», «siempre»; "" si contesta).
+	// La cascada los usa para contar el motivo «incompleta» cuando L3 falla. Interno.
+	Tarea, MotivoKNN string
 }
 
 // Decisor es una capa de la cascada.
