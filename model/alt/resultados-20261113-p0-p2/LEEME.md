@@ -1290,3 +1290,28 @@ Validación (semillas 10–19, nuevas):
 - El margen predice bien fuera de hatecheck-es: AUROC 0,753 en semillas nuevas.
 - Falla por el tope total del 50 %, que es aritmético: hatecheck-es pesa un 33 % de las filas y el 30 % del resto añade ≈ 20 %.
 - Con f = 0,25 el total quedaría por debajo del 50 %, con una cascada media de 0,732 en la selección. Pero la regla ya está congelada y no se vuelve a ajustar sobre estas semillas.
+
+### 16.3 R9-e2e: el servidor Go entero con vLLM real y L3 por logprobs (g5, ≤ 30 min; código 4669b60)
+
+**Criterio congelado** (`model/alt/crit-r9-e2e.json`): sha256 `7a6cd9789d79b6a65d64c824443d09a5208117ced88479c5a01438789ed3e29b`.
+- Fase (a): con L3 forzado en el servidor (`forzar_l3: true`, `l3.modo = "logprobs"`), la exactitud agrupada ponderada (argmax de las probs; inválidas = fallo) de las 3 116 filas de la muestra del paso 2 tiene que quedar a ≤ 0,5 puntos de R5. R5 es el Python `llm_logprobs.py` con el 4B y dio 0,7294 en esas mismas filas.
+- Además se da la comparación fila a fila con R5.
+- Descriptivo, sin criterio:
+  - (b) latencia por capa con 1 cliente y la cascada por defecto del servidor;
+  - (c) cola con 32 clientes, que mide la espera en el semáforo (`chispa_l3_espera_segundos`);
+  - (d) tope de tiempo en la fila de massive-es con más opciones, con `timeout_fila` normal y de 150 ms.
+
+**Montaje** (el subagente, rama `r9-e2e`, fusionada; `r9_e2e.sh`, `r9_cliente.py`, `forzar_l3`):
+- vLLM 0.33.0 con el 4B @ cdbee75f, `--max-logprobs 20` y contexto de 16 k.
+- Go 1.27.1, verificado con sha256 `63d339f0…` (go.dev).
+- ORT 1.31.1, con el sha256 del Dockerfile del servidor.
+- Módulos Go dentro del tgz, con go.sum.
+- `modelo-int8.chispa` (995dd6a7…) y `e5.chispa-tok` (356d7ef0…, 12 111 120 bytes) de `movil-90e3263c/movil/`; los sha se comprueban.
+- Prioridad de las fases: (a) > (d) > (b) > (c).
+- La preparación se estima en 10–12 min; si no queda tiempo, cada fase se salta.
+
+Datos:
+- Entradas en `s3://…/r9-e2e-4669b60/`: codigo.tgz (42 MB) `d39d9d91…`, filas.jsonl `7ea97957…`.
+- User-data: `lanzados/ud-r9-e2e-4669b60.sh` (sha256 `9a03d780…`, 13 840 bytes).
+- Prueba en seco local en el Mac, con un vLLM falso y el `.chispa` de testdata (solo L0): las fases (a)–(d) pasaron. L1/L2 reales y ORT solo se prueban en la g5.
+- `--dry-run` da DryRunOperation.
