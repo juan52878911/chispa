@@ -1801,3 +1801,28 @@ Con L3 forzado (R9-e2e) coincidía en el 99,84 %. Hipótesis: en cascada el serv
 - User-data: `lanzados/ud-r10-t5e2e-082f6f25668b838c9d40ab6ed8b63259418d87e3.sh` (sha256 `bae19135…`, 4 620 bytes).
 - Entradas en `s3://…/r10-t5e2e-082f6f25…/`: codigo.tgz `e781fc19…`; bancos.tgz, consultas.jsonl y e5.onnx no cambian.
 - `--dry-run` da DryRunOperation.
+
+### 17.13 Resultado de T3 (EC2 inst-35, g5, 71 min ≈ 1,2 USD; `verificado`; `t3-cifras-9ca7524.json`): **no medido**
+
+**Lectura congelada** (`db6fdacb…`): exige que los dos sistemas cubran el 100 % del test, y finanzas-documentos (59 opciones, ≈ 65 s por fila con 32 hilos) se quedó a medias. El 4B zero-shot cubrió el 69 % y el 14B el 41 %. Las otras 5 tareas quedaron completas. Por la regla, el veredicto es **«no medido»**.
+
+| tarea | 4B zero-shot | 4B 8 ejemplos | 14B-AWQ zero-shot | 14B − 4B |
+|---|---|---|---|---|
+| cfpb-quejas | 0,672 | 0,692 | **0,722** | +5,0 [+1,6, +8,4] |
+| congreso-eeuu-partido | 0,596 | 0,646 | 0,650 | +5,4 [+0,8, +10,2] |
+| horeca-resenas (sintética) | 0,506 | **0,634** | 0,544 | +3,8 |
+| jql-valor-educativo (score) | 0,149 | 0,083 | 0,100 | −4,9 |
+| usajobs-nivel (score) | 0,146 | 0,194 | 0,118 | −2,8 |
+| finanzas-documentos (sintética, incompleta) | 0,488 (69 %) | — (0 %) | 0,310 (41 %) | — |
+| **macro de las 5 completas (informativa)** | **0,414** | **0,450** | **0,427** | **+1,3** |
+| macro de las 6 con lo cubierto (no válida) | 0,426 | 0,375 | 0,407 | −1,9 [−8,9, +3,9] |
+
+Lectura informativa, que no es el veredicto:
+- En las 5 tareas completas, el 14B gana **+1,3 puntos** al 4B: por debajo de +3, que es la frontera hacia «especificación».
+- El 14B gana en las tareas `choice` (+5 en cfpb y en congreso) y pierde en las `score` (jql −4,9, usajobs −2,8). En las score todos los LLM quedan cerca del azar: jql ≈ 0,10–0,15 con 5 niveles, usajobs ≈ 0,12–0,19 con 11.
+- Los 8 ejemplos en contexto ayudan más que el modelo grande: +3,6 en las 5 completas, con horeca +12,8.
+- Señal: las tareas de escala piden especificar mejor la tarea (qué significa cada nivel), no un modelo más grande.
+
+**Otros sistemas que fallaron:** mDeBERTa-NLI y L2 zero-shot fallaron porque el venv no tenía torch. El kNN falló porque `vec/tiempo.json` no se escribió tras ese fallo. **No hay cifras.**
+
+**Latencia** del 4B zero-shot en serie: p50 105 ms, p95 2,5 s.
