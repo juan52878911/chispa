@@ -54,7 +54,7 @@ else
   NPY=/opt/nlp/bin/python
   { /opt/nlp/bin/pip install -q --no-cache-dir "torch==$TORCH" --index-url https://download.pytorch.org/whl/cpu \
     && /opt/nlp/bin/pip install -q --no-cache-dir "transformers==$TRANSFORMERS" sentencepiece protobuf tiktoken numpy huggingface_hub; } || { fallo "pip torch/transformers"; estado entorno "FALLO pip"; cierre; }
-  "$NPY" -c "import torch, transformers; assert torch.__version__.startswith('$TORCH') and transformers.__version__ == '$TRANSFORMERS'; print(torch.__version__, transformers.__version__)" || { fallo "versiones"; estado entorno "FALLO versiones"; cierre; }
+  "$NPY" -c "import torch, transformers, numpy, huggingface_hub, sentencepiece; assert torch.__version__.startswith('$TORCH') and transformers.__version__ == '$TRANSFORMERS'; print(torch.__version__, transformers.__version__)" || { fallo "versiones"; estado entorno "FALLO versiones"; cierre; }
   BF16=(); grep -q amx_bf16 /proc/cpuinfo && BF16=(--bf16)
   estado entorno "OK $("$NPY" -c 'import sys, torch, transformers; print("python", sys.version.split()[0], "torch", torch.__version__, "transformers", transformers.__version__)'); $(nproc) vCPU; nli ${BF16[*]:-fp32}"
 fi
