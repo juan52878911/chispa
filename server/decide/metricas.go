@@ -96,6 +96,7 @@ type Metricas struct {
 	noOpina      map[[2]string]*atomic.Uint64 // chispa_capa_no_opina_total{capa,causa}, bajo mu
 	ningunaOpina atomic.Uint64                // chispa_sin_opinion_total
 	l3Lat        histo                        // latencia de cada llamada al LLM de L3
+	l3Espera     histo                        // espera de cada fila por un hueco del semáforo de L3 (modo logprobs)
 
 	Timeouts atomic.Uint64 // peticiones cuyo contexto venció por plazo (p. ej. http.TimeoutHandler)
 }
@@ -207,6 +208,12 @@ func (m *Metricas) CapaNoOpina(capa, causa string) {
 func (m *Metricas) NingunaCapaOpina() {
 	if m != nil {
 		m.ningunaOpina.Add(1)
+	}
+}
+
+func (m *Metricas) l3EsperaCola(d time.Duration) {
+	if m != nil {
+		m.l3Espera.observa(d)
 	}
 }
 
@@ -429,6 +436,9 @@ func (m *Metricas) Escribe(w io.Writer) {
 	fmt.Fprintln(w, "# HELP chispa_l3_latencia_segundos Latencia de cada llamada de L3 al LLM.")
 	fmt.Fprintln(w, "# TYPE chispa_l3_latencia_segundos histogram")
 	m.l3Lat.escribe(w, "chispa_l3_latencia_segundos")
+	fmt.Fprintln(w, "# HELP chispa_l3_espera_segundos Espera de cada fila de L3 (modo logprobs) por un hueco de max_concurrente.")
+	fmt.Fprintln(w, "# TYPE chispa_l3_espera_segundos histogram")
+	m.l3Espera.escribe(w, "chispa_l3_espera_segundos")
 	fmt.Fprintln(w, "# HELP chispa_timeouts_total Peticiones a /v1/decide cuyo plazo venció.")
 	fmt.Fprintln(w, "# TYPE chispa_timeouts_total counter")
 	fmt.Fprintf(w, "chispa_timeouts_total %d\n", m.Timeouts.Load())
