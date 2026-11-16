@@ -1,0 +1,20 @@
+{
+  "id": "crit-r10-t5b",
+  "congelado_antes_de_medir": true,
+  "objeto": "Codificador e5 en Go (ONNX fp32 de multilingual-e5-small, ORT, tokenizador -tok) para el kNN de L2 del servidor",
+  "modelo": {"nombre": "intfloat/multilingual-e5-small", "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3", "licencia": "MIT", "salida_onnx": "last_hidden_state"},
+  "python_referencia": {"torch": "2.5.1+cpu", "transformers": "4.46.3", "vectores": "consultas.npy de banco-paridad (Codificador(max_tok=256), prefijo 'query: ', media con mascara, normalizados)"},
+  "datos": "las 4244 consultas de banco-paridad (mitad B, 8 tareas); texto por id en p3-eval/full/bat/*.jsonl y tareas-nuevas/bat/*.jsonl",
+  "criterio": {
+    "decide_sobre": "ONNX fp32 del e5 puro",
+    "condiciones_ambas": [
+      {"nombre": "coseno_p01", "regla": "percentil 1 del coseno (vector Go, vector Python) sobre las 4244 consultas >= 0.999"},
+      {"nombre": "top1_knn", "regla": "el top-1 del kNN con el vector Go coincide con el top-1 de Python (campo l2 del fixture) en >= 99.5 % de las 4244 consultas"}
+    ]
+  },
+  "informativo_no_cuenta": [
+    "coincidencia de escala si/no y de motivo entre el texto->vector Go->kNN y el fixture (>= 99 % como objetivo)",
+    "ONNX int8 (cuantizacion dinamica de ORT, para movil): sha256, tamano, mismo coseno (min, p01, p50), misma coincidencia de top-1 y latencia en CPU",
+    "latencia por consulta del codificador en CPU (fp32 e int8)"
+  ]
+}
