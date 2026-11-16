@@ -1,0 +1,540 @@
+{
+ "criterio_sha256": "db6fdacba87fab217edee0e81c02f2729aaa0bcc1cee30c4cd29630d56c073bd",
+ "referencia": "4b-zs",
+ "sinteticas": [
+  "finanzas-documentos",
+  "horeca-resenas"
+ ],
+ "sistemas": {
+  "4b-zs": {
+   "tareas": {
+    "cfpb-quejas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "exactitud": 0.672,
+     "ic95_filas": [
+      0.63,
+      0.716
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 2343.0,
+     "lat_ms_p95": 4761.2
+    },
+    "congreso-eeuu-partido": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "exactitud": 0.596,
+     "ic95_filas": [
+      0.552,
+      0.636
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 1609.0,
+     "lat_ms_p95": 1876.0
+    },
+    "finanzas-documentos": {
+     "n_test": 461,
+     "cobertura": 0.6941,
+     "sintetica": true,
+     "tipo": "choice",
+     "exactitud": 0.4881,
+     "ic95_filas": [
+      0.4425,
+      0.5315
+     ],
+     "invalidas": 141,
+     "lat_ms_p50": 65550.0,
+     "lat_ms_p95": 66576.15
+    },
+    "horeca-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "score",
+     "exactitud": 0.506,
+     "ic95_filas": [
+      0.462,
+      0.55
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 221.0,
+     "lat_ms_p95": 253.0,
+     "exactitud_pm1": 0.936,
+     "mae": 0.582
+    },
+    "jql-valor-educativo": {
+     "n_test": 469,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "exactitud": 0.1493,
+     "ic95_filas": [
+      0.1173,
+      0.1812
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 2452.0,
+     "lat_ms_p95": 2728.0,
+     "exactitud_pm1": 0.3859,
+     "mae": 1.8273
+    },
+    "usajobs-nivel": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "exactitud": 0.146,
+     "ic95_filas": [
+      0.118,
+      0.176
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 1728.0,
+     "lat_ms_p95": 3213.5,
+     "exactitud_pm1": 0.396,
+     "mae": 2.11
+    }
+   },
+   "macro": {
+    "valor": 0.4262,
+    "ic95_tareas": [
+     0.2641,
+     0.5854
+    ],
+    "n_tareas": 6
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.3908,
+    "ic95_tareas": [
+     0.1477,
+     0.634
+    ],
+    "n_tareas": 4
+   },
+   "cobertura_total": 0.9519,
+   "invalidas_total": 141,
+   "latencia_serie_ms": {
+    "n": 90,
+    "p50": 104.5,
+    "p95": 2482.55
+   }
+  },
+  "4b-fs8": {
+   "tareas": {
+    "cfpb-quejas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "exactitud": 0.692,
+     "ic95_filas": [
+      0.652,
+      0.734
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 20028.5,
+     "lat_ms_p95": 34456.05
+    },
+    "congreso-eeuu-partido": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "exactitud": 0.646,
+     "ic95_filas": [
+      0.602,
+      0.686
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 1996.0,
+     "lat_ms_p95": 2329.0
+    },
+    "finanzas-documentos": {
+     "n_test": 461,
+     "cobertura": 0.0,
+     "sintetica": true,
+     "tipo": "choice",
+     "exactitud": 0.0,
+     "ic95_filas": [
+      0.0,
+      0.0
+     ],
+     "invalidas": 461,
+     "lat_ms_p50": null,
+     "lat_ms_p95": null
+    },
+    "horeca-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "score",
+     "exactitud": 0.634,
+     "ic95_filas": [
+      0.59,
+      0.678
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 1245.5,
+     "lat_ms_p95": 2859.05,
+     "exactitud_pm1": 0.96,
+     "mae": 0.446
+    },
+    "jql-valor-educativo": {
+     "n_test": 469,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "exactitud": 0.0832,
+     "ic95_filas": [
+      0.0597,
+      0.1109
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 3182.0,
+     "lat_ms_p95": 3543.6,
+     "exactitud_pm1": 0.4328,
+     "mae": 1.7164
+    },
+    "usajobs-nivel": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "exactitud": 0.194,
+     "ic95_filas": [
+      0.16,
+      0.228
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 30609.5,
+     "lat_ms_p95": 60690.9,
+     "exactitud_pm1": 0.452,
+     "mae": 1.95
+    }
+   },
+   "macro": {
+    "valor": 0.3749,
+    "ic95_tareas": [
+     0.1493,
+     0.5937
+    ],
+    "n_tareas": 6
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.4038,
+    "ic95_tareas": [
+     0.1386,
+     0.669
+    ],
+    "n_tareas": 4
+   },
+   "cobertura_total": 0.8427,
+   "invalidas_total": 461
+  },
+  "14b-awq-zs": {
+   "tareas": {
+    "cfpb-quejas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "exactitud": 0.722,
+     "ic95_filas": [
+      0.682,
+      0.762
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 3674.5,
+     "lat_ms_p95": 5445.05
+    },
+    "congreso-eeuu-partido": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "choice",
+     "exactitud": 0.65,
+     "ic95_filas": [
+      0.61,
+      0.69
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 5304.0,
+     "lat_ms_p95": 6189.0
+    },
+    "finanzas-documentos": {
+     "n_test": 461,
+     "cobertura": 0.4143,
+     "sintetica": true,
+     "tipo": "choice",
+     "exactitud": 0.3102,
+     "ic95_filas": [
+      0.2689,
+      0.3514
+     ],
+     "invalidas": 270,
+     "lat_ms_p50": 198982.0,
+     "lat_ms_p95": 203809.5
+    },
+    "horeca-resenas": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": true,
+     "tipo": "score",
+     "exactitud": 0.544,
+     "ic95_filas": [
+      0.502,
+      0.588
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 629.5,
+     "lat_ms_p95": 668.0,
+     "exactitud_pm1": 0.944,
+     "mae": 0.53
+    },
+    "jql-valor-educativo": {
+     "n_test": 469,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "exactitud": 0.1002,
+     "ic95_filas": [
+      0.0746,
+      0.1279
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 8009.0,
+     "lat_ms_p95": 8904.0,
+     "exactitud_pm1": 0.42,
+     "mae": 1.7249
+    },
+    "usajobs-nivel": {
+     "n_test": 500,
+     "cobertura": 1.0,
+     "sintetica": false,
+     "tipo": "score",
+     "exactitud": 0.118,
+     "ic95_filas": [
+      0.09,
+      0.146
+     ],
+     "invalidas": 0,
+     "lat_ms_p50": 4485.0,
+     "lat_ms_p95": 5385.0,
+     "exactitud_pm1": 0.34,
+     "mae": 2.434
+    }
+   },
+   "macro": {
+    "valor": 0.4074,
+    "ic95_tareas": [
+     0.2121,
+     0.609
+    ],
+    "n_tareas": 6
+   },
+   "macro_sin_sinteticas": {
+    "valor": 0.3975,
+    "ic95_tareas": [
+     0.1091,
+     0.686
+    ],
+    "n_tareas": 4
+   },
+   "cobertura_total": 0.9078,
+   "invalidas_total": 270
+  }
+ },
+ "pareadas": {
+  "4b-fs8": {
+   "tareas": {
+    "cfpb-quejas": {
+     "dif": 0.02,
+     "ic95": [
+      -0.016,
+      0.056
+     ],
+     "solo_sistema": 44,
+     "solo_referencia": 34,
+     "mcnemar_p": 0.308168,
+     "sintetica": false
+    },
+    "congreso-eeuu-partido": {
+     "dif": 0.05,
+     "ic95": [
+      0.006,
+      0.094
+     ],
+     "solo_sistema": 78,
+     "solo_referencia": 53,
+     "mcnemar_p": 0.0356,
+     "sintetica": false
+    },
+    "finanzas-documentos": {
+     "dif": -0.4881,
+     "ic95": [
+      -0.5315,
+      -0.4425
+     ],
+     "solo_sistema": 0,
+     "solo_referencia": 225,
+     "mcnemar_p": 0.0,
+     "sintetica": true
+    },
+    "horeca-resenas": {
+     "dif": 0.128,
+     "ic95": [
+      0.082,
+      0.174
+     ],
+     "solo_sistema": 103,
+     "solo_referencia": 39,
+     "mcnemar_p": 0.0,
+     "sintetica": true
+    },
+    "jql-valor-educativo": {
+     "dif": -0.0661,
+     "ic95": [
+      -0.1087,
+      -0.0235
+     ],
+     "solo_sistema": 37,
+     "solo_referencia": 68,
+     "mcnemar_p": 0.003221,
+     "sintetica": false
+    },
+    "usajobs-nivel": {
+     "dif": 0.048,
+     "ic95": [
+      0.0,
+      0.094
+     ],
+     "solo_sistema": 86,
+     "solo_referencia": 62,
+     "mcnemar_p": 0.058312,
+     "sintetica": false
+    }
+   },
+   "macro": {
+    "dif": -0.0514,
+    "ic95_tareas": [
+     -0.2304,
+     0.071
+    ]
+   },
+   "macro_sin_sinteticas": {
+    "dif": 0.013,
+    "ic95_tareas": [
+     -0.0376,
+     0.049
+    ]
+   }
+  },
+  "14b-awq-zs": {
+   "tareas": {
+    "cfpb-quejas": {
+     "dif": 0.05,
+     "ic95": [
+      0.016,
+      0.084
+     ],
+     "solo_sistema": 48,
+     "solo_referencia": 23,
+     "mcnemar_p": 0.004065,
+     "sintetica": false
+    },
+    "congreso-eeuu-partido": {
+     "dif": 0.054,
+     "ic95": [
+      0.008,
+      0.102
+     ],
+     "solo_sistema": 92,
+     "solo_referencia": 65,
+     "mcnemar_p": 0.037645,
+     "sintetica": false
+    },
+    "finanzas-documentos": {
+     "dif": -0.1779,
+     "ic95": [
+      -0.2234,
+      -0.1302
+     ],
+     "solo_sistema": 28,
+     "solo_referencia": 110,
+     "mcnemar_p": 0.0,
+     "sintetica": true
+    },
+    "horeca-resenas": {
+     "dif": 0.038,
+     "ic95": [
+      -0.004,
+      0.084
+     ],
+     "solo_sistema": 73,
+     "solo_referencia": 54,
+     "mcnemar_p": 0.10985,
+     "sintetica": true
+    },
+    "jql-valor-educativo": {
+     "dif": -0.049,
+     "ic95": [
+      -0.0789,
+      -0.0192
+     ],
+     "solo_sistema": 14,
+     "solo_referencia": 37,
+     "mcnemar_p": 0.001769,
+     "sintetica": false
+    },
+    "usajobs-nivel": {
+     "dif": -0.028,
+     "ic95": [
+      -0.064,
+      0.01
+     ],
+     "solo_sistema": 40,
+     "solo_referencia": 54,
+     "mcnemar_p": 0.179665,
+     "sintetica": false
+    }
+   },
+   "macro": {
+    "dif": -0.0188,
+    "ic95_tareas": [
+     -0.0885,
+     0.039
+    ]
+   },
+   "macro_sin_sinteticas": {
+    "dif": 0.0067,
+    "ic95_tareas": [
+     -0.0385,
+     0.052
+    ]
+   }
+  }
+ },
+ "veredicto": {
+  "delta_definicion": "macro(14b-awq-zs) - macro(4b-zs), sobre las 6 tareas de dev; se informa al lado la misma resta sin las 2 sinteticas (4 tareas), que NO decide",
+  "lectura": "no medido",
+  "motivo": "cobertura incompleta: no se aplica la lectura",
+  "cobertura": {
+   "4b-zs": 0.9519,
+   "14b-awq-zs": 0.9078
+  },
+  "delta": -0.0188,
+  "delta_ic95_tareas": [
+   -0.0885,
+   0.039
+  ],
+  "delta_sin_sinteticas": 0.0067,
+  "delta_sin_sinteticas_ic95_tareas": [
+   -0.0385,
+   0.052
+  ]
+ }
+}
