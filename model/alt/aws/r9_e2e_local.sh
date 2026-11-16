@@ -27,7 +27,7 @@ cp server/testdata/intencion.chispa "$D/s3/movil/modelo-int8.chispa"
 # empaquetar (con un sha de Go falso: en local no se descarga Go); el ud que escribe no se usa
 GO_SHA256=$(printf '0%.0s' $(seq 64)) bash model/alt/aws/empaquetar_r9_e2e.sh "$sha" "$D/muestra" "$D/s3" > "$D/empaquetar.log" 2>&1 || { cat "$D/empaquetar.log"; exit 1; }
 rm -f "model/alt/aws/lanzados/ud-r9-e2e-$sha.sh"
-python3 model/alt/aws/r9_vllm_falso.py --puerto 8765 --ms 5 & FALSO=$!
+python3 model/alt/aws/r9_vllm_falso.py --puerto 8765 --ms 40 & FALSO=$!
 trap 'kill $FALSO 2>/dev/null' EXIT
 sleep 1
 git show "$sha:model/alt/aws/r9_e2e.sh" | sed -e "s#__CHISPA_S3__#$D/s3#" -e "s#__N_FILAS__#$(wc -l < "$D/muestra/filas.jsonl" | tr -d ' ')#" > "$D/ud.sh"
