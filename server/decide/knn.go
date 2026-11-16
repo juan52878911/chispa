@@ -9,7 +9,9 @@ import (
 	"math"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
+	"sync"
 )
 
 // kNN por tarea (L2 de la cascada L2→L3 de R8/R10). Es la regla de `model/alt/escalado.py:l2`, la referencia exacta:
@@ -33,6 +35,9 @@ type BancoKNN struct {
 	Etiq  []string
 	NOro  int // los NOro primeros son oro
 	norms int // vectores que hubo que normalizar al cargar
+
+	centOnce sync.Once
+	cent     map[string][]float64 // etiqueta → centroide normalizado de sus filas de oro (ver SimCentroides)
 }
 
 // N es el número de filas del banco.
@@ -278,4 +283,70 @@ func (b *BancoKNN) Votar(q []float32, ops []string, p ParamsKNN) ([]float64, Sen
 	}
 	sen.Margen = p1 - p2
 	return probs, sen, nil
+}
+
+// SimCentroides es la similitud (coseno) de q al centroide de oro de cada opción de ops, 0 si la clase no tiene oro: `C` de `fusion_knn_l2.knn`
+// (centroide = media de los vectores de oro de la clase, normalizada con piso 1e-12). Sirve de desempate del ranking top-k.
+func (b *BancoKNN) SimCentroides(q []float32, ops []string) ([]float64, error) {
+	if len(q) != b.Dim {
+		return nil, errDimKNN
+	}
+	b.centOnce.Do(func() {
+		suma := map[string][]float64{}
+		for i := 0; i < b.NOro; i++ {
+			v := suma[b.Etiq[i]]
+			if v == nil {
+				v = make([]float64, b.Dim)
+				suma[b.Etiq[i]] = v
+			}
+			for j, e := range b.X[i*b.Dim : (i+1)*b.Dim] {
+				v[j] += float64(e)
+			}
+		}
+		b.cent = make(map[string][]float64, len(suma))
+		for et, v := range suma {
+			var n float64
+			for _, e := range v {
+				n += e * e
+			}
+			inv := 1 / math.Max(math.Sqrt(n), 1e-12) // la media y su norma: el factor 1/n de la media se cancela salvo contra el piso, que no se alcanza con vectores unitarios
+			for j := range v {
+				v[j] *= inv
+			}
+			b.cent[et] = v
+		}
+	})
+	out := make([]float64, len(ops))
+	for i, o := range ops {
+		if c, ok := b.cent[o]; ok {
+			var acc float64
+			for j, e := range c {
+				acc += e * float64(q[j])
+			}
+			out[i] = acc
+		}
+	}
+	return out, nil
+}
+
+// RankTopK devuelve los k índices de ops con mejor ranking según `probs` del kNN y, a igualdad, la similitud al centroide (descendente) y el orden de la fila
+// (`np.lexsort((-C, -P))` de `lineas_base_v2_pred.cmd_topk`), devueltos en el orden de la fila. Con k ≥ len(ops) son todos.
+func RankTopK(probs, cent []float64, k int) []int {
+	n := len(probs)
+	idx := make([]int, n)
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool {
+		if probs[idx[a]] != probs[idx[b]] {
+			return probs[idx[a]] > probs[idx[b]]
+		}
+		return cent[idx[a]] > cent[idx[b]]
+	})
+	if k > n {
+		k = n
+	}
+	sel := append([]int(nil), idx[:k]...)
+	sort.Ints(sel)
+	return sel
 }

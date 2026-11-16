@@ -45,6 +45,9 @@ type TareaKNN struct {
 	Preguntas []string `json:"preguntas,omitempty"` // textos de `question` que atiende; vacío = solo se usa con Evaluar (pruebas)
 	Umbral    *float64 `json:"umbral,omitempty"`    // u de la tarea; ausente = el global
 	Siempre   bool     `json:"siempre,omitempty"`
+	// ScoreUmbrales: score calibrado con los umbrales de `<banco>.umbrales.json` (ver score_umbrales.go). nil = se usan si el fichero existe; false = se ignoran;
+	// true = el fichero es obligatorio.
+	ScoreUmbrales *bool `json:"score_umbrales,omitempty"`
 }
 
 func (c ConfigKNN) validar() error {
@@ -104,7 +107,8 @@ const (
 )
 
 type tareaKNNViva struct {
-	ejemplos []EjemploFS // few-shot de L3 (<banco>.ejemplos.jsonl); nil = la tarea contesta zero-shot
+	umbrales *UmbralesScore // score calibrado; nil = sin calibrar
+	ejemplos []EjemploFS    // few-shot de L3 (<banco>.ejemplos.jsonl); nil = la tarea contesta zero-shot
 	banco    *BancoKNN
 	umbral   float64
 	siempre  bool
@@ -125,6 +129,14 @@ type L2KNN struct {
 func (k *L2KNN) EjemplosDe(pregunta string) []EjemploFS {
 	if t, ok := k.porPreg[pregunta]; ok {
 		return k.tareas[t].ejemplos
+	}
+	return nil
+}
+
+// UmbralesDe da los umbrales del score calibrado para una pregunta (la tarea cuyo texto de `question` coincide); nil si no hay.
+func (k *L2KNN) UmbralesDe(pregunta string) *UmbralesScore {
+	if t, ok := k.porPreg[pregunta]; ok {
+		return k.tareas[t].umbrales
 	}
 	return nil
 }
@@ -164,11 +176,20 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 		if b.NOro > 0 && ej == nil {
 			k.Avisos = append(k.Avisos, fmt.Sprintf("tarea %q: tiene oro pero no %s.ejemplos.jsonl: L3 contestará zero-shot", n, t.Banco))
 		}
+		var umb *UmbralesScore
+		if t.ScoreUmbrales == nil || *t.ScoreUmbrales {
+			if umb, err = CargarUmbralesScore(t.Banco); err != nil {
+				return nil, fmt.Errorf("knn: tarea %q: %w", n, err)
+			}
+			if umb == nil && t.ScoreUmbrales != nil {
+				return nil, fmt.Errorf("knn: tarea %q: score_umbrales=true y no existe %s", n, RutaUmbrales(t.Banco))
+			}
+		}
 		u := cfg.Umbral
 		if t.Umbral != nil {
 			u = *t.Umbral
 		}
-		k.tareas[n] = &tareaKNNViva{ejemplos: ej, banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
+		k.tareas[n] = &tareaKNNViva{umbrales: umb, ejemplos: ej, banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
 		for _, q := range t.Preguntas {
 			k.porPreg[q] = n
 		}
@@ -275,5 +296,14 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 	if d.Escala {
 		tau = math.Inf(1) // nunca se acepta: la cascada sigue con L3 y conserva esta respuesta como pista
 	}
-	return Respuesta{Answer: d.Answer, Probs: probs, Conf: math.Max(d.Sen.Margen, 1e-9), TauPropio: &tau, Tarea: tarea, MotivoKNN: d.Motivo}, nil
+	r := Respuesta{Answer: d.Answer, Probs: probs, Conf: math.Max(d.Sen.Margen, 1e-9), TauPropio: &tau, Tarea: tarea, MotivoKNN: d.Motivo}
+	if d.Escala && p.Kind == KindChoice && len(ops) > L3TopKKNNDesde { // desempate de la preselección top-k de L3
+		if c, err := k.tareas[tarea].banco.SimCentroides(q, ops); err == nil {
+			r.RankKNN = make(map[string]float64, len(ops))
+			for i, o := range ops {
+				r.RankKNN[o] = c[i]
+			}
+		}
+	}
+	return r, nil
 }

@@ -41,6 +41,10 @@ type ConfigL3 struct {
 	// TopK: en choice con más opciones, L3 solo ve las top_k mejores según la capa anterior que opinó (L2, si no L1 o L0); las
 	// demás salen con p = 0. 0 o ausente = L3TopKPorDefecto; si no, ≥ 2.
 	TopK int `json:"top_k,omitempty"`
+	// TopKKNN: en choice con más de L3TopKKNNDesde opciones y con `knn`, L3 solo ve las top_k_knn mejores del ranking del kNN (probabilidad de voto, a igualdad la similitud
+	// al centroide de la clase; model/alt/lineas_base_v2_pred.py cmd_topk, k=10 en R10-T3b) y la etiqueta final es una de ellas. nil = L3TopKKNNPorDefecto (10) con `knn`
+	// y sin l3.top_k; 0 = apagado; si no, ≥ 2.
+	TopKKNN *int `json:"top_k_knn,omitempty"`
 	// Endurecimiento (ver l3_circuito.go y l3_logprobs.go). Cortacircuitos: tras circuito_fallos filas seguidas fallidas (defecto 5) o, si
 	// circuito_tasa > 0, una tasa de fallos ≥ circuito_tasa sobre las últimas circuito_ventana filas (defecto 20), se abre circuito_espera
 	// (defecto 10 s): L3 devuelve ErrSinL3 sin llamar al LLM; pasado el plazo deja pasar UNA fila de prueba (semiabierto).
@@ -81,7 +85,10 @@ const (
 	L3TopKPorDefecto = 8
 	// L3TopKSinRecorte: top_k efectivo con `knn` y sin l3.top_k en la config (MaxOpciones del servidor es 256).
 	L3TopKSinRecorte = 1 << 20
-	maxRespuestaL3   = 1 << 20 // bytes leídos de la respuesta del LLM
+	// L3TopKKNNPorDefecto y L3TopKKNNDesde: k de la preselección por kNN y nº de opciones a partir del cual (estrictamente más) se aplica.
+	L3TopKKNNPorDefecto = 10
+	L3TopKKNNDesde      = 20
+	maxRespuestaL3      = 1 << 20 // bytes leídos de la respuesta del LLM
 )
 
 // Duracion es un time.Duration que en JSON admite "10s" o un número de segundos.
@@ -145,6 +152,9 @@ func (c ConfigL3) validar() error {
 	if c.MaxPorPeticion < 0 {
 		return fmt.Errorf("config: l3.max_por_peticion no puede ser negativo")
 	}
+	if c.TopKKNN != nil && (*c.TopKKNN < 0 || *c.TopKKNN == 1) {
+		return fmt.Errorf("config: l3.top_k_knn debe ser 0 (apagado) o ≥ 2: %d", *c.TopKKNN)
+	}
 	if c.TopK < 0 || c.TopK == 1 {
 		return fmt.Errorf("config: l3.top_k debe ser 0 (el de por defecto, %d) o ≥ 2: %d", L3TopKPorDefecto, c.TopK)
 	}
@@ -182,6 +192,10 @@ func (c Config) DecisorL3() (Decisor, error) {
 		return NuevoL3(), nil
 	}
 	cfg := *c.L3
+	if c.KNN != nil && cfg.TopK == 0 && cfg.TopKKNN == nil { // preselección por kNN con >20 opciones (R10-T3b); un l3.top_k explícito manda y la deja apagada
+		k := L3TopKKNNPorDefecto
+		cfg.TopKKNN = &k
+	}
 	if c.KNN != nil && cfg.TopK == 0 {
 		// Con knn la cascada es L2(kNN)→L3 como en Python: L3 ve TODAS las opciones y en su orden (llm_logprobs.py). El recorte a las top_k de una
 		// capa previa y su guía solo se aplican si la config fija l3.top_k a propósito.
@@ -201,6 +215,7 @@ type L3LLM struct {
 	cola        atomic.Int64 // filas esperando un hueco del semáforo
 	mu          sync.Mutex   // protege turnosCache
 	ejemplosDe  func(pregunta string) []EjemploFS
+	umbralesDe  func(pregunta string) *UmbralesScore
 	turnosCache map[string][]msgL3
 	circ        *circuito
 	dormir      func(ctx context.Context, d time.Duration) error // sustituibles en los tests
@@ -349,6 +364,9 @@ var errL3Estado = errors.New("L3: el endpoint respondió con un estado no 2xx")
 // DecidirCon: en choice con más de top_k opciones, L3 decide solo entre las top_k de la última capa anterior que dio probabilidades
 // (L2, L1, L0) y las demás salen con p = 0. Sin ninguna, o en los otros tipos, ve todas las opciones como antes.
 func (l *L3LLM) DecidirCon(ctx context.Context, p Pregunta, previas Previas) (Respuesta, error) {
+	if r, ok, err := l.decidirTopKKNN(ctx, p, previas); ok {
+		return r, err
+	}
 	k := l.cfg.TopK
 	if k == 0 {
 		k = L3TopKPorDefecto
