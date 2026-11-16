@@ -430,7 +430,10 @@ type claveCtxPresupuesto struct{}
 // presupuestoTorres cuenta las torres nuevas que ha calculado una petición.
 type presupuestoTorres struct {
 	usadas atomic.Int64
-	lote   atomic.Int64 // preguntas de la petición HTTP (0 = llamada directa); L3 reparte su cupo según él
+	// L3 suma aquí, por petición, la espera en el semáforo y el tiempo de puntuación de sus filas (ns); http.go los devuelve en las cabeceras
+	// X-Chispa-L3-Espera-Ms y X-Chispa-L3-Ms (suma de las filas: con una pregunta por petición, el valor de esa fila).
+	l3EsperaNs, l3Ns atomic.Int64
+	lote             atomic.Int64 // preguntas de la petición HTTP (0 = llamada directa); L3 reparte su cupo según él
 
 	mu     sync.Mutex
 	trozos [2]int                     // ventanas de texto largo ya decididas por la petición, por capa (capaL1, capaL2): L1 no gasta el cupo de L2

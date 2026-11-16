@@ -11,10 +11,11 @@ import (
 )
 
 // Buckets de latencia en segundos (formato Prometheus, escrito a mano).
-var buckets = []float64{0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1}
+// Hasta 30 s: la espera en el semáforo de L3 y su latencia con la cola llena superan 1 s (R9-e2e: todos los percentiles saturaban en 1000 ms).
+var buckets = []float64{0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5, 10, 30}
 
 type histo struct {
-	n   [12]atomic.Uint64 // un contador por bucket + +Inf (no acumulado)
+	n   [16]atomic.Uint64 // un contador por bucket + +Inf (no acumulado); len(buckets)+1
 	sum atomic.Uint64     // nanosegundos
 }
 
