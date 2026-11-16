@@ -103,6 +103,9 @@ type Metricas struct {
 	l3CircEstado               atomic.Int64 // 0 cerrado, 1 abierto, 2 semiabierto
 	l3CircAperturas            atomic.Uint64
 	l3Parciales                atomic.Uint64
+	knnFilas                   map[string]*atomic.Uint64    // chispa_knn_filas_total{tarea}, bajo mu
+	knnEsc                     map[[2]string]*atomic.Uint64 // chispa_knn_escaladas_total{tarea,motivo}, bajo mu
+	knnSinVec                  atomic.Uint64
 	l3Reint                    map[string]*atomic.Uint64 // chispa_l3_reintentos_total{causa}, bajo mu
 	l3Desc                     map[string]*atomic.Uint64 // chispa_l3_descartes_total{causa}, bajo mu
 
@@ -187,7 +190,7 @@ func (m *Metricas) Recarga(resultado string) { contador(&m.mu, m.recargas, resul
 
 func NuevasMetricas() *Metricas {
 	return &Metricas{clavesN: map[[2]string]*atomic.Uint64{}, recargas: map[string]*atomic.Uint64{}, capas: map[string]*histo{}, errCapa: map[string]*atomic.Uint64{},
-		decididas: map[string]*atomic.Uint64{}, calibDefecto: map[[2]string]*atomic.Uint64{}, codigos: map[int]*atomic.Uint64{}, l3Llamadas: map[string]*atomic.Uint64{}, l3Reint: map[string]*atomic.Uint64{}, l3Desc: map[string]*atomic.Uint64{}, scoreIds: map[string]*atomic.Uint64{}, noOpina: map[[2]string]*atomic.Uint64{}}
+		decididas: map[string]*atomic.Uint64{}, calibDefecto: map[[2]string]*atomic.Uint64{}, codigos: map[int]*atomic.Uint64{}, l3Llamadas: map[string]*atomic.Uint64{}, knnFilas: map[string]*atomic.Uint64{}, knnEsc: map[[2]string]*atomic.Uint64{}, l3Reint: map[string]*atomic.Uint64{}, l3Desc: map[string]*atomic.Uint64{}, scoreIds: map[string]*atomic.Uint64{}, noOpina: map[[2]string]*atomic.Uint64{}}
 }
 
 // l3Cuenta cuenta una llamada de L3 por resultado: ok, invalida (respuesta que no sirve), error, timeout o presupuesto (tope por
@@ -242,6 +245,29 @@ func (m *Metricas) l3Uso(d int64) {
 func (m *Metricas) l3ColaFija(n int64) {
 	if m != nil {
 		m.l3Cola.Store(n)
+	}
+}
+
+// knnFila cuenta una fila decidida por el kNN de la tarea y, si escala a L3, el motivo (margen, sin_oro, siempre). nil-safe.
+func (m *Metricas) knnFila(tarea, motivo string) {
+	if m != nil {
+		contador(&m.mu, m.knnFilas, tarea).Add(1)
+		if motivo != "" {
+			contador(&m.mu, m.knnEsc, [2]string{tarea, motivo}).Add(1)
+		}
+	}
+}
+
+// knnIncompleta cuenta una fila que el kNN escaló y a la que L3 no pudo contestar (subconjunto de las escaladas). nil-safe.
+func (m *Metricas) knnIncompleta(tarea string) {
+	if m != nil {
+		contador(&m.mu, m.knnEsc, [2]string{tarea, MotivoKNNIncompleta}).Add(1)
+	}
+}
+
+func (m *Metricas) knnSinVector() {
+	if m != nil {
+		m.knnSinVec.Add(1)
 	}
 }
 
@@ -479,6 +505,26 @@ func (m *Metricas) Escribe(w io.Writer) {
 	fmt.Fprintln(w, "# HELP chispa_l3_espera_segundos Espera de cada fila de L3 (modo logprobs) por un hueco de max_concurrente.")
 	fmt.Fprintln(w, "# TYPE chispa_l3_espera_segundos histogram")
 	m.l3Espera.escribe(w, "chispa_l3_espera_segundos")
+	fmt.Fprintln(w, "# HELP chispa_knn_filas_total Filas decididas por el kNN de L2, por tarea.")
+	fmt.Fprintln(w, "# TYPE chispa_knn_filas_total counter")
+	for _, k := range claves(&m.mu, m.knnFilas) {
+		fmt.Fprintf(w, "chispa_knn_filas_total{tarea=%q} %d\n", k, contador(&m.mu, m.knnFilas, k).Load())
+	}
+	fmt.Fprintln(w, "# HELP chispa_knn_escaladas_total Filas que el kNN escala a L3, por tarea y motivo (margen, sin_oro, siempre; incompleta = L3 falló, subconjunto de las anteriores). Fracción escalada = suma de margen+sin_oro+siempre / chispa_knn_filas_total.")
+	fmt.Fprintln(w, "# TYPE chispa_knn_escaladas_total counter")
+	var ke [][2]string
+	m.mu.Lock()
+	for k := range m.knnEsc {
+		ke = append(ke, k)
+	}
+	m.mu.Unlock()
+	sort.Slice(ke, func(i, j int) bool { return ke[i][0]+"\x00"+ke[i][1] < ke[j][0]+"\x00"+ke[j][1] })
+	for _, k := range ke {
+		fmt.Fprintf(w, "chispa_knn_escaladas_total{tarea=%q,motivo=%q} %d\n", k[0], k[1], contador(&m.mu, m.knnEsc, k).Load())
+	}
+	fmt.Fprintln(w, "# HELP chispa_knn_sin_vector_total Filas con kNN configurado a las que no llegó vector de consulta (L2 no opinó y sigue L3).")
+	fmt.Fprintln(w, "# TYPE chispa_knn_sin_vector_total counter")
+	fmt.Fprintf(w, "chispa_knn_sin_vector_total %d\n", m.knnSinVec.Load())
 	fmt.Fprintln(w, "# HELP chispa_l3_semaforo_en_uso Filas de L3 puntuándose ahora (huecos de max_concurrente ocupados).")
 	fmt.Fprintln(w, "# TYPE chispa_l3_semaforo_en_uso gauge")
 	fmt.Fprintf(w, "chispa_l3_semaforo_en_uso %d\n", m.l3SemUso.Load())

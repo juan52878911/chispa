@@ -90,8 +90,21 @@ type Cascada struct {
 	marcaCalib bool
 	// omitidas son capas que el modelo no trae y la cascada se salta (L1 sin sección L1): Capacidades las da como inactivas.
 	omitidas []string
+	// saltadas: capas que la cascada no corre (config knn: L0 y L1, como en Python).
+	saltadas map[string]bool
 	// soloL3: prueba (config forzar_l3): se saltan las demás capas y L3 contesta con τ = 0. Ver SoloL3.
 	soloL3 bool
+}
+
+// Saltar hace que la cascada no corra las capas dadas (config knn: L2(kNN)→L3 sin L0 ni L1).
+func (c *Cascada) Saltar(nombres ...string) *Cascada {
+	if c.saltadas == nil {
+		c.saltadas = map[string]bool{}
+	}
+	for _, n := range nombres {
+		c.saltadas[n] = true
+	}
+	return c
 }
 
 // SoloL3 salta todas las capas salvo L3 y acepta su respuesta sea cual sea su confianza (config forzar_l3, solo para pruebas).
@@ -245,7 +258,7 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 			otraFalla = true // el plazo venció antes de correr esta capa: es incompleta, no sin_presupuesto_torres
 			break
 		}
-		if c.soloL3 && l.d.Nombre() != "L3" {
+		if (c.soloL3 && l.d.Nombre() != "L3") || c.saltadas[l.d.Nombre()] {
 			continue
 		}
 		t := time.Now()
@@ -308,8 +321,11 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 				tau = *l.tauNuevo
 			}
 		}
+		if r.TauPropio != nil {
+			tau = *r.TauPropio
+		}
 		conf := r.Conf
-		if l.cal != nil {
+		if l.cal != nil && r.TauPropio == nil {
 			conf = l.cal.Aplicar(conf)
 		}
 		if conf > 0 && conf >= tau {
@@ -326,6 +342,9 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 			res.Ms = ms(time.Since(t0))
 			return res
 		}
+	}
+	if k, ok := previas["L2"]; ok && k.MotivoKNN != "" && res.Incompleto {
+		c.met.knnIncompleta(k.Tarea) // el kNN escaló a L3 y L3 falló
 	}
 	res.Escalate = true
 	res.Layer = CapaEscalar
