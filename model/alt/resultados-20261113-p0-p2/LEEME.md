@@ -1315,3 +1315,74 @@ Datos:
 - User-data: `lanzados/ud-r9-e2e-4669b60.sh` (sha256 `9a03d780…`, 13 840 bytes).
 - Prueba en seco local en el Mac, con un vLLM falso y el `.chispa` de testdata (solo L0): las fases (a)–(d) pasaron. L1/L2 reales y ORT solo se prueban en la g5.
 - `--dry-run` da DryRunOperation.
+
+
+## 17. Tanda R10 (rama `llm-rondas-r10`, sin push)
+
+Cambio de método, por la revisión externa (estrategia, método y producto):
+- Dejan de hacerse rondas de escalado, prequential o reetiquetado sobre las 6 tareas de la batería: sería ajustarse a ella.
+- Desde aquí se informa siempre **macro por tarea** y **agrupada sin hatecheck-es** (media de tareas). La agrupada por filas deja de ser métrica de decisión.
+
+### 17.1 T1, auditoría de lo ya medido (i7, 0 USD; `auditoria-ab084ba.json`): correcciones y reservas, sin criterio
+
+Vectores del i7 (transformers 4.46.3). Las cifras pueden diferir en décimas de las de R1 y R6b, que se midieron con 5.22.2.
+
+**a) Casi-duplicados test→fondo.** Filas de test con un vecino del fondo de su tarea a similitud ≥ 0,95 (entre paréntesis, ≥ 0,99):
+
+| tarea | ≥ 0,95 | ≥ 0,99 | n test | similitud máxima, mediana |
+|---|---|---|---|---|
+| hatecheck-es | 187 | 4 | 2 000 | 0,920 |
+| inyecciones | 15 | 1 | 116 | 0,886 |
+| jailbreak | 70 | 27 | 400 | 0,897 |
+| massive-es | **512** | 34 | 1 503 | 0,937 |
+| massive-esc | **545** | 46 | 1 438 | 0,940 |
+| tuits-es | 14 | 0 | 1 194 | 0,908 |
+
+- **tuits-es casi no tiene casi-duplicados** (14). Los 324 textos idénticos ya salieron del fondo al construirlo (§12.3).
+- Los casi-duplicados se concentran en massive: el 35–38 % de su test tiene un enunciado casi igual en el fondo.
+
+Ganancias del kNN, macro sin hatecheck, con todas las filas y solo con las limpias (sin vecino ≥ 0,95):
+
+| | todas | limpias |
+|---|---|---|
+| oro | 0,577 | 0,532 |
+| R1: soporte del LLM en JSON (fondo de R1) | 0,644 | 0,605 |
+| R6b: soporte en JSON (fondo + fondo2) | 0,645 | 0,605 |
+| R6b: soporte por logprobs | **0,729** | **0,694** |
+| R1, LLM − oro | +6,8 | **+7,3** |
+| R6b, logprobs − JSON | +8,4 | **+8,9** |
+
+**Corrección:** las ganancias **no salen de los casi-duplicados**. Al quitarlos bajan todos los números absolutos, sobre todo en massive y jailbreak, pero las diferencias crecen.
+En este cálculo, el soporte por logprobs ya incluye R8, que amplía massive-es; por eso R6b gana más aquí que en §14.12.
+
+**b) Cascada con partición fija por hash del id.** La mitad A se usa para seleccionar y la B para medir.
+- Corrección de método: en R8 y R9, las mitades se partían por semilla dentro de las mismas filas (`escalado.py`, `mitades`). Las «semillas nuevas» de §16.2 eran nuevas particiones de los mismos datos, no datos nuevos.
+- Selección en A (AUROC macro sin hatecheck): margen 0,799, pmax 0,785, −entropía 0,753, sim_vecino 0,687, sim_oro 0,612. Sale el **margen** con f = 0,25, con hatecheck-es excluida al elegir.
+- En B, macro sin hatecheck: L2 0,718, L3 0,729, y **cascada − L3 = +2,7 puntos [IC95 +0,4, +5,1]**, escalando ≈ 20 % de cada tarea.
+
+Curva en B (macro sin hatecheck frente a escalado medio por tarea):
+
+| escalado | 0 % | 9 % | 16 % | 24 % | 32 % | 42 % | 51 % | 60 % | 70 % | 87 % | 100 % |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| exactitud | 0,718 | 0,738 | 0,753 | 0,758 | 0,757 | **0,765** | 0,755 | 0,745 | 0,739 | 0,732 | 0,729 |
+
+Sin hatecheck-es, la cascada **supera** a L3 solo desde el 9 % de escalado, con un máximo de +3,6 en torno al 40 %.
+
+AUROC del margen en B por tarea: inyecciones 0,90, massive-esc 0,76, jailbreak 0,79, massive-es 0,75, tuits 0,62 y **hatecheck-es 0,54**.
+
+**c) hatecheck-es frente a la clase mayoritaria.** IC95 por bootstrap de las 595 plantillas:
+
+| | exactitud [IC95] |
+|---|---|
+| mayoritaria (`true`, 72,6 %) | 0,726 [0,685, 0,764] |
+| kNN L2 | 0,710 [0,673, 0,743] |
+| L2 − mayoritaria | **−1,7** [−3,4, 0,0] |
+| L3, 4B por logprobs | 0,831 [0,801, 0,861] |
+
+**Corrección:** en hatecheck-es el kNN **no supera a la clase mayoritaria**. Los IC por filas de §11–§14 eran demasiado estrechos, porque los casos de una misma plantilla son casi el mismo texto. Solo L3 aporta algo en esta tarea.
+
+**d) fakenews-es da 0,500 en todas las variantes:** es un **predictor constante**.
+- La tarea no tiene oro (zero-shot) ni fondo, así que el kNN no tiene banco. Vota uniforme, con pmax = 0,5 en las 572 filas, y `argmax` elige la primera opción (`false`).
+- Como las clases van 286/286, sale exactamente 0,500.
+- En el prequential, el banco recibe etiquetas del LLM, pero con retraso 50 y voto ponderado sigue en 0,500–0,504.
+- **Corrección:** las cifras de kNN en fakenews de §14.8, §14.12 y §15.5 no miden nada. Solo cuenta el LLM directo: 0,682 por logprobs (predice `true` en 414 de 572) y 0,559 en JSON.
