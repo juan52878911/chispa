@@ -1528,3 +1528,36 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 - El ONNX del `.chispa` es el L2 ajustado (ranuras y MaxSim), no los vectores de e5 congelado.
 - El kNN tiene una interfaz `ConVectorConsulta`. Sin el vector, no opina y todo va a L3 (`chispa_knn_sin_vector_total`).
 - Para completarlo hacen falta el ONNX de multilingual-e5-small sin ajustar (media de tokens, «query: », 256 tokens) y una prueba de paridad de vectores, con coseno ≥ 0,999 esperado.
+
+### 17.7 T3: líneas base en v2-dev (preparado, sin lanzar; código 9ca7524, rama `r10-t3` fusionada)
+
+**Lectura congelada** (`model/alt/crit-r10-t3.json`, sha256 `db6fdacba87fab217edee0e81c02f2729aaa0bcc1cee30c4cd29630d56c073bd`; el ud la comprueba antes de medir):
+- Δ = macro(Qwen3-14B-AWQ zero-shot) − macro(Qwen3-4B zero-shot por logprobs), sobre las 6 tareas de v2-dev.
+- Δ ≥ +8 puntos → **el cuello es L3**.
+- Δ < +3 → **el cuello es la especificación de la tarea**.
+- Entre medias → indeterminado.
+- Solo vale si los dos sistemas cubren el 100 % del test; si no, «no medido».
+- IC de la macro por bootstrap sobre las 6 tareas. finanzas-documentos y horeca-resenas van marcadas como sintéticas, con la macro también sin ellas (informativa).
+- **Las selladas no se abren:** el ud solo recibe `dev.tgz` y comprueba 6 ficheros, 2 930 filas de test y 728 de soporte.
+
+**Sistemas:**
+
+| sistema | modelo | licencia |
+|---|---|---|
+| 4B zero-shot por logprobs | Qwen3-4B-Instruct-2507 @ cdbee75f | Apache-2.0 |
+| 4B con 8 ejemplos en contexto | el mismo, con `llm_logprobs.py --ejemplos --k 8`; sin la opción, el prompt es idéntico | Apache-2.0 |
+| 14B zero-shot | Qwen/Qwen3-14B-AWQ @ 31c69efc, sin pensar, contexto 8 192 | Apache-2.0 |
+| NLI | mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb3 | MIT |
+| L2 zero-shot | `ajuste-80ab8ef/ckpt/mejor.pt` | pesos de Chispa |
+| kNN-e5 con 8 de oro | e5 @ 614241f6 | MIT |
+
+**Instancia:** una g5 con tope de 110 min (≈ 1,85 USD).
+- Corte a los 99 min. Los sistemas van por prioridad y, dentro de cada uno, las tareas de la más barata a la más cara.
+- Si falta tiempo, se recorta de atrás hacia delante: primero kNN, L2 y NLI, después el few-shot.
+- Estimación: 80–90 min.
+
+**Datos:**
+- Entradas en `s3://…/r10-t3-9ca7524/`: codigo.tgz `ead12b14…`, dev.tgz `b9233488…`.
+- User-data: `lanzados/ud-r10-t3-9ca7524.sh` (sha256 `76a26cb5…`, 14 823 bytes).
+- Prueba en seco en el i7, con 10 filas por tarea y un servidor falso para los LLM: pasó.
+- Riesgos sin probar: vLLM con el 14B AWQ en la A10G, y NLI/L2 en CUDA.
