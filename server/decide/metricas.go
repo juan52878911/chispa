@@ -97,6 +97,13 @@ type Metricas struct {
 	ningunaOpina atomic.Uint64                // chispa_sin_opinion_total
 	l3Lat        histo                        // latencia de cada llamada al LLM de L3
 	l3Espera     histo                        // espera de cada fila por un hueco del semáforo de L3 (modo logprobs)
+	// Endurecimiento de L3: gauges y contadores por causa.
+	l3SemUso, l3SemCap, l3Cola atomic.Int64
+	l3CircEstado               atomic.Int64 // 0 cerrado, 1 abierto, 2 semiabierto
+	l3CircAperturas            atomic.Uint64
+	l3Parciales                atomic.Uint64
+	l3Reint                    map[string]*atomic.Uint64 // chispa_l3_reintentos_total{causa}, bajo mu
+	l3Desc                     map[string]*atomic.Uint64 // chispa_l3_descartes_total{causa}, bajo mu
 
 	Timeouts atomic.Uint64 // peticiones cuyo contexto venció por plazo (p. ej. http.TimeoutHandler)
 }
@@ -179,7 +186,7 @@ func (m *Metricas) Recarga(resultado string) { contador(&m.mu, m.recargas, resul
 
 func NuevasMetricas() *Metricas {
 	return &Metricas{clavesN: map[[2]string]*atomic.Uint64{}, recargas: map[string]*atomic.Uint64{}, capas: map[string]*histo{}, errCapa: map[string]*atomic.Uint64{},
-		decididas: map[string]*atomic.Uint64{}, calibDefecto: map[[2]string]*atomic.Uint64{}, codigos: map[int]*atomic.Uint64{}, l3Llamadas: map[string]*atomic.Uint64{}, scoreIds: map[string]*atomic.Uint64{}, noOpina: map[[2]string]*atomic.Uint64{}}
+		decididas: map[string]*atomic.Uint64{}, calibDefecto: map[[2]string]*atomic.Uint64{}, codigos: map[int]*atomic.Uint64{}, l3Llamadas: map[string]*atomic.Uint64{}, l3Reint: map[string]*atomic.Uint64{}, l3Desc: map[string]*atomic.Uint64{}, scoreIds: map[string]*atomic.Uint64{}, noOpina: map[[2]string]*atomic.Uint64{}}
 }
 
 // l3Cuenta cuenta una llamada de L3 por resultado: ok, invalida (respuesta que no sirve), error, timeout o presupuesto (tope por
@@ -208,6 +215,38 @@ func (m *Metricas) CapaNoOpina(capa, causa string) {
 func (m *Metricas) NingunaCapaOpina() {
 	if m != nil {
 		m.ningunaOpina.Add(1)
+	}
+}
+
+// l3Reintento cuenta un reintento de L3 por causa (red, 5xx, 429); l3Descarte una fila descartada sin llamar (cola_llena,
+// circuito_abierto). nil-safe.
+func (m *Metricas) l3Reintento(causa string) {
+	if m != nil {
+		contador(&m.mu, m.l3Reint, causa).Add(1)
+	}
+}
+
+func (m *Metricas) l3Descarte(causa string) {
+	if m != nil {
+		contador(&m.mu, m.l3Desc, causa).Add(1)
+	}
+}
+
+func (m *Metricas) l3Uso(d int64) {
+	if m != nil {
+		m.l3SemUso.Add(d)
+	}
+}
+
+func (m *Metricas) l3ColaFija(n int64) {
+	if m != nil {
+		m.l3Cola.Store(n)
+	}
+}
+
+func (m *Metricas) l3Parcial() {
+	if m != nil {
+		m.l3Parciales.Add(1)
 	}
 }
 
@@ -439,6 +478,34 @@ func (m *Metricas) Escribe(w io.Writer) {
 	fmt.Fprintln(w, "# HELP chispa_l3_espera_segundos Espera de cada fila de L3 (modo logprobs) por un hueco de max_concurrente.")
 	fmt.Fprintln(w, "# TYPE chispa_l3_espera_segundos histogram")
 	m.l3Espera.escribe(w, "chispa_l3_espera_segundos")
+	fmt.Fprintln(w, "# HELP chispa_l3_semaforo_en_uso Filas de L3 puntuándose ahora (huecos de max_concurrente ocupados).")
+	fmt.Fprintln(w, "# TYPE chispa_l3_semaforo_en_uso gauge")
+	fmt.Fprintf(w, "chispa_l3_semaforo_en_uso %d\n", m.l3SemUso.Load())
+	fmt.Fprintln(w, "# HELP chispa_l3_semaforo_capacidad max_concurrente de L3 (0 sin L3 en modo logprobs).")
+	fmt.Fprintln(w, "# TYPE chispa_l3_semaforo_capacidad gauge")
+	fmt.Fprintf(w, "chispa_l3_semaforo_capacidad %d\n", m.l3SemCap.Load())
+	fmt.Fprintln(w, "# HELP chispa_l3_cola_longitud Filas de L3 esperando un hueco.")
+	fmt.Fprintln(w, "# TYPE chispa_l3_cola_longitud gauge")
+	fmt.Fprintf(w, "chispa_l3_cola_longitud %d\n", m.l3Cola.Load())
+	fmt.Fprintln(w, "# HELP chispa_l3_circuito_estado Cortacircuitos de L3: 0 cerrado, 1 abierto, 2 semiabierto.")
+	fmt.Fprintln(w, "# TYPE chispa_l3_circuito_estado gauge")
+	fmt.Fprintf(w, "chispa_l3_circuito_estado %d\n", m.l3CircEstado.Load())
+	fmt.Fprintln(w, "# HELP chispa_l3_circuito_aperturas_total Veces que se abrió el cortacircuitos de L3.")
+	fmt.Fprintln(w, "# TYPE chispa_l3_circuito_aperturas_total counter")
+	fmt.Fprintf(w, "chispa_l3_circuito_aperturas_total %d\n", m.l3CircAperturas.Load())
+	fmt.Fprintln(w, "# HELP chispa_l3_reintentos_total Reintentos de llamadas HTTP de L3 por causa (red, 5xx, 429).")
+	fmt.Fprintln(w, "# TYPE chispa_l3_reintentos_total counter")
+	for _, c := range []string{"red", "5xx", "429"} {
+		fmt.Fprintf(w, "chispa_l3_reintentos_total{causa=%q} %d\n", c, contador(&m.mu, m.l3Reint, c).Load())
+	}
+	fmt.Fprintln(w, "# HELP chispa_l3_descartes_total Filas que L3 descartó sin llamar al LLM, por causa (cola_llena, circuito_abierto).")
+	fmt.Fprintln(w, "# TYPE chispa_l3_descartes_total counter")
+	for _, c := range []string{"cola_llena", "circuito_abierto"} {
+		fmt.Fprintf(w, "chispa_l3_descartes_total{causa=%q} %d\n", c, contador(&m.mu, m.l3Desc, c).Load())
+	}
+	fmt.Fprintln(w, "# HELP chispa_l3_filas_parciales_total Filas de L3 con alguna opción puntuada con el piso (relleno a medias: max_extra o tope de la fila).")
+	fmt.Fprintln(w, "# TYPE chispa_l3_filas_parciales_total counter")
+	fmt.Fprintf(w, "chispa_l3_filas_parciales_total %d\n", m.l3Parciales.Load())
 	fmt.Fprintln(w, "# HELP chispa_timeouts_total Peticiones a /v1/decide cuyo plazo venció.")
 	fmt.Fprintln(w, "# TYPE chispa_timeouts_total counter")
 	fmt.Fprintf(w, "chispa_timeouts_total %d\n", m.Timeouts.Load())

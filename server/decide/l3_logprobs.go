@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -124,27 +126,38 @@ func (l *L3LLM) cuerpoBaseLP(msgs []msgL3) cuerpoLPL3 {
 	return c
 }
 
-// postLP hace la llamada con 1 reintento ante error de red o 5xx (no ante timeout de la fila ni 4xx).
+// postLP hace la llamada con reintentos: hasta max_intentos en total ante error de red, 5xx o 429, con espera exponencial y jitter
+// (espera_base · 2^(n-1) hasta espera_max, multiplicada por un factor en [0,5, 1)). Un 429 con Retry-After espera lo que pide. Si lo que
+// queda de plazo (contexto de la fila) no alcanza para la espera, no se reintenta: el error sale ya y la fila no se pasa de su tope.
 func (l *L3LLM) postLP(ctx context.Context, c cuerpoLPL3) ([]byte, error) {
 	cuerpo, _ := json.Marshal(c)
-	var err error
-	for intento := 0; intento < 2; intento++ {
-		var b []byte
-		var reintentable bool
-		if b, reintentable, err = l.postUnaVez(ctx, cuerpo); err == nil {
+	for intento := 1; ; intento++ {
+		b, causa, retryAfter, err := l.postUnaVez(ctx, cuerpo)
+		if err == nil {
 			return b, nil
 		}
-		if !reintentable || ctx.Err() != nil {
-			break
+		if causa == "" || intento >= l.cfg.maxIntentos() || ctx.Err() != nil {
+			return nil, err
+		}
+		espera := l.cfg.espera(intento, l.azar())
+		if causa == "429" && retryAfter > 0 {
+			espera = retryAfter
+		}
+		if dl, ok := ctx.Deadline(); ok && time.Until(dl) <= espera {
+			return nil, err
+		}
+		l.met.l3Reintento(causa)
+		if l.dormir(ctx, espera) != nil {
+			return nil, err
 		}
 	}
-	return nil, err
 }
 
-func (l *L3LLM) postUnaVez(ctx context.Context, cuerpo []byte) ([]byte, bool, error) {
+// postUnaVez: una llamada. causa != "" si el fallo admite reintento (red, 5xx, 429); retryAfter es el de un 429.
+func (l *L3LLM) postUnaVez(ctx context.Context, cuerpo []byte) (b []byte, causa string, retryAfter time.Duration, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, l.url, bytes.NewReader(cuerpo))
 	if err != nil {
-		return nil, false, errors.New("L3: petición no válida")
+		return nil, "", 0, errors.New("L3: petición no válida")
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if l.clave != "" {
@@ -156,17 +169,42 @@ func (l *L3LLM) postUnaVez(ctx context.Context, cuerpo []byte) ([]byte, bool, er
 		if errors.As(err, &ue) {
 			err = ue.Err
 		}
-		return nil, true, fmt.Errorf("L3: %w", err)
+		return nil, "red", 0, fmt.Errorf("L3: %w", err)
 	}
 	defer resp.Body.Close()
-	b, err := io.ReadAll(io.LimitReader(resp.Body, maxRespuestaL3))
+	b, err = io.ReadAll(io.LimitReader(resp.Body, maxRespuestaL3))
 	if err != nil {
-		return nil, true, fmt.Errorf("L3: %w", err)
+		return nil, "red", 0, fmt.Errorf("L3: %w", err)
 	}
-	if resp.StatusCode/100 != 2 {
-		return nil, resp.StatusCode >= 500, fmt.Errorf("%w (%d)", errL3Estado, resp.StatusCode)
+	switch {
+	case resp.StatusCode/100 == 2:
+		return b, "", 0, nil
+	case resp.StatusCode == http.StatusTooManyRequests:
+		return nil, "429", parseRetryAfter(resp.Header.Get("Retry-After"), time.Now()), fmt.Errorf("%w (%d)", errL3Estado, resp.StatusCode)
+	case resp.StatusCode >= 500:
+		return nil, "5xx", 0, fmt.Errorf("%w (%d)", errL3Estado, resp.StatusCode)
 	}
-	return b, false, nil
+	return nil, "", 0, fmt.Errorf("%w (%d)", errL3Estado, resp.StatusCode)
+}
+
+// parseRetryAfter: segundos (entero) o fecha HTTP; 0 si falta o no se entiende (se usa la espera exponencial).
+func parseRetryAfter(v string, ahora time.Time) time.Duration {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return 0
+	}
+	if n, err := strconv.ParseFloat(v, 64); err == nil {
+		if n < 0 || math.IsNaN(n) || n > 86400 {
+			return 0
+		}
+		return time.Duration(n * float64(time.Second))
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		if d := t.Sub(ahora); d > 0 {
+			return d
+		}
+	}
+	return 0
 }
 
 type plEntradaL3 map[string]struct {
@@ -256,11 +294,11 @@ func lseL3(a, b float64) float64 {
 }
 
 // puntuarLP devuelve las probs por etiqueta (en el orden de cods). ok=false si no se pudo puntuar ninguna. Si el contexto vence
-// a mitad del relleno, usa lo que ya hay; si vence sin nada, devuelve el error del contexto.
-func (l *L3LLM) puntuarLP(ctx context.Context, msgs []msgL3, cods []string) ([]float64, bool, error) {
+// a mitad del relleno, usa lo que ya hay; si vence sin nada, devuelve el error del contexto. parcial: alguna etiqueta recibió el piso.
+func (l *L3LLM) puntuarLP(ctx context.Context, msgs []msgL3, cods []string) (xs []float64, ok, parcial bool, err error) {
 	top, todos, err := l.primerTokenLP(ctx, msgs)
 	if err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 	lp := map[string]float64{}
 	for _, c := range cods {
@@ -284,8 +322,23 @@ func (l *L3LLM) puntuarLP(ctx context.Context, msgs []msgL3, cods []string) ([]f
 		hechas++
 	}
 	if len(lp) == 0 {
-		return nil, false, ctx.Err()
+		return nil, false, false, ctx.Err()
 	}
+	piso := pisoLP(todos, lp)
+	xs = make([]float64, len(cods))
+	vs := make([]float64, len(cods))
+	for i, c := range cods {
+		v, esta := lp[c]
+		if !esta {
+			v = piso
+		}
+		vs[i] = v
+	}
+	return softmaxLP(vs, xs), true, len(lp) < len(cods), nil
+}
+
+// pisoLP: el menor logprob conocido (top 20 y puntuados) menos 1 nat.
+func pisoLP(todos []float64, lp map[string]float64) float64 {
 	piso := math.Inf(1)
 	for _, v := range todos {
 		piso = math.Min(piso, v)
@@ -293,53 +346,107 @@ func (l *L3LLM) puntuarLP(ctx context.Context, msgs []msgL3, cods []string) ([]f
 	for _, v := range lp {
 		piso = math.Min(piso, v)
 	}
-	piso--
-	xs := make([]float64, len(cods))
+	return piso - 1
+}
+
+func softmaxLP(vs, xs []float64) []float64 {
 	mx := math.Inf(-1)
-	for i, c := range cods {
-		v, esta := lp[c]
-		if !esta {
-			v = piso
-		}
-		xs[i] = v
+	for _, v := range vs {
 		mx = math.Max(mx, v)
 	}
 	var s float64
-	for i := range xs {
-		xs[i] = math.Exp(xs[i] - mx)
+	for i, v := range vs {
+		xs[i] = math.Exp(v - mx)
 		s += xs[i]
 	}
 	for i := range xs {
 		xs[i] /= s
 	}
-	return xs, true, nil
+	return xs
+}
+
+// entrarFila toma un hueco del semáforo de L3 o descarta la fila: sin hueco libre, espera en cola si hay sitio (max_cola); si la cola
+// está llena, descarte inmediato (ErrColaLlena) en vez de esperar. libera() devuelve el hueco.
+func (l *L3LLM) entrarFila(ctx context.Context) (libera func(), err error) {
+	entra := func() func() {
+		l.met.l3Uso(1)
+		return func() { <-l.sem; l.met.l3Uso(-1) }
+	}
+	select {
+	case l.sem <- struct{}{}:
+		l.met.l3EsperaCola(0)
+		return entra(), nil
+	default:
+	}
+	if n := l.cola.Add(1); int(n) > l.cfg.maxCola() {
+		l.cola.Add(-1)
+		l.met.l3Descarte("cola_llena")
+		return nil, ErrColaLlena
+	}
+	l.met.l3ColaFija(l.cola.Load())
+	te := time.Now()
+	defer func() { l.cola.Add(-1); l.met.l3ColaFija(l.cola.Load()) }()
+	select {
+	case l.sem <- struct{}{}:
+		l.met.l3EsperaCola(time.Since(te))
+		return entra(), nil
+	case <-ctx.Done():
+		return nil, fmt.Errorf("%w: %v", ErrSinL3, ctx.Err())
+	}
 }
 
 // decidirLogprobs es Decidir en modo logprobs; ordenadas ya viene en orden de nivel en score y con el presupuesto reservado.
 func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opcion) (Respuesta, error) {
-	msgs, cods, err := mensajesLogprobsL3(p, ordenadas)
+	var msgs []msgL3
+	var cods []string
+	if p.Kind == KindMulti {
+		if len(ordenadas) > l.cfg.multiMaxOpciones() {
+			l.met.l3Cuenta("invalida")
+			return Respuesta{Incompleto: true}, nil
+		}
+	} else {
+		var err error
+		if msgs, cods, err = mensajesLogprobsL3(p, ordenadas); err != nil {
+			l.met.l3Cuenta("invalida")
+			return Respuesta{Incompleto: true}, nil
+		}
+	}
+	ok, sonda := l.circ.permite()
+	if !ok {
+		l.met.l3Descarte("circuito_abierto")
+		l.met.l3Cuenta("error")
+		return Respuesta{}, ErrCircuitoAbierto
+	}
+	libera, err := l.entrarFila(ctx)
 	if err != nil {
-		l.met.l3Cuenta("invalida")
-		return Respuesta{Incompleto: true}, nil
+		l.circ.registra(true, sonda, true) // ni éxito ni fallo del LLM: solo se suelta la prueba
+		if errors.Is(err, ErrColaLlena) {
+			l.met.l3Cuenta("error")
+		} else {
+			l.met.l3Cuenta("timeout")
+		}
+		return Respuesta{}, err
 	}
-	// Semáforo: la espera por un hueco la acota el contexto de la petición; el tope de la fila empieza al obtenerlo.
-	te := time.Now()
-	select {
-	case l.sem <- struct{}{}:
-		l.met.l3EsperaCola(time.Since(te))
-		defer func() { <-l.sem }()
-	case <-ctx.Done():
-		l.met.l3Cuenta("timeout")
-		return Respuesta{}, fmt.Errorf("%w: %v", ErrSinL3, ctx.Err())
-	}
+	defer libera()
 	cf, cancel := context.WithTimeout(ctx, l.cfg.timeoutFila())
 	defer cancel()
 	t := time.Now()
-	xs, ok, err := l.puntuarLP(cf, msgs, cods)
-	l.met.l3Latencia(time.Since(t))
-	if err == nil && !ok && errors.Is(cf.Err(), context.DeadlineExceeded) {
-		err = cf.Err()
+	var r Respuesta
+	var valida, parcial bool
+	if p.Kind == KindMulti {
+		r, valida, parcial, err = l.puntuarMulti(cf, p)
+	} else {
+		var xs []float64
+		xs, valida, parcial, err = l.puntuarLP(cf, msgs, cods)
+		if err == nil && !valida && errors.Is(cf.Err(), context.DeadlineExceeded) {
+			err = cf.Err()
+		}
+		if err == nil && valida {
+			r = respuestaDeProbsLP(p, ordenadas, xs)
+		}
 	}
+	l.met.l3Latencia(time.Since(t))
+	l.circ.registra(err == nil, sonda, err != nil && ctx.Err() != nil)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err) {
 			l.met.l3Cuenta("timeout")
@@ -348,10 +455,19 @@ func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opc
 		}
 		return Respuesta{}, fmt.Errorf("%w: %v", ErrSinL3, err)
 	}
-	if !ok {
+	if !valida {
 		l.met.l3Cuenta("invalida")
 		return Respuesta{Incompleto: true}, nil
 	}
+	if parcial {
+		l.met.l3Parcial()
+	}
+	l.met.l3Cuenta("ok")
+	return r, nil
+}
+
+// respuestaDeProbsLP: answer = el más probable (primera opción en empate); en score, la mediana.
+func respuestaDeProbsLP(p Pregunta, ordenadas []Opcion, xs []float64) Respuesta {
 	probs := make(map[string]float64, len(ordenadas))
 	for i, o := range ordenadas {
 		probs[o.ID] = xs[i]
@@ -372,8 +488,126 @@ func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opc
 			}
 		}
 	}
-	l.met.l3Cuenta("ok")
-	return Respuesta{Answer: ans, Probs: probs, Conf: probs[ans]}, nil
+	return Respuesta{Answer: ans, Probs: probs, Conf: probs[ans]}
+}
+
+// Multi por logprobs (EXTENSIÓN SOLO-GO: llm_logprobs.py no tiene multi; allí «multi» se trata como una elección única, «elige la opción
+// más probable»). Cada opción es un sí/no independiente: UNA llamada por opción (max_tokens=1, top_logprobs=20) con las etiquetas S/N;
+// p(opción) = p(S) / (p(S) + p(N)), sumando las variantes con espacio. Se descartó «dos etiquetas por opción en una sola llamada»: el
+// primer token solo da UNA distribución, no n sí/no independientes; encadenar prefijos costaría n llamadas igualmente. El coste es n
+// llamadas por fila (multi_max_opciones, 16 por defecto), que van en paralelo dentro del hueco del semáforo (hasta 8 a la vez) y comparten
+// el prefijo del prompt (--enable-prefix-caching). Si de S y N solo sale una en el top 20, la otra recibe el piso (menor logprob visto − 1).
+// Si no sale ninguna la opción no se puede puntuar y la fila es inválida. θ = 0,5 como en la vía JSON (multiDeProbs).
+const (
+	instruccionMultiLPL3 = `Se te pregunta por UNA sola opción (campo "opcion"), independiente de las demás. Responde SOLO con una letra: S si esa opción corresponde al texto, ` +
+		`N si no. Un único carácter, sin comillas, sin explicación y sin JSON.`
+	multiParaleloL3 = 8
+)
+
+func mensajesMultiLP(p Pregunta, o Opcion) []msgL3 {
+	op := `{"id": ` + jsonPyL3(o.ID)
+	if o.Description != "" {
+		op += `, "descripcion": ` + jsonPyL3(o.Description)
+	}
+	op += "}"
+	u := `{"pregunta": ` + jsonPyL3(p.Texto) + `, "tipo": "multi", "opcion": ` + op + `, "texto": ` + jsonPyL3(delimitaTextoL3(p.Estado)) + "}"
+	sistema := promptSistemaL3[:strings.Index(promptSistemaL3, "Responde SOLO")] + instruccionMultiLPL3
+	return []msgL3{{"system", sistema}, {"user", u}}
+}
+
+func (l *L3LLM) puntuarMulti(ctx context.Context, p Pregunta) (r Respuesta, valida, parcial bool, err error) {
+	n := len(p.Opciones)
+	pr, th := make([]float64, n), make([]float64, n)
+	pis := make([]bool, n) // opción puntuada con piso
+	sin := make([]bool, n) // opción sin ninguna de las dos etiquetas
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	par := make(chan struct{}, multiParaleloL3)
+	for i, o := range p.Opciones {
+		wg.Add(1)
+		par <- struct{}{}
+		go func() {
+			defer func() { <-par; wg.Done() }()
+			top, todos, e := l.primerTokenLP(ctx, mensajesMultiLP(p, o))
+			if e != nil {
+				errs[i] = e
+				return
+			}
+			s, okS := top["S"]
+			nn, okN := top["N"]
+			if !okS && !okN {
+				sin[i] = true
+				return
+			}
+			piso := pisoLP(todos, map[string]float64{})
+			if okS {
+				piso = math.Min(piso, s-1)
+			}
+			if okN {
+				piso = math.Min(piso, nn-1)
+			}
+			if !okS {
+				s, pis[i] = piso, true
+			}
+			if !okN {
+				nn, pis[i] = piso, true
+			}
+			pr[i], th[i] = softmaxLP([]float64{s, nn}, make([]float64, 2))[0], 0.5
+		}()
+	}
+	wg.Wait()
+	for _, e := range errs {
+		if e != nil {
+			return Respuesta{}, false, false, e
+		}
+	}
+	for i := range sin {
+		if sin[i] {
+			return Respuesta{}, false, false, ctx.Err() // vencida: error de tope; si no, inválida
+		}
+		parcial = parcial || pis[i]
+	}
+	return multiDeProbs(p, pr, th), true, parcial, nil
+}
+
+func (c ConfigL3) maxIntentos() int {
+	if c.MaxIntentos > 0 {
+		return c.MaxIntentos
+	}
+	return 2
+}
+
+// espera es la espera antes del reintento número n (1 = el primero): espera_base · 2^(n−1) hasta espera_max, por un jitter en [0,5, 1).
+func (c ConfigL3) espera(n int, azar float64) time.Duration {
+	base, tope := time.Duration(c.EsperaBase), time.Duration(c.EsperaMax)
+	if base == 0 {
+		base = 50 * time.Millisecond
+	}
+	if tope == 0 {
+		tope = time.Second
+	}
+	d := base
+	for i := 1; i < n && d < tope; i++ {
+		d *= 2
+	}
+	if d > tope {
+		d = tope
+	}
+	return time.Duration(float64(d) * (0.5 + 0.5*azar))
+}
+
+func (c ConfigL3) maxCola() int {
+	if c.MaxCola == nil {
+		return L3MaxColaPorDefecto
+	}
+	return *c.MaxCola
+}
+
+func (c ConfigL3) multiMaxOpciones() int {
+	if c.MultiMaxOpciones > 0 {
+		return c.MultiMaxOpciones
+	}
+	return 16
 }
 
 func (c ConfigL3) maxExtra() int {

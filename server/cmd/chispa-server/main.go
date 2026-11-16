@@ -36,6 +36,7 @@ func main() {
 	maxEnCurso := flag.Int("max-en-curso", 64, "tope de peticiones a /v1/decide en curso a la vez (0 = sin tope); al llenarse responde 429 rate_limited con Retry-After (contado en /metrics)")
 	preDrenaje := flag.Duration("pre-drenaje", 0, "al recibir SIGTERM/SIGINT, /healthz responde 503 shutting_down este tiempo con los listeners aún abiertos, para que el balanceador saque el nodo, y luego empieza el apagado (0 = sin espera)")
 	apagado := flag.Duration("apagado", 25*time.Second, "plazo para terminar las peticiones en vuelo tras SIGTERM/SIGINT")
+	pruebas := flag.Bool("pruebas", false, "permite opciones SOLO PARA PRUEBAS de la config (forzar_l3); sin este flag el servidor se niega a arrancar con ellas")
 	abierto := flag.Bool("abierto", false, "permite escuchar fuera de loopback sin api_keys (también vale api_keys_abierto en la config)")
 	adminAddr := flag.String("admin-addr", "", "dirección de escucha aparte para POST /v1/admin/recargar (p. ej. 127.0.0.1:8091); la pública deja de servirla (404). Vacío = comparte -addr")
 	plazoCuerpo := flag.Duration("plazo-cuerpo", 0, "plazo para recibir el cuerpo entero de /v1/decide (0 = 10 s; negativo = sin plazo)")
@@ -60,6 +61,7 @@ func main() {
 			return a, err
 		}
 	}
+	pruebasPermitidas = *pruebas
 	met := decide.NuevasMetricas()
 	// SIGHUP se registra antes de armar (tarda segundos): sin Notify, Go lo trataría como salida. Un HUP durante el arranque
 	// queda encolado y se atiende cuando el servidor está listo (el modelo recién armado ya es el de la config actual,
@@ -484,6 +486,17 @@ func esLoopback(addr string) bool {
 // rutaORT y origenORT: la ruta de ORT resuelta al arrancar y de dónde salió (para los avisos).
 var rutaORT, origenORT string
 
+// pruebasPermitidas es el flag -pruebas: sin él, una config con opciones de prueba (forzar_l3) no arranca ni se recarga.
+var pruebasPermitidas bool
+
+// exigirPruebas rechaza las opciones solo-pruebas de la config si no se pasó -pruebas.
+func exigirPruebas(cfg decide.Config) error {
+	if cfg.ForzarL3 && !pruebasPermitidas {
+		return fmt.Errorf("config: forzar_l3 salta L0, L1 y L2 y manda TODO a L3: es solo para pruebas y el servidor no arranca con él si no se pasa el flag -pruebas")
+	}
+	return nil
+}
+
 func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide.Armado, error) {
 	cfg := decide.ConfigPorDefecto()
 	if cfgPath != "" {
@@ -491,6 +504,9 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 		if cfg, err = decide.CargarConfig(cfgPath); err != nil {
 			return nil, err
 		}
+	}
+	if err := exigirPruebas(cfg); err != nil {
+		return nil, err
 	}
 	l0 := decide.NuevoL0(cfg.CacheEsquemas)
 	if err := l0.CargarCon(chispa3.Limites{MaxFichero: cfg.MaxFicheroBytes()}, cfg.Modelos...); err != nil {
