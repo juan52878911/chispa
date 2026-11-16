@@ -29,7 +29,7 @@ estado() { printf '%s\t%s\n' "$1" "$2" >> "$OUT/estado.tsv"; echo "[$1] $2"; }
 fallo() { echo "FALLO: $*"; FALLO="${FALLO:+$FALLO; }$*"; }
 lineas() { [ -f "$1" ] && wc -l < "$1" | tr -d ' ' || echo 0; }
 parar() { pkill -TERM -f "$1" 2>/dev/null; for _ in $(seq 30); do pgrep -f "$1" > /dev/null || return 0; sleep 2; done; pkill -KILL -f "$1" 2>/dev/null; sleep 3; }
-medir() { [ -d "$BASE/dev" ] && [ -d "$BASE/t3" ] && ( cd "$REPO" && PYTHONPATH=$REPO timeout 120 "${NPY:-python3}" -m model.alt.lineas_base_v2b medir --dev "$BASE/dev" --pred "$PRED" --t3 "$BASE/t3" \
+medir() { [ -d "$BASE/dev" ] && [ -d "$BASE/t3" ] && ( cd "$REPO" && PYTHONPATH=$REPO timeout 120 "${VPY:-python3}" -m model.alt.lineas_base_v2b medir --dev "$BASE/dev" --pred "$PRED" --t3 "$BASE/t3" \
   --presel "$BASE/t/topk/preseleccion.json" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null; }
 subir_y_apagar() {
   trap - EXIT; [ -n "${WPID:-}" ] && kill $WPID 2>/dev/null; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"; medir; cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
@@ -59,7 +59,7 @@ urls() { for _ in $(seq "$2"); do printf -- '--url %s ' "$1"; done; }
 validas() { [ -f "$1" ] || { echo 0; return; }; grep -c '"valida": true' "$1"; }
 bajar() {   # bajar REPO REV DIR PATRONES...
   local r=$1 v=$2 d=$3; shift 3; local pat; pat=$(printf "'%s'," "$@")
-  HF_HUB_ENABLE_HF_TRANSFER=0 "$NPY" -c "from huggingface_hub import snapshot_download as s; s('$r', revision='$v', local_dir='$d', allow_patterns=[${pat%,}])"
+  HF_HUB_ENABLE_HF_TRANSFER=0 "$VPY" -c "from huggingface_hub import snapshot_download as s; s('$r', revision='$v', local_dir='$d', allow_patterns=[${pat%,}])"
 }
 # sistema por logprobs: lp SISTEMA MIN DIR_FILAS "TAREAS" [DIR_EJEMPLOS]; una pasada por tarea
 lp() {
@@ -79,12 +79,16 @@ if [ "$LOCAL" = 1 ]; then PY=${CHISPA_PY:-python3}; VPY=$PY; NPY=$PY
 else
   PY=""; for c in /opt/pytorch/bin/python /opt/conda/envs/pytorch/bin/python /usr/bin/python3; do [ -x "$c" ] && "$c" -c "import torch" 2>/dev/null && { PY=$c; break; }; done
   [ -n "$PY" ] && "$PY" -c "import torch; assert torch.cuda.is_available()" || { fallo "sin torch o sin GPU"; estado entorno "FALLO"; cierre; }
-  "$PY" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir "vllm==$VLLM" huggingface_hub || { fallo "pip install vllm==$VLLM"; estado entorno "FALLO pip"; cierre; }
   VPY=/opt/vllm/bin/python; NPY=/opt/nlp/bin/python
   ( for c in python3.12 python3.11 python3.10 "$PY" python3; do p=$(command -v "$c" 2>/dev/null) && "$p" -c "import sys; assert sys.version_info >= (3, 10)" 2>/dev/null && "$p" -m venv /opt/nlp 2>/dev/null && break; done
     /opt/nlp/bin/pip install -q --no-cache-dir "torch==$TORCH" --index-url https://download.pytorch.org/whl/cpu \
       && /opt/nlp/bin/pip install -q --no-cache-dir "transformers==$TRANSFORMERS" sentencepiece protobuf tiktoken numpy huggingface_hub \
-      && /opt/nlp/bin/python -c "import torch, transformers; assert torch.__version__.startswith('$TORCH') and transformers.__version__ == '$TRANSFORMERS'" && echo ok > "$BASE/nlp.ok" ) > "$BASE/pip-nlp.log" 2>&1 &
+      && /opt/nlp/bin/python -c "import torch, transformers, numpy, huggingface_hub, sentencepiece; assert torch.__version__.startswith('$TORCH') and transformers.__version__ == '$TRANSFORMERS'" && echo ok > "$BASE/nlp.ok" || echo fallo > "$BASE/nlp.fail" ) > "$BASE/pip-nlp.log" 2>&1 &
+  "$PY" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir "vllm==$VLLM" huggingface_hub || { fallo "pip install vllm==$VLLM"; estado entorno "FALLO pip"; cierre; }
+  VPY=/opt/vllm/bin/python
+  "$VPY" -c "import vllm, numpy, huggingface_hub" || { fallo "el venv de vLLM no importa vllm, numpy y huggingface_hub"; estado entorno "FALLO venv vllm"; cierre; }
+  for _ in $(seq 120); do [ -f "$BASE/nlp.ok" ] || [ -f "$BASE/nlp.fail" ] && break; sleep 5; done
+  [ -f "$BASE/nlp.ok" ] || { tail -3 "$BASE/pip-nlp.log"; fallo "el venv de transformers no importa torch, transformers, numpy, huggingface_hub y sentencepiece"; estado entorno "FALLO venv nlp"; cierre; }
   estado entorno "OK vllm $($VPY -c 'import vllm; print(vllm.__version__)' 2>/dev/null); $(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null)"
 fi
 
@@ -94,7 +98,7 @@ for f in codigo.tgz dev.tgz t3.tgz; do s3cp "$CHISPA_S3/$f" "$BASE/$f" || { fall
 mkdir -p "$REPO" "$BASE/dev" "$BASE/t3" && tar -xzf "$BASE/codigo.tgz" -C "$REPO" && tar -xzf "$BASE/dev.tgz" -C "$BASE/dev" && tar -xzf "$BASE/t3.tgz" -C "$BASE/t3" || { fallo "tgz"; estado entradas "FALLO tgz"; cierre; }
 rm -f "$BASE"/dev/._* "$BASE"/t3/._*; export PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}"
 [ "$(ls "$BASE"/dev/*.jsonl | wc -l | tr -d ' ')" = 6 ] || { fallo "dev.tgz no trae 6 jsonl"; estado entradas "FALLO dev"; cierre; }
-"$PY" - "$REPO/model/alt/crit-r10-t3b.json" "$REPO/model/alt/rubricas-r10-t3b.json" "$BASE/t3" "$CRIT_SHA" <<'PY' || { fallo "criterio, rúbrica o predicciones de T3 distintos de los congelados"; estado entradas "FALLO criterio"; cierre; }
+"$VPY" - "$REPO/model/alt/crit-r10-t3b.json" "$REPO/model/alt/rubricas-r10-t3b.json" "$BASE/t3" "$CRIT_SHA" <<'PY' || { fallo "criterio, rúbrica o predicciones de T3 distintos de los congelados"; estado entradas "FALLO criterio"; cierre; }
 import hashlib, json, sys
 h = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()  # noqa: E731
 crit = json.load(open(sys.argv[1]))
@@ -104,12 +108,12 @@ mal += [f for f, s in crit["entradas_t3_sha256"].items() if h(sys.argv[3] + "/" 
 print("MAL:", mal) if mal else print("criterio, rúbrica y %d ficheros de T3 OK" % len(crit["entradas_t3_sha256"]))
 sys.exit(1 if mal else 0)
 PY
-CN=$(cd "$REPO" && "$PY" -m model.alt.lineas_base_v2 filas --dev "$BASE/dev" --salida "$BASE/t")
+CN=$(cd "$REPO" && "$VPY" -m model.alt.lineas_base_v2 filas --dev "$BASE/dev" --salida "$BASE/t")
 [ "$CN" = "tareas=6 test=$N_TEST soporte=$N_SOP" ] || { fallo "recuentos distintos: $CN"; estado entradas "FALLO recuentos"; cierre; }
-( cd "$REPO" && "$PY" -m model.alt.lineas_base_v2b rubrica --dev "$BASE/dev" --rubricas "$REPO/model/alt/rubricas-r10-t3b.json" --salida "$BASE/t" ) || { fallo "rúbrica"; estado entradas "FALLO rubrica"; cierre; }
+( cd "$REPO" && "$VPY" -m model.alt.lineas_base_v2b rubrica --dev "$BASE/dev" --rubricas "$REPO/model/alt/rubricas-r10-t3b.json" --salida "$BASE/t" ) || { fallo "rúbrica"; estado entradas "FALLO rubrica"; cierre; }
 estado entradas "OK $CN; criterio ${CRIT_SHA:0:12}"
 MAX=(); [ "$LOCAL" = 1 ] && MAX=(--max "${CHISPA_LOCAL_MAX:-10}")
-"$PY" - "$BASE/t/test" "$BASE/auto.jsonl" <<'PY'
+"$VPY" - "$BASE/t/test" "$BASE/auto.jsonl" <<'PY'
 import glob, sys
 open(sys.argv[2], "w").write("".join(open(f).readline() for f in sorted(glob.glob(sys.argv[1] + "/*.jsonl"))))
 PY
