@@ -412,3 +412,21 @@ func TestW1ModoGPUSinTopKNoCodifica(t *testing.T) {
 		t.Fatal("TopKKNNActivo")
 	}
 }
+
+func TestW1TopeDeExamplesPorPeticion(t *testing.T) {
+	s, _ := servidorKNNFalso(t, cfgW1(nil), &codHash{dim: dimBancoA(t)})
+	s.ConLimites(Limites{MaxEjemplosPeticion: 5})
+	q := func(id string, n int) string {
+		e := make([]string, n)
+		for i := range e {
+			e[i] = `{"text":"t` + strconv.Itoa(i) + `","label":"x"}`
+		}
+		return `{"id":"` + id + `","question":"¿libre?","kind":"choice","options":` + opsXY + `,"examples":[` + strings.Join(e, ",") + `]}`
+	}
+	if code, got := postDecide(t, s, `{"state":"s","questions":[`+q("a", 3)+`,`+q("b", 2)+`]}`); code != 200 {
+		t.Fatalf("5 de 5: %d %s", code, got)
+	}
+	if code, got := postDecide(t, s, `{"state":"s","questions":[`+q("a", 3)+`,`+q("b", 3)+`]}`); code != 400 || !strings.Contains(got, ErrDemasiadosEjem) || !strings.Contains(got, `"question_id":"b"`) {
+		t.Fatalf("6 de 5: %d %s", code, got)
+	}
+}
