@@ -2227,3 +2227,47 @@ Orden de Juan (vía la sesión madre): medir tres alternativas que no habíamos 
   - codigo.tgz `1d2c3fb3…`;
   - dev.tgz `728defd8…`;
   - ref.tgz `12e8fa31…`, con 9 110 filas.
+
+### 18.2 Resultado de R11 (EC2 i-07bcd53768ddf14f8, g5, us-east-1b; 04:28:57 → ≈ 04:53 UTC, ≈ 24 min ≈ 0,4 USD; `verificado`; `r11-alternativas-ba463e8.json`)
+
+El trabajo llevó 1 047 s, sin fallos y con cobertura del 100 % en todos los sistemas. El kNN-e5 de esta máquina reproduce T3a fila a fila: acuerdo del 100 % en las 6 tareas.
+
+Macro de las 6 tareas de dev (entre paréntesis, sin las sintéticas):
+
+| sistema | macro | cfpb | congreso | finanzas | horeca | jql | usajobs |
+|---|---|---|---|---|---|---|---|
+| 4B zs (referencia) | 0,478 (0,391) | 0,672 | 0,596 | 0,798 | 0,506 | 0,149 | 0,146 |
+| **kNN Qwen3-Emb, 8 vecinos** | **0,468** (0,385) | 0,572 | 0,550 | 0,781 | 0,490 | 0,211 | 0,206 |
+| **kNN Qwen3-Emb, 32 vecinos** | **0,468** (0,390) | 0,580 | 0,554 | 0,787 | 0,460 | 0,224 | 0,200 |
+| kNN-e5, 8 vecinos | 0,443 (0,362) | 0,454 | 0,526 | 0,805 | 0,406 | 0,299 | 0,168 |
+| kNN-e5, 32 vecinos (T3a) | 0,390 (0,317) | 0,390 | 0,516 | 0,761 | 0,312 | 0,218 | 0,144 |
+| reranker | 0,369 (0,285) | 0,342 | 0,494 | 0,607 | 0,464 | 0,207 | 0,098 |
+| zs Qwen3-Emb | 0,339 | 0,476 | 0,502 | 0,343 | 0,408 | 0,207 | 0,100 |
+| zs e5 | 0,332 | 0,490 | 0,520 | 0,414 | 0,282 | 0,196 | 0,090 |
+| L2-zs (T3a) | 0,214 | 0,166 | 0,508 | 0,104 | 0,198 | 0,211 | 0,094 |
+
+**A, Qwen3-Embedding-0.6B: PASA (indicativo, dev).**
+- Comparación del criterio, con 32 vecinos: +7,7 [+5,7, +9,8].
+- **Comparación justa, con 8 vecinos en los dos:** +2,6 [+0,5, +4,7]. e5 rinde mejor con 8 vecinos que con 32 (0,443 frente a 0,390), así que buena parte del +7,7 es por la configuración de T3a, no por el modelo.
+- Zero-shot por descripción: +0,7 [−1,3, +2,7]. No hay ganancia.
+- Latencia p50 de una consulta en la g5: 38 ms (codificar más el producto con el soporte).
+- Queda a 1 punto del 4B zs (0,468 frente a 0,478) sin LLM.
+- Por tarea, Qwen gana en cfpb, horeca y usajobs. e5 con 8 vecinos sigue mejor en jql (0,299) y en finanzas (0,805).
+
+**B, Qwen3-Reranker-0.6B: NO PASA.**
+- −10,9 [−13,0, −9,0] frente al 4B zs.
+- Latencia p50: 108,9 ms frente a 104,5 ms del 4B. Va 0,96 veces más rápido, es decir, igual de lento, porque hace una pasada por etiqueta.
+- +15,5 sobre L2-zs.
+- Informativos:
+  - con las 10 candidatas del 4B en finanzas, −9,6;
+  - la puntuación de la tarjeta (log p(yes) frente a «no»), 0,347;
+  - score por mediana en vez de esperanza ordinal, 0,349.
+
+**C, Horizon-Labs/multilingual-zeroshot-small: no medido (licencia).** SNLI y MultiNLI tienen partes -SA.
+
+**Cascada de E con el kNN de Qwen como L2 (informativo, criterio de E `f85f6359…`, mitad B): NO PASA.**
+- Cascada 0,4915, L3 0,4908 y L2 0,441: la cascada iguala a L3 (+0,07).
+- Escala el 45 %.
+- AUROC del margen: 0,633, frente a 0,61 con e5 en E.
+
+**Lectura:** Qwen3-Embedding-0.6B es la primera palanca barata que mueve el kNN de verdad: +2,6 en la comparación justa y +7,7 frente a la configuración de T3a. Casi iguala al 4B zs sin LLM, con 38 ms por consulta. El reranker no sirve como clasificador: es peor que el 4B y no es más rápido. Todo es dev, así que es indicativo; confirmarlo exige la batería v3.
