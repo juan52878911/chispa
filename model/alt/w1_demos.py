@@ -99,12 +99,13 @@ def cmd_comparar(a):
                 ok += 1
             else:
                 distintas.append({"id": r["id"], "go": go, "python": py})
-        res[t] = {"n": len(filas), "iguales": ok, "sin_registro": faltan, "acuerdo": round(ok / len(filas), 4), "distintas": distintas[:3]}
+        res[t] = {"n": len(filas), "iguales": ok, "sin_registro": faltan, "acuerdo": round(ok / (len(filas) - faltan), 4) if len(filas) > faltan else 0.0, "distintas": distintas[:3]}
         tot_ok, tot = tot_ok + ok, tot + len(filas)
-    out = {"k": a.k, "n": tot, "iguales": tot_ok, "acuerdo": round(tot_ok / tot, 4) if tot else 0.0, "por_tarea": res}
+    sin = sum(v["sin_registro"] for v in res.values())
+    out = {"k": a.k, "n": tot, "iguales": tot_ok, "sin_registro": sin, "acuerdo": round(tot_ok / (tot - sin), 4) if tot > sin else 0.0, "acuerdo_sobre_muestra": round(tot_ok / tot, 4) if tot else 0.0, "por_tarea": res}
     if a.salida:
         Path(a.salida).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print("selección de demostraciones: %d de %d iguales a Python (%.4f)" % (tot_ok, tot, out["acuerdo"]))
+    print("selección de demostraciones: %d de %d registradas iguales a Python (%.4f); sin registro: %d de %d" % (tot_ok, tot - sin, out["acuerdo"], sin, tot))
 
 
 def main(argv=None):

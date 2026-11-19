@@ -96,6 +96,40 @@ def test_medir_lee_las_dos_con_top1_y_aplica_el_criterio(tmp_path):
     assert out["dif"] == -0.25 and not out["condiciones"]["dif_macro"]["pasa"]
 
 
-def test_criterio_propuesto_no_esta_congelado():
+def _sel(**por_tarea):
+    return {"n": sum(v["n"] for v in por_tarea.values()), "por_tarea": por_tarea}
+
+
+def test_seleccion_sin_registro_se_cuenta_aparte_y_no_es_distinta():
+    minimo = 0.97
+    # 30 de 30 registradas iguales y 27 sin registro: acuerdo 1,0 sobre las registradas, pero la muestra no está completa -> no pasa (cobertura)
+    c = w1_medir.condicion_seleccion(_sel(a={"n": 30, "iguales": 30, "sin_registro": 0}, b={"n": 27, "iguales": 0, "sin_registro": 27}), minimo)
+    assert c["acuerdo"] == 1.0 and c["sin_registro"] == 27 and c["registradas"] == 30 and not c["pasa"] and c["cobertura_muestra"] < 1
+    assert c["sin_registro_por_tarea"] == {"b": 27}
+    # muestra completa: pasa con >= 0,97 sobre las registradas y no pasa por debajo
+    ok = w1_medir.condicion_seleccion(_sel(a={"n": 60, "iguales": 59, "sin_registro": 0}), minimo)
+    assert ok["pasa"] and ok["acuerdo"] == round(59 / 60, 4)
+    assert not w1_medir.condicion_seleccion(_sel(a={"n": 60, "iguales": 58, "sin_registro": 0}), minimo)["pasa"]
+    # el formato antiguo (solo acuerdo y n) se sigue leyendo
+    assert w1_medir.condicion_seleccion({"acuerdo": 1.0, "n": 60}, minimo)["pasa"]
+
+
+def test_medir_parcial_solo_tareas_con_las_dos_lecturas(tmp_path):
     crit = json.load(open(CRIT, encoding="utf-8"))
-    assert crit["congelado_antes_de_medir"] is False and crit["criterio"]["tolerancia_macro"] == 0.005 and crit["criterio"]["cobertura_minima"] == 1.0
+    mk = lambda t: [{"tarea": t, "id": "%s%d" % (t, i), "tipo": "score", "opciones": ["1", "2"], "etiqueta": "1"} for i in range(2)]
+    ev = mk("a") + mk("b")
+    probs = {"1": 0.9, "2": 0.1}
+    go = [{"tarea": "a", "id": r["id"], "http": 200, "probs": probs, "answer": "1"} for r in mk("a")]
+    _escribir(tmp_path / "py" / "a.jsonl", [{"id": r["id"], "probs": probs, "valida": True} for r in mk("a")])
+    sel = _sel(a={"n": 2, "iguales": 2, "sin_registro": 0})
+    completo = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit, sel)
+    assert not completo["pasa_todo"] and not completo["condiciones"]["cobertura"]["pasa"]
+    parcial = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit, sel, parcial=True)
+    assert parcial["parcial"] and parcial["tareas_medidas"] == 1 and parcial["tareas_totales"] == 2 and parcial["macro_go"] == 1.0 and not parcial["pasa_todo"]
+
+
+def test_criterio_congelado_con_su_sha():
+    crit = json.load(open(CRIT, encoding="utf-8"))
+    import hashlib
+    assert hashlib.sha256(open(CRIT, "rb").read()).hexdigest() == "343365bd36b7d31e363f53d02c85222595e2a24e21addcc7b2d64e694ba498e2"
+    assert crit["congelado_antes_de_medir"] is True and crit["criterio"]["tolerancia_macro"] == 0.005 and crit["criterio"]["cobertura_minima"] == 1.0
