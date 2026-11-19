@@ -94,6 +94,7 @@ if hay != set(j["ficheros"]): malo("ficheros de más o de menos: %s" % sorted(ha
 print("faseA ok: %d ficheros, tar %s" % (len(hay), j["tar_sha256"][:12]))
 PYEOF
 CN=$(cd "$CH" && "$PY" -m model.alt.w1_filas --dev "$BASE/dev" --salida "$BASE/ent-chk" --n-por-tarea "$NPT")
+( cd "$CH" && "$PY" -m model.alt.w1_demos muestra --consultas "$BASE/ent-chk/consultas.jsonl" --por-tarea 10 --salida "$BASE/ent-chk/muestra.jsonl" ) > "$BASE/muestra.out" 2>&1
 diff -rq "$BASE/ent-chk" "$ENT" > "$BASE/ent-diff.txt" 2>&1 || { head -3 "$BASE/ent-diff.txt"; fallo "las entradas regeneradas de dev.tgz no son las de la fase A"; estado faseA "FALLO ent"; cierre; }
 [ -f "$ENT/consultas.jsonl" ] && [ -f "$ENT/muestra.jsonl" ] || { fallo "faseA sin consultas o muestra"; estado faseA "FALLO ent"; cierre; }
 estado faseA "OK sha256 del tar, de $(wc -l < "$FA/.sha256" | tr -d ' ') ficheros y procedencia; entradas iguales a las de dev.tgz ($CN) en $(( $(date +%s) - T2 )) s"
