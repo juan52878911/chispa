@@ -159,3 +159,11 @@ func (l *L3LLM) turnosParaL3(pregunta string) []msgL3 {
 	l.turnosCache[pregunta] = t
 	return t
 }
+
+// ejemplosPorPeticion: cuántas demostraciones saca L3 de los examples de la petición (l3.ejemplos; ausente = L3EjemplosPorDefecto; 0 = ninguna).
+func (l *L3LLM) ejemplosPorPeticion() int {
+	if l.cfg.Ejemplos != nil {
+		return *l.cfg.Ejemplos
+	}
+	return L3EjemplosPorDefecto
+}
