@@ -624,6 +624,7 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 				return nil, err
 			}
 		}
+		k.ConTopK(cfg.TopKKNNActivo())
 		capaL2 = k
 		if cfg.KNN.NombreCodificador() != decide.CodificadorQwen3Emb {
 			log.Printf("knn: L2 = kNN por tarea con %d bancos (%s); sin codificador e5 en el servidor: el vector de la consulta debe inyectarse", len(k.Tareas()), strings.Join(k.Tareas(), ", "))

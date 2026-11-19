@@ -186,6 +186,11 @@ func (c Config) CapasEfectivas() []Capa {
 	return out
 }
 
+// TopKKNNActivo dice si L3 recibe solo las k mejores opciones del kNN en las preguntas con más de 20 (l3.top_k_knn sin apagar y sin l3.top_k explícito).
+func (c Config) TopKKNNActivo() bool {
+	return c.KNN != nil && c.L3 != nil && c.L3.TopK == 0 && (c.L3.TopKKNN == nil || *c.L3.TopKKNN > 0)
+}
+
 // DecisorL3 devuelve la L3 de la config: el cliente OpenAI-compatible si hay sección `l3`, y si no el stub sin opinión.
 func (c Config) DecisorL3() (Decisor, error) {
 	if c.L3 == nil {

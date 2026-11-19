@@ -391,3 +391,24 @@ func TestW1ScoreRespondeLaMedianaPorHTTP(t *testing.T) {
 		t.Fatalf("el caso debía separar la mediana (%s) del argmax (%s): probs %v", r.Answer, am, p)
 	}
 }
+
+// Con l3.top_k_knn = 0 el modo gpu no usa el kNN ni con más de 20 opciones: no codifica nada.
+func TestW1ModoGPUSinTopKNoCodifica(t *testing.T) {
+	cod := &codHash{dim: dimBancoA(t)}
+	k, _ := NuevoL2KNN(cfgW1(func(c *ConfigKNN) { c.Modo = ModoKNNGPU }), cod)
+	k.ConTopK(false)
+	var ops []Opcion
+	for i := 0; i < L3TopKKNNDesde+3; i++ {
+		ops = append(ops, Opcion{ID: strconv.Itoa(i)})
+	}
+	r, err := k.Decidir(context.Background(), Pregunta{ID: "q", Estado: "hola", Texto: "¿a?", Kind: KindChoice, Opciones: ops})
+	if err != nil || r.MotivoKNN != MotivoKNNSiempre || r.RankKNN != nil || cod.llamas.Load() != 0 {
+		t.Fatalf("%+v %v %d", r, err, cod.llamas.Load())
+	}
+	cero := 0
+	c := Config{KNN: &ConfigKNN{}, L3: &ConfigL3{TopKKNN: &cero}}
+	d := Config{KNN: &ConfigKNN{}, L3: &ConfigL3{}}
+	if c.TopKKNNActivo() || !d.TopKKNNActivo() || (Config{}).TopKKNNActivo() {
+		t.Fatal("TopKKNNActivo")
+	}
+}
