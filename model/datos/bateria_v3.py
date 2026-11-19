@@ -1106,10 +1106,11 @@ def evaluar_licencia_tarea(t, texto_ficha, trabajo):
     if f["tipo"] == "ckan":
         if t.get("_error_ficha"):
             return dict(estado="fuera", licencia="", motivo=t["_error_ficha"], avisos=[], sha256_texto="")
-        r = lic.evaluar_ckan(json.loads(texto_ficha))
+        j = json.loads(texto_ficha)
+        t["ckan_license_id"] = j.get("license_id")
+        r = lic.evaluar_ckan(j)
         if r["estado"] == "admitida":
-            r["avisos"].append("licencia tomada del registro de %s (license_id %s)" % (f.get("catalogo", CKAN_DEFECTO), json.loads(texto_ficha)["license_id"]))
-            t["ckan_license_id"] = json.loads(texto_ficha)["license_id"]
+            r["avisos"].append("licencia tomada del registro de %s (license_id %s)" % (f.get("catalogo", CKAN_DEFECTO), j["license_id"]))
     elif f["tipo"] == "hf":
         r = lic.evaluar_tarjeta(texto_ficha, esperada=t["licencia_esperada"])
     else:
@@ -1147,6 +1148,8 @@ def construir(manifiesto, trabajo, salida, huellas=None, solo=None, k=K, tope=TO
             if not t.get("licencia_fichero_en_descarga"):
                 r = evaluar_licencia_tarea(t, texto, trabajo)
                 _guardar_licencia(t, r, texto, salida)
+                if t["fuente"]["tipo"] == "ckan":
+                    log("CKAN   %-26s license_id=%s licencia=%s sha256=%s descarga=%s" % (t["nombre"], t.get("ckan_license_id"), r["licencia"] or "-", lic.sha256_texto(texto or "")[:12], t.get("recurso_url", "-")))
                 if r["estado"] != "admitida":
                     _fuera(t, "licencia: " + r["motivo"])
                     continue
@@ -1256,6 +1259,9 @@ def resumen(man):
     for t in man["tareas"]:
         if t["estado"] in ("fuera", "pendiente"):
             r["fuera"][t["nombre"]] = t["motivo_fuera"]
+    r["licencias_catalogo"] = {t["nombre"]: dict(license_id=t.get("ckan_license_id"), licencia=t.get("licencia"), sha256=t.get("licencia_sha256"), descarga=t.get("recurso_url"), estado=t["estado"])
+                               for t in man["tareas"] if t["fuente"]["tipo"] == "ckan"}
+    r["esquemas_auto"] = {t["nombre"]: t["esquema_elegido"] for t in man["tareas"] if t.get("esquema_elegido") and t["lector"].get("auto") is not None}
     return r
 
 

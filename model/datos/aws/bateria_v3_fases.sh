@@ -12,7 +12,7 @@ echo "== 2. entorno $(date -u +%T)"
 if [ "$LOCAL" = 1 ]; then PY=${CHISPA_PY:-python3}
 else
   LIBRES=$(df -BG --output=avail "$BASE" | tail -1 | tr -dc 0-9)
-  [ "${LIBRES:-0}" -ge 25 ] || { fallo "volumen pequeno: ${LIBRES:-?} GB libres (hacen falta >= 25)"; estado entorno "FALLO disco"; cierre; }
+  [ "${LIBRES:-0}" -ge 60 ] || { fallo "volumen pequeno: ${LIBRES:-?} GB libres (hacen falta >= 60: tsjev se baja fichero a fichero, el mayor pesa hasta 40 GB)"; estado entorno "FALLO disco"; cierre; }
   dnf install -y -q python3.11 python3.11-pip tar gzip unzip || { fallo "dnf install"; estado entorno "FALLO dnf"; cierre; }
   python3.11 -m venv "$BASE/venv" && "$BASE/venv/bin/pip" install -q --no-cache-dir "huggingface_hub==$HUB" "pyarrow==$PYARROW" "PyYAML==$PYYAML" || { fallo "pip install"; estado entorno "FALLO pip"; cierre; }
   PY=$BASE/venv/bin/python
@@ -26,7 +26,7 @@ if '$LOCAL' != '1':
 CN=$("$PY" -c "import json;print(len(json.load(open('$MANIF'))['tareas']))")
 [ "$CN" = "$N_TAREAS" ] || { fallo "el manifiesto trae $CN tareas y se esperaban $N_TAREAS"; estado entorno "FALLO tareas"; cierre; }
 if [ "$LOCAL" != 1 ]; then
-  for u in https://huggingface.co/api/datasets/openai/gsm8k https://www.ncei.noaa.gov/ https://static.nhtsa.gov/ https://github.com/github/advisory-database https://clinicaltrials.gov/ https://vaers.hhs.gov/ https://www.osha.gov/ https://www.cpsc.gov/; do
+  for u in https://huggingface.co/api/datasets/openai/gsm8k https://www.ncei.noaa.gov/ https://static.nhtsa.gov/ https://github.com/github/advisory-database https://clinicaltrials.gov/ https://vaers.hhs.gov/ https://www.osha.gov/ https://www.cpsc.gov/ "https://catalog.data.gov/api/3/action/package_search?rows=1"; do
     curl -fsS -m 25 -o /dev/null "$u" && echo "red OK $u" || echo "AVISO: sin respuesta de $u (las tareas de esa fuente quedaran fuera por descarga)"
   done
 fi
@@ -39,7 +39,7 @@ HUE=$BASE/huellas; MENT=${CHISPA_V3_ENTRENAMIENTO:-$CH/model/alt/manifiesto-entr
 ( cd "$CH" && "$PY" -m model.datos.bateria_v3_huellas v2 --dev "$BASE/in/dev.tgz" --selladas "$BASE/in/selladas.tgz" --trabajo "$BASE/v2txt" --salida "$HUE" --n-dev "${CHISPA_V3_N_DEV:-6}" --n-selladas "${CHISPA_V3_N_SELLADAS:-8}" ) > "$OUT/huellas-v2.out" 2>&1
 RC=$?; cat "$OUT/huellas-v2.out"
 [ "$RC" = 0 ] && [ -f "$HUE/huellas-v2.jsonl.gz" ] || { fallo "huellas de v2 rc=$RC"; estado huellas "FALLO v2"; cierre; }
-( cd "$CH" && timeout $(( ($(quedan_min) - ESPERA_MIN - 30) * 60 )) "$PY" -m model.datos.bateria_v3_huellas entrenamiento --manifiesto "$MENT" --trabajo "$BASE/entr" --salida "$HUE" --muestra "$BASE/muestra" --tope-min "${CHISPA_V3_TOPE_HUELLAS_MIN:-35}" ) > "$OUT/huellas-entr.out" 2>&1
+( cd "$CH" && timeout $(( ($(quedan_min) - ESPERA_MIN - 30) * 60 )) "$PY" -m model.datos.bateria_v3_huellas entrenamiento --manifiesto "$MENT" --trabajo "$BASE/entr" --salida "$HUE" --muestra "$BASE/muestra" --tope-min "${CHISPA_V3_TOPE_HUELLAS_MIN:-45}" ) > "$OUT/huellas-entr.out" 2>&1
 RC=$?; cat "$OUT/huellas-entr.out"
 [ "$RC" = 0 ] && [ -f "$HUE/huellas-entrenamiento.jsonl.gz" ] && [ -f "$HUE/estado-huellas.json" ] || { fallo "huellas del entrenamiento rc=$RC (124 = tope de tiempo)"; estado huellas "FALLO entrenamiento"; cierre; }
 estado huellas "OK $("$PY" -I -c "
