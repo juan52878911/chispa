@@ -1,6 +1,6 @@
 {
  "ronda": "techo-local",
- "estado": "BORRADOR hasta que la sesión principal fije las dos revisiones PENDIENTE (40 hex, de la API de huggingface.co), lo revise y lo congele con su sha256; el ud comprueba el sha256 de ESTE fichero y el empaquetador se niega a empaquetar con revisiones sin fijar",
+ "estado": "CONGELADO por la sesión principal el 2026-11-19 antes de medir: revisiones fijadas con la API de huggingface.co (las dos tarjetas declaran apache-2.0; el ud lo vuelve a comprobar), precio de g6e.xlarge comprobado en la API de precios de AWS (1,861 USD/h, us-east-1); el ud comprueba el sha256 de ESTE fichero",
  "pregunta": "¿Un LLM abierto más grande, servido en local (vLLM en una instancia nuestra), supera al L3 actual (Qwen3-4B-Instruct-2507 por logprobs) en dev v2 lo bastante para cambiarlo? Solo pesos abiertos con licencia Apache-2.0 o MIT; nada por API.",
  "datos": "Solo dev/: el ud solo recibe dev.tgz (6 tareas). Las selladas NO se abren. Los datos no salen de AWS: al bucket solo suben cifras y predicciones (res/), nunca los textos de dev.",
  "tareas_dev": ["finanzas-documentos", "horeca-resenas", "jql-valor-educativo", "cfpb-quejas", "usajobs-nivel", "congreso-eeuu-partido"],
@@ -13,13 +13,13 @@
    "vllm": "--dtype bfloat16 --max-model-len 16384 --gpu-memory-utilization 0.85 --max-logprobs 20 --enable-prefix-caching (los de T3/D)"
   },
   "qwen3-30b-a3b": {
-   "repo": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8", "rev": "PENDIENTE", "formato": "FP8 por bloques (≈ 31 GB; 3,3 B de parámetros activos), MoE, sin razonamiento (Instruct-2507)", "cliente": "chat",
+   "repo": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8", "rev": "5a5a776300a41aaa681dd7ff0106608ef2bc90db", "formato": "FP8 por bloques (≈ 31 GB; 3,3 B de parámetros activos), MoE, sin razonamiento (Instruct-2507)", "cliente": "chat",
    "licencia": "apache-2.0", "papel": "candidato principal: misma familia, tokenizador y camino de logprobs que el 4B (la etiqueta es el primer token, comparable)",
    "vllm": "--max-model-len 16384 --gpu-memory-utilization 0.92 --max-logprobs 20 --enable-prefix-caching",
    "nota": "FP8 en lugar de bf16 (61 GB no cabe en una L40S de 48 GB): la cuantización puede costar algo de exactitud y se declara; es la variante oficial de Qwen"
   },
   "gpt-oss-20b": {
-   "repo": "openai/gpt-oss-20b", "rev": "PENDIENTE", "formato": "MXFP4 nativo de los pesos MoE (≈ 13 GB; 3,6 B activos)", "cliente": "harmony",
+   "repo": "openai/gpt-oss-20b", "rev": "6cee5e81ee83917806bbde320786a8fb61efebee", "formato": "MXFP4 nativo de los pesos MoE (≈ 13 GB; 3,6 B activos)", "cliente": "harmony",
    "licencia": "apache-2.0", "papel": "segundo candidato, con sustituto de logprobs",
    "vllm": "--max-model-len 16384 --gpu-memory-utilization 0.90 --max-logprobs 20 --enable-prefix-caching",
    "sustituto": "gpt-oss abre siempre el canal `analysis` y razona antes de responder: el primer token de /v1/chat/completions no es la etiqueta, así que NO hay logprob por opción comparable. Sustituto: prompt harmony renderizado a mano y cerrado en `<|start|>assistant<|channel|>final<|message|>` (razonamiento saltado), top 20 del primer token con /v1/completions; el relleno por prefijo igual que en llm_logprobs. No es comparable del todo: el modelo está entrenado para razonar, y se mide sin hacerlo. El ud comprueba además que el render coincide con la plantilla de la tarjeta del modelo y lo anota",
@@ -32,7 +32,7 @@
  },
  "instancia": {
   "tipo": "g6e.xlarge (1 × L40S 48 GB, 4 vCPU, 32 GB RAM), una sola instancia bajo demanda: cuota G de 8 vCPU, hay otra g5 pendiente",
-  "precio_usd_hora": 1.861, "precio_nota": "tarifa pública bajo demanda en us-east-1 según la lista conocida; sin red aquí: verificar antes de lanzar",
+  "precio_usd_hora": 1.861, "precio_nota": "tarifa bajo demanda en us-east-1, comprobada en la API de precios de AWS el 2026-11-19",
   "volumen_gb": 160, "ami": "DLAMI GPU PyTorch AL2023, rol rol-ec2-pruebas sin ListBucket",
   "alternativa_descartada": "g5.xlarge (A10G 24 GB): el FP8 de 31 GB no cabe y AWQ 4 bit de 30B-A3B degrada más y no es la variante oficial; g6e es 1,85 veces más cara/h que g5 pero la única de 1 GPU que admite el candidato sin partir el modelo (g6e.2xlarge sube a 8 vCPU = toda la cuota)",
   "tope_min": 110, "tope_usd": 4.0,
