@@ -1,0 +1,42 @@
+{
+  "id": "crit-w1-fs8-e2e",
+  "congelado_antes_de_medir": false,
+  "estado": "PROPUESTO: lo congela el orquestador con su sha256 antes de lanzar; hasta entonces el ud no lo acepta (el empaquetador exige el sha congelado)",
+  "fecha": "2026-11-19",
+  "objeto": "El servidor Go (modo gpu: todo a L3, fs8 con las 8 demostraciones de <banco>.ejemplos.jsonl del banco de Qwen3-Embedding) da por HTTP, con vLLM real y Qwen3-4B-Instruct-2507, la misma exactitud que el fs8 de Python (llm_logprobs.py --ejemplos --k 8) sobre las mismas filas y las mismas demostraciones",
+  "modelos": {
+    "l3": "Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f17c01a7cc42f958dc650907174af0554 en vLLM, bfloat16, logprobs (top 20) con el relleno por prompt_logprobs de siempre",
+    "codificador_banco": "Qwen/Qwen3-Embedding-0.6B @ 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3 (ONNX fp32; el banco lo escribe chispa-banco-qwen)"
+  },
+  "datos": {
+    "tareas": "las 6 de DESARROLLO de la batería v2; las selladas no se abren",
+    "filas": "hasta n_por_tarea filas de test por tarea, elegidas por sha256 del id (w1_filas.py); las mismas para el servidor y para Python",
+    "n_por_tarea": 300,
+    "demostraciones": "las 8 de <banco>.ejemplos.jsonl por tarea (elegir_ejemplos con semilla 20261115 sobre el soporte de 8 por clase); Python las elige igual del mismo soporte (--ejemplos soporte/<tarea>.jsonl --k 8); el servidor las lee tal cual. NO son las k más cercanas por fila de lineas_base_v2_pred demos"
+  },
+  "lectura": {
+    "regla": "model/alt/lineas_base_v2.top1(probs, r) con esp=False, para el servidor (probs de la respuesta HTTP) y para Python (probs de llm_logprobs.py)",
+    "nota": "en score es la mediana CORAL y en choice y sí/no el argmax; la `answer` del servidor no cuenta (solo se da como informativo)"
+  },
+  "criterio": {
+    "condiciones_todas": [
+      {"nombre": "dif_macro", "regla": "|macro_go - macro_python| <= 0.005, macro = media de la exactitud por tarea en las 6 tareas de dev"},
+      {"nombre": "cobertura", "regla": "100 % de las filas medidas con respuesta válida en las dos lecturas (Go: HTTP 200 con probs; Python: valida) en cada tarea"}
+    ],
+    "tolerancia_macro": 0.005,
+    "cobertura_minima": 1.0
+  },
+  "configuracion_servidor": "server/deploy/config.modo-gpu.json con knn.tareas de las 6 tareas y l3.top_k_knn = 0 (L3 ve todas las opciones, igual que Python: el top-k de finanzas se midió aparte, T3b), l3.tau 0, timeout_fila 60 s y 4 clientes (ninguna fila queda parcial por tiempo)",
+  "informativo_no_cuenta": [
+    "acuerdo fila a fila entre las dos lecturas por tarea",
+    "macro de la `answer` del servidor leída tal cual",
+    "latencia por capa (cabeceras X-Chispa-*) y peticiones por segundo del servidor con fs8",
+    "exactitud de cada tarea de los dos lados"
+  ],
+  "limites": {
+    "aws_usd": 1.0,
+    "instancia": "una g5.xlarge bajo demanda (A10G 24 GB, 4 vCPU, 16 GB); 55 min de tope duro con shutdown -h +55 = 55/60 x 1,006 USD/h = 0,92 USD de cómputo más ≈ 0,01 de EBS (100 GB gp3)",
+    "calculo_de_n": "con 6 tareas x 300 filas = 1 800 filas por servidor y otras 1 800 por Python (3 600 llamadas a vLLM): a ≈ 8 filas/s con fs8 (T5e2e midió 10,6 a 12,4/s con prompts más cortos) son ≈ 8 min; el resto del tope se va en arranque (pip de vLLM, 8 GB del 4B, ONNX de Qwen3-Embedding y su banco): ≈ 20 min. Si algo tarda el doble sigue cabiendo en 55 min",
+    "selladas": "no se abren"
+  }
+}
