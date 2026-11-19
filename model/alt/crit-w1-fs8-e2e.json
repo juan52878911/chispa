@@ -1,7 +1,7 @@
 {
   "id": "crit-w1-fs8-e2e",
-  "congelado_antes_de_medir": false,
-  "estado": "PROPUESTO (v2: demostraciones kNN por consulta): lo congela el orquestador con su sha256 antes de lanzar; hasta entonces el ud no lo acepta (el empaquetador exige el sha congelado)",
+  "congelado_antes_de_medir": true,
+  "estado": "CONGELADO por el orquestador el 2026-11-19 antes de medir (v2: demostraciones kNN por consulta); su sha256 va en el ud y en el informe",
   "fecha": "2026-11-19",
   "objeto": "El servidor Go (modo gpu: todo a L3, fs8 con las 8 demostraciones MÁS CERCANAS A CADA CONSULTA por kNN sobre el soporte de 8 por clase, el pool de <banco>.ejemplos.jsonl del banco de Qwen3-Embedding) da por HTTP, con vLLM real y Qwen3-4B-Instruct-2507, la misma exactitud que el fs8-kNN de Python (llm_logprobs.py --ejemplos --demos, como lineas_base_v2_pred demos / lineas_base_v2d.py y la apertura sellada §17.24 D y §17.26) sobre las mismas filas y las mismas demostraciones, y elige esas demostraciones igual que Python",
   "modelos": {

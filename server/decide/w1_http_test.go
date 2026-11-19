@@ -85,12 +85,12 @@ func dimBancoA(t *testing.T) int {
 func TestW1SinExamplesRespondeComoAntes(t *testing.T) {
 	s, _ := servidorKNNFalso(t, cfgW1(nil), &codHash{dim: dimBancoA(t)})
 	code, got := postDecide(t, s, `{"state":"hola mundo","questions":[{"id":"q1","question":"¿a?","kind":"choice","options":[{"id":"x"},{"id":"y"}]},{"id":"q2","question":"¿a?","kind":"noul"}]}`)
-	if code != 200 || got != goldenSinExamples {
+	if code != 200 || !igualGolden(got, goldenSinExamples) {
 		t.Fatalf("%d\n got %s\nwant %s", code, got, goldenSinExamples)
 	}
 	// `examples` vacío o ausente es lo mismo
 	_, got2 := postDecide(t, s, `{"state":"hola mundo","questions":[{"id":"q1","question":"¿a?","kind":"choice","options":[{"id":"x"},{"id":"y"}],"examples":[]},{"id":"q2","question":"¿a?","kind":"noul"}]}`)
-	if got2 != goldenSinExamples {
+	if !igualGolden(got2, goldenSinExamples) {
 		t.Fatalf("examples vacío: %s", got2)
 	}
 }
@@ -428,5 +428,47 @@ func TestW1TopeDeExamplesPorPeticion(t *testing.T) {
 	}
 	if code, got := postDecide(t, s, `{"state":"s","questions":[`+q("a", 3)+`,`+q("b", 3)+`]}`); code != 400 || !strings.Contains(got, ErrDemasiadosEjem) || !strings.Contains(got, `"question_id":"b"`) {
 		t.Fatalf("6 de 5: %d %s", code, got)
+	}
+}
+
+// igualGolden compara dos respuestas JSON: idénticas salvo en los números, que admiten 1e-6 de diferencia (el redondeo de coma flotante
+// cambia entre amd64 y arm64, donde Go funde multiplicación y suma).
+func igualGolden(a, b string) bool {
+	var x, y any
+	if json.Unmarshal([]byte(a), &x) != nil || json.Unmarshal([]byte(b), &y) != nil {
+		return false
+	}
+	return igualJSON(x, y)
+}
+
+func igualJSON(x, y any) bool {
+	switch xv := x.(type) {
+	case float64:
+		yv, ok := y.(float64)
+		return ok && math.Abs(xv-yv) <= 1e-6
+	case map[string]any:
+		yv, ok := y.(map[string]any)
+		if !ok || len(xv) != len(yv) {
+			return false
+		}
+		for k, v := range xv {
+			if w, ok := yv[k]; !ok || !igualJSON(v, w) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		yv, ok := y.([]any)
+		if !ok || len(xv) != len(yv) {
+			return false
+		}
+		for i := range xv {
+			if !igualJSON(xv[i], yv[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return x == y
 	}
 }
