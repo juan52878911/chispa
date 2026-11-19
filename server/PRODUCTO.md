@@ -1,3 +1,37 @@
+# Chispa como servidor general de clasificación: dos modos
+
+Chispa es un servidor de clasificación general (choice, score, sí/no) con **dos modos** de despliegue («opción A»). El Chispa clásico (`.chispa` entrenado, L0/L1/torres, móvil) queda congelado: no cambia
+y sus configs siguen arrancando igual. En uso general L0 y L1 están apagados (con la sección `knn` la cascada es L2→L3 salvo `knn.conservar_l0_l1`) y el escalado depende del modo.
+
+| | **Modo GPU** (`deploy/config.modo-gpu.json`) | **Modo CPU** (`deploy/config.modo-cpu.json`) |
+|---|---|---|
+| Quién contesta | L3 = Qwen3-4B por logprobs con 8 demostraciones (fs8), siempre | solo el kNN (e5 por defecto), siempre; sin LLM |
+| `knn.modo` | `"gpu"`: todo escala a L3; el kNN solo sirve para el top-k de las preguntas con más de 20 opciones (y no codifica la consulta en el resto) | `"cpu"`: contesta L2 siempre, sin escalado por margen ni `siempre` |
+| Ejemplos | del banco (`<banco>.ejemplos.jsonl`, demos fs8) o de la petición (`examples[]`) | **obligatorios**: en la petición o de un banco; si no, 400 `examples_required` |
+| Exactitud macro sellada (§17.26) | **0,501** (final todo-L3) | **0,402** (kNN) |
+| Hardware | una GPU (A10G: 10,6 a 12,4 peticiones/s) + vLLM | CPU: e5 ≈ 9 ms por consulta; Qwen3-Embedding ≈ 1 s en CPU |
+
+- **Cuándo elegir cada uno**: GPU si hay una GPU y se quiere la mejor exactitud (+9,9 puntos de macro sobre el kNN); CPU si no hay GPU, la latencia manda o el coste de una GPU no compensa. En `choice` la brecha casi desaparece:
+  **kNN 0,483 frente a 0,485 del 4B zero-shot** (selladas), así que en choice el modo CPU pierde poco; la ventaja del modo GPU está en `score` y en las tareas con pocos ejemplos o con muchas opciones.
+- **e5-small sigue por defecto** (`config.ejemplo.json`, `config.modo-cpu.json`); Qwen3-Embedding (`config.modo-gpu.json`, `config.ejemplo-qwen3emb.json`) es la opción con GPU o sin prisa. Cada modo es una decisión por despliegue.
+- Las cifras selladas son las de §17.26 (LEEME de `model/alt/resultados-20261113-p0-p2/`); las medidas del modo GPU por el servidor (e2e fs8 con vLLM real) están pendientes: ver «Pendiente».
+
+## Respuesta del kNN: la regla de `score`
+En el camino kNN (e5 y Qwen), `answer` en las tareas `score` es la **mediana ordinal (CORAL)** de las `probs` del kNN, exactamente `model/alt/lineas_base_v2.top1(probs, r)` con `esp=False` (el primer nivel, ordenados por su valor
+entero, cuya cola acumulada no pasa de 0,5); `choice` y sí/no siguen con el argmax (en un empate, la primera opción). `probs` no cambia. En dev (L2-qwen3emb, 6 tareas, 8 vecinos) leer las mismas `probs` con la regla da
+**0,4700 frente a 0,4609** (v8; 0,4603 con v32) del argmax que devolvía el servidor. Paridad Go↔Python con `server/testdata/w1_score_regla.json` (419 filas generadas por `top1`: empates, colas exactamente en 0,5, opciones desordenadas);
+las filas guardadas del e2e de L2-qwen3emb no están en el repo, así que el 0,4700 se reproduce solo en el sentido de que la regla Go da, fila a fila, lo mismo que Python sobre un fixture sintético.
+Si los ids de `score` no son enteros o las probabilidades suman 0, el servidor se queda con el argmax.
+
+## Ejemplos en la petición (`examples[]`)
+Cada pregunta puede traer `"examples": [{"text": "…", "label": "<id de una opción>"}, …]` (no en `multi`). Validación (400, `question_id` y la posición del ejemplo en el mensaje): `invalid_example` (texto vacío, sin etiqueta),
+`invalid_example_label` (la etiqueta no es una opción), `too_many_examples` (por defecto 256 por pregunta; `limites.max_ejemplos`) y `field_too_long` (16 KiB por `text`; `limites.max_ejemplo_texto`).
+- **Regla si llegan banco y examples**: los de la petición **sustituyen** al banco de esa pregunta (no se mezclan; el fondo y los umbrales de score del banco no se usan). La pregunta no tiene que estar en `knn.tareas`: sin tarea se usan el umbral global y el kNN cuenta como tarea `(peticion)` en las métricas.
+  Con examples, L3 usa como demostraciones fs8 hasta `l3.ejemplos` de ellos: una vuelta por clase en orden de aparición, sin azar (mismo prompt para la misma petición). Sin `examples` la respuesta es la de siempre, byte a byte (test), y los bancos fuera de línea no cambian.
+- **Caché de vectores**: los vectores de los ejemplos se guardan por clave sha256 del texto ya preparado para el codificador (Qwen: la consulta con instrucción y pregunta; e5: texto con las mayúsculas normalizadas) + codificador + revisión del modelo,
+  en una LRU con tope de memoria (`knn.cache_vectores_mb`, 64 por defecto) y sin codificar dos veces lo mismo si dos peticiones lo piden a la vez. La primera petición con N ejemplos nuevos cuesta N codificaciones (con Qwen en CPU ≈ 1 s cada una); las siguientes, ninguna. El caché de respuestas por `nonce` incluye los ejemplos en su clave.
+- `knn.tareas` puede estar vacío si hay codificador en el servidor (`e5_onnx` o `qwen3-emb`): entonces solo hay kNN con examples de la petición.
+
 # Chispa como producto: «trae entre 8 y 32 ejemplos por clase»
 
 El cliente trae unos pocos ejemplos de oro por clase; el servidor responde con un clasificador de dos pasos:
@@ -46,7 +80,9 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
   - ONNX: `python model/alt/exportar_qwen3emb_onnx.py --modelo DIR --salida DIR_SALIDA --comprobar` → `qwen3emb-fp32.onnx` + `qwen3emb-fp32.onnx.data` (los pesos pasan de 2 GB: el `.data` va SIEMPRE al lado y el servidor abre el ONNX por ruta) y `qwen3emb-int8.onnx` (int8 dinámico de ORT). Los metadatos llevan `chispa.max_len=320` y `chispa.pooling=last_token`; el servidor los comprueba al abrir.
   - Tokenizador: `python runtime/tok/exportar_bpe.py DIR_MODELO qwen3emb.chispa-bpe` (BPE byte-level en Go puro, `runtime/tok/bpe.go`; NFC, el regex de Qwen2 a mano, fusiones y los especiales que ponga transformers).
   - Bancos: `chispa-banco-qwen -onnx … -tok … -soporte soporte.jsonl -salida DIR` (Go, sin torch: usa la misma ruta de codificación que el servidor, así que banco y consultas comparten codificador por construcción; el `soporte.jsonl` lleva `tarea, etiqueta, pregunta, texto` por fila y el formato de salida es el de siempre, `.npy` + `.jsonl`). Elegir el oro (8 por clase) queda fuera: en la medida lo hace `model/alt/aws/qwen3emb_filas.py` con `muestrear(ys, 8, 0)`.
-    **Limitación**: la herramienta no escribe `<banco>.ejemplos.jsonl` (los ejemplos fs8 de L3, que hoy salen de `generar_banco.py`, solo e5): sin ese fichero L3 contesta zero-shot (el servidor avisa). La medida de Qwen es solo L2 (L3 apagado).
+    La herramienta escribe también `banco-<tarea>.ejemplos.jsonl` (los ejemplos fs8 de L3) con el formato y la elección de `generar_banco.py` (estratificados por clase con la semilla 20261115; el Mersenne Twister de CPython está reimplementado en Go y un test lo compara byte a byte con ficheros de Python).
+    Las filas del soporte deben llevar además `id`, `tipo` y `opciones` (ids) (y `split`: solo cuenta `train`); flags `-k` (8 por defecto; 0 = sin fichero) y `-semilla`. Si las filas no traen esos campos, avisa y no escribe el fichero (L3 contesta zero-shot); con `-k` explícito es un error.
+    Las demostraciones son **fijas por tarea** (las del fichero), no las k más cercanas por fila de `lineas_base_v2_pred demos`. La medida de L2-qwen3emb es solo L2 (L3 apagado).
 - **Qué reproduce el codificador** (y nada más): consulta de soporte y de test «Instruct: Classify the text to answer this question: <pregunta>\nQuery:<texto>» (`<pregunta>` es el `question` de la petición); descripciones de etiqueta sin instrucción; truncado a 320 tokens; pooling del último token y norma L2. **No** normaliza las mayúsculas del mensaje (el camino de e5 sí; R11 no lo hacía con Qwen).
 - **Memoria y CPU**: cada sesión ORT carga su copia de los pesos (≈ 2,4 GB fp32, ≈ 1,2 GB int8): `qwen_sesiones` vale 1 por defecto (usa todos los núcleos en cada consulta), no el min(4, núcleos) de e5.
 - **Reglas de elección** (criterio congelado `model/alt/crit-l2-qwen3emb.json`): int8 solo si su macro e2e queda a ≤ 0,5 puntos del fp32 con los mismos vecinos; si la p50 por consulta en CPU (c7i.xlarge, 4 hilos) del modo elegido pasa de 150 ms, esta nota pasa a ser «**recomendado con GPU o cuando la latencia no importe**».
@@ -89,6 +125,7 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
 - **`multi`: extensión solo de Go.** Sí/no independiente por opción (una llamada por opción con etiquetas S/N); `llm_logprobs.py` no lo tiene. Sin medir.
 
 ## Pendiente para producción
+- Medir el e2e fs8 por el servidor con vLLM real, Qwen3-4B y banco Qwen con `ejemplos.jsonl` frente a Python: ud preparado y NO lanzado (`model/alt/aws/empaquetar_w1_fs8.sh`, criterio propuesto `model/alt/crit-w1-fs8-e2e.json`, sin congelar).
 - Medir fs8 con vLLM real (exactitud y latencia: los 8 turnos de ejemplo alargan el prompt; con 60 opciones y prefijo común, `--enable-prefix-caching` debería amortizarlo, sin medir).
 - Paridad fila a fila del top-k en Go con los vectores e5 reales de finanzas, que hoy solo está probado con datos sintéticos.
 - Calibrar u por cliente (hoy a mano); automatizarlo con un jsonl de validación.
