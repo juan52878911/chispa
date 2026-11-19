@@ -505,7 +505,7 @@ var pruebasPermitidas bool
 // codificadorPrueba (-codificador-prueba) y registroDemos (-demos-log): ver los flags.
 var (
 	codificadorPrueba int
-	registroDemos     func(id, tarea string, demos []decide.EjemploFS)
+	registroDemos     func(p decide.Pregunta, tarea string, demos []decide.EjemploFS)
 )
 
 // exigirPruebas rechaza las opciones solo-pruebas de la config si no se pasó -pruebas.
