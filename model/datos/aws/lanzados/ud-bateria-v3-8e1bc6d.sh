@@ -1,5 +1,5 @@
 #!/bin/bash
-CHISPA_S3=${CHISPA_S3_LOCAL:-s3://chispa-pruebas-cuenta-aws/bateria-v3-9f7d902}   # CHISPA_S3_LOCAL (con CHISPA_LOCAL=1): directorio en vez de S3, solo para pruebas en seco
+CHISPA_S3=${CHISPA_S3_LOCAL:-s3://chispa-pruebas-cuenta-aws/bateria-v3-8e1bc6d}   # CHISPA_S3_LOCAL (con CHISPA_LOCAL=1): directorio en vez de S3, solo para pruebas en seco
 # Batería v3, FASE 2: hace en la propia instancia las huellas de v2 (dev y selladas) y del entrenamiento (fuentes públicas), baja las candidatas por su URL y revisión, lee y guarda cada licencia,
 #   comprueba la lista admitida, mide solapes, parte, sella y sube. Los textos de v2 y del entrenamiento NO salen de la instancia: solo hashes y sketches (y el log se audita contra ellos).
 # Máquina: c7i.xlarge (4 vCPU, 8 GB), volumen raíz de 80 GB (tsjev se baja fichero a fichero: el mayor pesa hasta 40 GB), rol rol-ec2-pruebas (sin ListBucket), CON red saliente (Hugging Face, NOAA, GitHub...). NO lanzar sin que Juan lo decida.
@@ -8,7 +8,7 @@ CHISPA_S3=${CHISPA_S3_LOCAL:-s3://chispa-pruebas-cuenta-aws/bateria-v3-9f7d902} 
 # Lee por nombre exacto $CHISPA_S3/codigo.tgz y los dos .tgz de v2 de abajo (el rol no tiene ListBucket; sha256 comprobados antes de abrirlos); escribe $CHISPA_S3/{manifiesto.json,licencias.tgz,datos-sellados.tgz,resumen.json,reservas-v2.json,log.txt,listo}
 # y espera $CHISPA_S3/verificado. NUNCA sube texto de test fuera de datos-sellados.tgz ni lo imprime: el log se audita antes de subirlo (si trae texto de test no se sube).
 MIN=${CHISPA_MIN:-90}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-5}
-COD_SHA256=85a1cd1f776b66e28eea94fc6967fa2c6cc49c5390779cbabb6bfb85d3e7b3ac; MAN_SHA256=55b6acb9734e298f1055bf21842b070cade56715e51629fef7e352c9874b82d6; N_TAREAS=37
+COD_SHA256=8c17fdee9ab83ad5c0e66ce67f0f10d12bf33a7563ae8910796126a94c9bb2d6; MAN_SHA256=55b6acb9734e298f1055bf21842b070cade56715e51629fef7e352c9874b82d6; N_TAREAS=37
 DEV_URI=${CHISPA_V3_DEV:-s3://chispa-pruebas-cuenta-aws/w1-fs8-a6c5293/dev.tgz}; DEV_SHA256=ce0423dc05a5b393067b6aeb2c1da4aa4d6192d249d1a52061c5f579e8dd3ca9
 SEL_URI=${CHISPA_V3_SELLADAS:-s3://chispa-pruebas-cuenta-aws/r10-apertura-29c441f-a/selladas.tgz}; SEL_SHA256=a2bb334e5a1e0961a3d79f011d9525dfb872112d5e305a14303dbf16b5f487a0
 HUB=2.4.0; PYARROW=26.0.0; PYYAML=6.0.3
