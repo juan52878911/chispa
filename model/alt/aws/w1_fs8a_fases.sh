@@ -17,6 +17,8 @@ else
   python3.11 -m venv "$BASE/venv" && "$BASE/venv/bin/pip" install -q --no-cache-dir "torch==${TORCH}+cpu" --extra-index-url https://download.pytorch.org/whl/cpu \
     && "$BASE/venv/bin/pip" install -q --no-cache-dir "transformers==$TRANSFORMERS" "onnx==$ONNX" "onnxruntime==$ORT_PY" numpy huggingface_hub safetensors || { fallo "pip install"; estado entorno "FALLO pip"; cierre; }
   PY=$BASE/venv/bin/python
+  # el modelo fp32 (2,4 GB) y su exportacion pasan de la RAM comoda de 8 GB: un swap de 12 GB evita el OOM (como l2qwen3emb_fases.sh)
+  fallocate -l 12G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile || echo "AVISO: sin swap"
   estado entorno "OK dnf + pip en $(( $(date +%s) - T0 )) s"
 fi
 "$PY" -c "import model.alt.w1_filas, model.alt.w1_demos, numpy" || { fallo "imports del codigo"; estado entorno "FALLO imports codigo"; cierre; }
