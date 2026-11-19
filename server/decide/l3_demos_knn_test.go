@@ -166,3 +166,31 @@ func TestW1DemosPorConsultaDeLosExamples(t *testing.T) {
 		t.Fatalf("%+v", r.Demos[0])
 	}
 }
+
+func TestConfigDemosKNN(t *testing.T) {
+	gpu := &ConfigKNN{Modo: ModoKNNGPU}
+	lp := func(f func(*ConfigL3)) Config {
+		l := &ConfigL3{Modo: L3ModoLogprobs}
+		if f != nil {
+			f(l)
+		}
+		return Config{KNN: gpu, L3: l}
+	}
+	cero := 0
+	for nombre, c := range map[string]struct {
+		cfg Config
+		n   int
+	}{
+		"por defecto": {lp(nil), 8},
+		"ejemplos 5":  {lp(func(l *ConfigL3) { n := 5; l.Ejemplos = &n }), 5},
+		"ejemplos 0":  {lp(func(l *ConfigL3) { l.Ejemplos = &cero }), 0},
+		"demos fijas": {lp(func(l *ConfigL3) { l.DemosFijas = true }), 0},
+		"modo json":   {Config{KNN: gpu, L3: &ConfigL3{}}, 0},
+		"modo cpu":    {Config{KNN: &ConfigKNN{Modo: ModoKNNCPU}, L3: &ConfigL3{Modo: L3ModoLogprobs}}, 0},
+		"sin knn":     {Config{L3: &ConfigL3{Modo: L3ModoLogprobs}}, 0},
+	} {
+		if got := c.cfg.DemosKNN(); got != c.n {
+			t.Errorf("%s: %d, esperaba %d", nombre, got, c.n)
+		}
+	}
+}
