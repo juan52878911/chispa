@@ -119,6 +119,20 @@ def test_medir_veredictos(tmp_path):
     assert o["condiciones"]["e2e-fp32-v32"]["cobertura"] < 1 and o["condiciones"]["e2e-fp32-v32"]["pasa"] is False
 
 
+def test_int8_no_viable_solo_fp32(tmp_path):
+    dev, res = tmp_path / "dev", tmp_path / "res"
+    crear_dev(dev, n_test=20)
+    res.mkdir()
+    json.dump({"n": 200, "iguales": 200, "pasa": True}, open(res / "paridad-tokens.json", "w"))
+    json.dump({"coseno": {"min": 0.9999, "n_bajo_0.999": 0}}, open(res / "paridad-fp32.json", "w"))
+    json.dump({"viable": False, "motivo": "x"}, open(res / "int8-no-viable.json", "w"))
+    for v in (32, 8):
+        _e2e(res, dev, "fp32", v, True)
+    o = M.cifras(res, dev, CRIT)
+    assert o["completo"] is True and o["eleccion"]["modo"] == "fp32" and o["informativo"]["int8"]["viable"] is False
+    assert o["condiciones"]["e2e-int8-v32"] == {"pasa": None, "motivo": "int8 no viable"}
+
+
 def test_criterio_congelado_no_cambio():
     import hashlib
     assert hashlib.sha256(CRIT.read_bytes()).hexdigest() == "58a62d618a4f917c1c4c232934a31394874a59f4cb5b589e945efd91511ade0b"

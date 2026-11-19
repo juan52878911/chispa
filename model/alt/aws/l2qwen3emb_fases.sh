@@ -15,7 +15,7 @@ if [ "$LOCAL" = 1 ]; then PY=${CHISPA_PY:-python3}
 else
   LIBRES=$(df -BG --output=avail "$BASE" | tail -1 | tr -dc 0-9)
   [ "${LIBRES:-0}" -ge 30 ] || { fallo "volumen pequeno: ${LIBRES:-?} GB libres (hacen falta >= 30)"; estado entorno "FALLO disco"; cierre; }
-  dnf install -y -q python3.11 python3.11-pip gcc tar gzip || { fallo "dnf install"; estado entorno "FALLO dnf"; cierre; }
+  dnf install -y -q python3.11 python3.11-pip gcc tar gzip unzip || { fallo "dnf install"; estado entorno "FALLO dnf"; cierre; }
   python3.11 -m venv "$BASE/venv" && "$BASE/venv/bin/pip" install -q --no-cache-dir "torch==${TORCH}+cpu" --extra-index-url https://download.pytorch.org/whl/cpu \
     && "$BASE/venv/bin/pip" install -q --no-cache-dir "transformers==$TRANSFORMERS" "onnx==$ONNX" "onnxruntime==$ORT_PY" numpy huggingface_hub safetensors || { fallo "pip install"; estado entorno "FALLO pip"; cierre; }
   PY=$BASE/venv/bin/python
@@ -43,8 +43,10 @@ preparar_go() {
     [ "${GO_SHA256#__}" != "$GO_SHA256" ] && { echo "GO_SHA256 sin sustituir"; return 3; }
     curl -fsSL -o "$BASE/go.tgz" "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" && sha_ok "$GO_SHA256" "$BASE/go.tgz" || { echo "Go: descarga o sha256"; return 3; }
     tar -xzf "$BASE/go.tgz" -C /usr/local || return 3
-    curl -fsSL -o "$BASE/ort.tgz" "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" && sha_ok "$ORT_SHA256" "$BASE/ort.tgz" || { echo "ORT: descarga o sha256"; return 3; }
-    mkdir -p /opt/ort && tar -xzf "$BASE/ort.tgz" -C /opt/ort --strip-components=1 || return 3
+    # ORT desde NuGet (el repo de GitHub da 404): el .nupkg es un zip; solo se sacan las dos .so (onnxruntime_go trae su cabecera y carga la .so al arrancar)
+    curl -fsSL -o "$BASE/ort.nupkg" "https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/${ORT_VERSION}" && sha_ok "$ORT_NUPKG_SHA256" "$BASE/ort.nupkg" || { echo "ORT: descarga o sha256 del nupkg"; return 3; }
+    mkdir -p /opt/ort/lib && unzip -q -j -o "$BASE/ort.nupkg" runtimes/linux-x64/native/libonnxruntime.so runtimes/linux-x64/native/libonnxruntime_providers_shared.so -d /opt/ort/lib || return 3
+    sha_ok "$ORT_SO_SHA256" /opt/ort/lib/libonnxruntime.so || { echo "ORT: sha256 de libonnxruntime.so"; return 3; }
     export PATH=/usr/local/go/bin:$PATH; TAGS="-tags ort"; ORTLIB=/opt/ort/lib/libonnxruntime.so
     export GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOSUMDB=off GOPROXY=file://$CH/gomod-proxy GOCACHE=$BASE/gocache GOPATH=$BASE/gopath CGO_ENABLED=1
   fi
@@ -83,7 +85,7 @@ cp "$REF/referencia.json" "$OUT/referencia.json"; estado referencia "OK $(cat "$
 # --- 6. paridad Go: tokens 200/200 y coseno por texto (fp32 decide; int8 informativo)
 for _ in $(seq 900); do [ -f "$BASE/preparar-go.rc" ] && break; sleep 1; done
 [ "$(cat "$BASE/preparar-go.rc" 2>/dev/null || echo 9)" = 0 ] || { tail -15 "$BASE/preparar-go.log"; fallo "servidor Go: preparar_go rc=$(cat "$BASE/preparar-go.rc" 2>/dev/null)"; estado servidor "FALLO"; cierre; }
-ORTLIB=$(cat "$BASE/ort-lib"); estado servidor "OK $(head -1 "$BASE/preparar-go.log"); ORT $ORT_VERSION (sha256 ${ORT_SHA256:0:12})"
+ORTLIB=$(cat "$BASE/ort-lib"); estado servidor "OK $(head -1 "$BASE/preparar-go.log"); ORT $ORT_VERSION (so sha256 ${ORT_SO_SHA256:0:12})"
 paridad() {  # paridad CONDICION ONNX
   ( cd "$CH/server/decide" && CHISPA_QWEN_TOK="$ONX/qwen3emb.chispa-bpe" CHISPA_QWEN_REF="$REF" CHISPA_QWEN_ONNX="$2" CHISPA_QWEN_CONDICION="$1" CHISPA_QWEN_SALIDA="$OUT" CHISPA_ORT_LIB="$ORTLIB" \
       "$BASE/decide.test" -test.run 'QwenTokensReal|QwenCosenoReal' -test.v -test.timeout 30m ) > "$OUT/paridad-$1.txt" 2>&1
@@ -92,7 +94,10 @@ paridad fp32 "$ONX/qwen3emb-fp32.onnx"; grep -E "tokens:|coseno|PASS|FAIL" "$OUT
 if [ -f "$OUT/paridad-fp32.json" ]; then
   estado paridad "fp32: $("$PY" -c "import json;d=json.load(open('$OUT/paridad-fp32.json'));print('tokens %s/%s, coseno min %.6f, p50 codificador %.0f ms' % (d['tokens']['iguales'], d['tokens']['n'], d['coseno']['min'], d['latencia_codificador_ms']['p50']))")"
 else fallo "paridad fp32 sin resultado"; estado paridad "FALLO"; fi
-hay_tiempo 10 && { paridad int8 "$ONX/qwen3emb-int8.onnx"; grep -E "coseno" "$OUT/paridad-int8.txt" | head -2; }
+# int8: solo si el coseno mínimo del último token frente a torch (comprobación del exportador) llega a 0,99; si no, «int8 no viable» y solo se mide fp32
+INT8=$("$PY" -c "import json;d=json.load(open('$OUT/onnx.json')).get('comprobacion',{}).get('qwen3emb-int8.onnx');print('si' if d and d['coseno_min_ultimo_token'] >= 0.99 else 'no')" 2>/dev/null || echo no)
+if [ "$INT8" = si ]; then hay_tiempo 10 && { paridad int8 "$ONX/qwen3emb-int8.onnx"; grep -E "coseno" "$OUT/paridad-int8.txt" | head -2; }
+else echo '{"viable": false, "motivo": "coseno minimo del ultimo token frente a torch < 0,99 en la comprobacion del exportador"}' > "$OUT/int8-no-viable.json"; estado int8 "NO VIABLE (coseno < 0,99): solo fp32"; fi
 
 # --- 7. bancos de las 6 tareas dev con la herramienta Go (8 de oro por clase, como muestrear(ys,8,0) de R11), uno por ONNX
 echo "== 7. bancos $(date -u +%T) quedan $(quedan_min) min"
@@ -134,6 +139,7 @@ e2e() {  # e2e MODO VECINOS
 DUR=0
 for combo in "fp32 32" "fp32 8" "int8 32" "int8 8"; do
   set -- $combo
+  [ "$1" = int8 ] && [ "$INT8" != si ] && { estado "e2e-$1-v$2" "OMITIDO (int8 no viable)"; continue; }
   if [ "$1" = int8 ] && [ ! -d "$BAN/int8" ]; then hay_tiempo $((DUR / 60 * 2 + 8)) && bancos int8 || { estado "e2e-$1-v$2" "OMITIDO (bancos int8)"; continue; }; fi
   hay_tiempo $(( DUR / 60 + 4 )) || { estado "e2e-$1-v$2" "OMITIDO por tiempo (quedan $(quedan_min) min)"; continue; }
   t0=$(date +%s); e2e "$1" "$2"; d=$(( $(date +%s) - t0 )); [ "$d" -gt "$DUR" ] && DUR=$d

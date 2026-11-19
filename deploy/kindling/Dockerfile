@@ -7,7 +7,7 @@
 # No construida aquí (sin red). Cadena de suministro: hay que rellenar (--build-arg) antes de construir, o el build falla:
 #   GO_DIGEST=sha256:...  DEBIAN_DIGEST=sha256:...  (digest del índice multi-arch de golang:${GO_VERSION}-bookworm
 #     y debian:bookworm-slim: `docker buildx imagetools inspect <imagen>`)
-#   ORT_SHA256_X64 / ORT_SHA256_AARCH64 (sha256 del .tgz de la release de ORT; imagen-ort)
+#   ORT_NUPKG_SHA256 (sha256 del .nupkg Microsoft.ML.OnnxRuntime de NuGet, trae x64 y arm64; imagen-ort; el repo de GitHub de ORT da 404 desde 2026-11-19)
 ARG GO_VERSION=1.27
 ARG ORT_VERSION=1.31.1
 # Sin BuildKit (docker build clásico, sin buildx) las variables automáticas llegan vacías: estos valores solo cubren ese caso;
@@ -15,8 +15,7 @@ ARG ORT_VERSION=1.31.1
 ARG BUILDPLATFORM=linux/amd64
 ARG GO_DIGEST=sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9
 ARG DEBIAN_DIGEST=sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3
-ARG ORT_SHA256_X64=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9
-ARG ORT_SHA256_AARCH64=5317505e2da99be65f8e2775ba3c2afd6d2961fd78aba1bd8f56159f48820c78
+ARG ORT_NUPKG_SHA256=6871ccbc97f3d5bdb4095a1dcec33aa78d56f6ed8de5980ef5fa1d9f2e7c679a
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm@${GO_DIGEST} AS cpu
 ARG TARGETOS TARGETARCH
@@ -34,7 +33,7 @@ RUN cd deploy/kindling/sondeo && GOOS=$TARGETOS GOARCH=$TARGETARCH go build -tri
 
 # ORT=1: cgo exige compilar en la plataforma destino (buildx con qemu o un builder nativo arm64).
 FROM golang:${GO_VERSION}-bookworm@${GO_DIGEST} AS ort
-ARG TARGETARCH ORT_VERSION ORT_SHA256_X64 ORT_SHA256_AARCH64
+ARG TARGETARCH ORT_VERSION ORT_NUPKG_SHA256
 WORKDIR /src
 COPY gomod-proxy /gomod-proxy
 ENV GOPROXY=file:///gomod-proxy GOFLAGS=-mod=readonly GOTOOLCHAIN=local CGO_ENABLED=1
@@ -44,18 +43,19 @@ COPY runtime/tok runtime/tok
 COPY runtime/torre runtime/torre
 COPY server server
 COPY deploy/kindling/sondeo deploy/kindling/sondeo
-# Release de Microsoft: onnxruntime-linux-x64-V.tgz o onnxruntime-linux-aarch64-V.tgz.
-RUN case "$TARGETARCH" in amd64) A=x64; H=$ORT_SHA256_X64;; arm64) A=aarch64; H=$ORT_SHA256_AARCH64;; *) exit 1;; esac \
- && [ -n "$H" ] || { echo "falta ORT_SHA256_* de $A: rellénelo (--build-arg)" >&2; exit 1; } \
- && curl -fsSL -o /tmp/ort.tgz https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-${A}-${ORT_VERSION}.tgz \
- && echo "$H  /tmp/ort.tgz" | sha256sum -c - \
- && mkdir /ort && tar -xzf /tmp/ort.tgz -C /ort --strip-components=1
+# ORT desde NuGet (Microsoft.ML.OnnxRuntime): un zip con runtimes/linux-x64/native/ y runtimes/linux-arm64/native/.
+RUN case "$TARGETARCH" in amd64) A=x64;; arm64) A=arm64;; *) exit 1;; esac \
+ && [ -n "$ORT_NUPKG_SHA256" ] || { echo "falta ORT_NUPKG_SHA256: rellénelo (--build-arg)" >&2; exit 1; } \
+ && apt-get update -qq && apt-get install -y -qq --no-install-recommends unzip \
+ && curl -fsSL -o /tmp/ort.nupkg https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/${ORT_VERSION} \
+ && echo "$ORT_NUPKG_SHA256  /tmp/ort.nupkg" | sha256sum -c - \
+ && mkdir -p /ort/lib && unzip -q -j /tmp/ort.nupkg runtimes/linux-${A}/native/libonnxruntime.so -d /ort/lib
 # onnxruntime_go lo fija server/go.mod (v1.38.0); no se hace `go get` al construir.
 RUN cd server && go build -tags ort -trimpath -ldflags "-s -w -X github.com/juan52878911/chispa/server/decide.RutaORT=/usr/lib/libonnxruntime.so" \
       -o /out/chispa-server ./cmd/chispa-server
 RUN cd deploy/kindling/sondeo && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/sondeo .
 # libstdc++ y libgcc_s (las pide libonnxruntime.so) salen del builder: su ruta depende de la arquitectura.
-RUN mkdir -p /ortlib && cp /ort/lib/libonnxruntime.so.${ORT_VERSION} /ortlib/libonnxruntime.so \
+RUN mkdir -p /ortlib && cp /ort/lib/libonnxruntime.so /ortlib/libonnxruntime.so \
  && cp /usr/lib/*-linux-gnu/libstdc++.so.6 /usr/lib/*-linux-gnu/libgcc_s.so.1 /ortlib/
 
 # Base con /bin/sh (entrada.sh lee las variables de entorno); usuario sin privilegios 10001.
