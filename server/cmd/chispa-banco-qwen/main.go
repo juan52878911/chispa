@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"chispa/runtime/tok"
 	"github.com/juan52878911/chispa/server/decide"
@@ -31,7 +32,15 @@ type fila struct {
 	Etiqueta string `json:"etiqueta"`
 	Pregunta string `json:"pregunta"`
 	Texto    string `json:"texto"`
+	// Opcionales, para <banco>.ejemplos.jsonl (el formato de generar_banco.py): id, tipo, opciones (ids) y split (solo cuenta como oro "train" o ausente).
+	ID       string   `json:"id,omitempty"`
+	Tipo     string   `json:"tipo,omitempty"`
+	Opciones []string `json:"opciones,omitempty"`
+	Split    string   `json:"split,omitempty"`
 }
+
+// Semilla de la elección de ejemplos: la de generar_banco.py.
+const semillaPorDefecto = 20261115
 
 func main() {
 	onnx := flag.String("onnx", "", "ONNX de Qwen3-Embedding (model/alt/exportar_qwen3emb_onnx.py)")
@@ -40,17 +49,19 @@ func main() {
 	salida := flag.String("salida", "", "directorio de salida")
 	lib := flag.String("ort-lib", os.Getenv("CHISPA_ORT_LIB"), "libonnxruntime (o CHISPA_ORT_LIB)")
 	ses := flag.Int("sesiones", 1, "sesiones ORT")
+	k := flag.Int("k", -1, "ejemplos del few-shot de L3 en <banco>.ejemplos.jsonl (como generar_banco.py --k); 0 = sin fichero; -1 = 8 si las filas traen id, tipo y opciones y, si no, sin fichero (con aviso)")
+	semilla := flag.Uint64("semilla", semillaPorDefecto, "semilla de la elección de ejemplos (la de generar_banco.py)")
 	flag.Parse()
 	if *onnx == "" || *rutaTok == "" || *soporte == "" || *salida == "" {
 		flag.Usage()
 		os.Exit(2)
 	}
-	if err := ejecutar(*onnx, *rutaTok, *soporte, *salida, *lib, *ses); err != nil {
+	if err := ejecutar(*onnx, *rutaTok, *soporte, *salida, *lib, *ses, *k, *semilla); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func ejecutar(onnx, rutaTok, soporte, salida, lib string, ses int) error {
+func ejecutar(onnx, rutaTok, soporte, salida, lib string, ses, k int, semilla uint64) error {
 	filas, err := leerFilas(soporte)
 	if err != nil {
 		return err
@@ -96,10 +107,15 @@ func ejecutar(onnx, rutaTok, soporte, salida, lib string, ses int) error {
 			}
 			vs = append(vs, v)
 		}
-		if err := escribirBanco(filepath.Join(salida, "banco-"+n), fs, vs); err != nil {
+		base := filepath.Join(salida, "banco-"+n)
+		if err := escribirBanco(base, fs, vs); err != nil {
 			return err
 		}
-		resumen[n] = map[string]int{"filas": len(fs), "dim": len(vs[0])}
+		nej, err := escribirEjemplos(base, fs, k, semilla)
+		if err != nil {
+			return fmt.Errorf("tarea %q: %w", n, err)
+		}
+		resumen[n] = map[string]int{"filas": len(fs), "dim": len(vs[0]), "ejemplos_fs": nej}
 		log.Printf("banco-%s: %d filas × %d", n, len(fs), len(vs[0]))
 	}
 	b, _ := json.MarshalIndent(resumen, "", " ")
@@ -156,4 +172,46 @@ func escribirBanco(base string, fs []fila, vs [][]float32) error {
 		js = append(append(js, l...), '\n')
 	}
 	return os.WriteFile(base+".jsonl", js, 0o644)
+}
+
+// escribirEjemplos escribe <base>.ejemplos.jsonl con la elección de generar_banco.py y devuelve cuántos ejemplos lleva (0 = no escribe fichero).
+func escribirEjemplos(base string, fs []fila, k int, semilla uint64) (int, error) {
+	if k == 0 {
+		return 0, nil
+	}
+	completas := true
+	for _, f := range fs {
+		if f.ID == "" || f.Tipo == "" || len(f.Opciones) < 2 {
+			completas = false
+			break
+		}
+	}
+	if !completas {
+		if k > 0 {
+			return 0, fmt.Errorf("-k %d exige que cada fila del soporte lleve id, tipo y opciones (ids de las opciones, al menos 2)", k)
+		}
+		log.Printf("AVISO: %s: las filas no traen id, tipo y opciones: no se escribe .ejemplos.jsonl y L3 contestará zero-shot", base)
+		return 0, nil
+	}
+	if k < 0 {
+		k = 8
+	}
+	for _, f := range fs {
+		ok := false
+		for _, o := range f.Opciones {
+			ok = ok || o == f.Etiqueta
+		}
+		if !ok {
+			return 0, fmt.Errorf("%s: la etiqueta %q no es una de sus opciones", f.ID, f.Etiqueta)
+		}
+	}
+	var b strings.Builder
+	idx := elegirEjemplos(fs, k, semilla)
+	for _, i := range idx {
+		b.WriteString(lineaEjemplo(fs[i]))
+	}
+	if len(idx) == 0 {
+		return 0, nil
+	}
+	return len(idx), os.WriteFile(base+".ejemplos.jsonl", []byte(b.String()), 0o644)
 }
