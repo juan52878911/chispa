@@ -2220,3 +2220,10 @@ Orden de Juan (vía la sesión madre): medir tres alternativas que no habíamos 
 - La cascada de E corre con vectores Qwen completos.
 - Los ids de «yes» y «no» (9693 y 2152) coinciden con la configuración del reranker.
 - **Riesgos sin probar:** los pesos reales en CUDA y la memoria del reranker con lotes de 64 secuencias de hasta ≈ 1 000 tokens. Se usa `logits_to_keep=1`.
+
+**Lanzable** (código `ba463e8`):
+- User-data: `lanzados/ud-r11-alternativas-ba463e8.sh` (sha256 `8fa2845e…`, 11 634 bytes).
+- Entradas, ya subidas a `s3://…/r11-alternativas-ba463e8/`:
+  - codigo.tgz `1d2c3fb3…`;
+  - dev.tgz `728defd8…`;
+  - ref.tgz `12e8fa31…`, con 9 110 filas.
