@@ -24,15 +24,6 @@ PREGUNTAS = {"es": "¿A qué categoría pertenece el texto?", "en": "Which categ
 # Tipo de yes/no: etiquetas «si»/«no». Tipo score: niveles «1»..«K» (el nivel 1 es el más bajo).
 CANDIDATAS = [
     # ----------------------------------------------------------------------------------------------------------- choice
-    dict(nombre="patentes-cpc", tipo="choice", idioma="en", dominio="patentes", familia="big-patent",
-         fuente=dict(tipo="hf", repo="NortheasternUniversity/big_patent", patrones=["*.parquet", "README.md"], max_gb=3),
-         url_ficha="https://huggingface.co/datasets/NortheasternUniversity/big_patent", licencia_esperada="cc-by-4.0", sintetico=False,
-         clases=9, confianza_id="media", limpieza_esperada="media",
-         no_solapa="patentes de EE. UU. (Google Patents Public Data): ninguna fuente de v2 ni del entrenamiento es de patentes",
-         riesgos="el repo puede ser un script de carga sin ficheros de datos (entonces queda fuera por «sin ficheros»); la etiqueta (sección CPC) sale de la carpeta",
-         lector=dict(formato="parquet", ficheros=["**/*.parquet"], texto="abstract", etiqueta_desde_carpeta=True,
-                     split_por_fichero=dict(train="train", test="test"), muestra_por_clase=3000),
-         pregunta="¿A qué sección de la clasificación de patentes (CPC) pertenece el resumen?"),
     dict(nombre="sql-complejidad", tipo="choice", idioma="en", dominio="bases de datos", familia="gretel-text-to-sql",
          fuente=dict(tipo="hf", repo="gretelai/synthetic_text_to_sql", patrones=["*.parquet", "README.md"], max_gb=1),
          url_ficha="https://huggingface.co/datasets/gretelai/synthetic_text_to_sql", licencia_esperada="apache-2.0", sintetico=True,
@@ -84,17 +75,6 @@ CANDIDATAS = [
          lector=dict(formato="xml", ficheros=["**/*.xml"], registro="Award", campos=dict(texto="AbstractNarration", etiqueta="Organization/Directorate/LongName"),
                      texto="texto", etiqueta="etiqueta", clases_max=8, min_por_clase=60),
          pregunta="¿Qué dirección de la NSF financia el proyecto?"),
-    dict(nombre="wikinoticias-es-categoria", tipo="choice", idioma="es", dominio="noticias", familia="wikinoticias",
-         fuente=dict(tipo="url", url="https://dumps.wikimedia.org/eswikinews/latest/eswikinews-latest-pages-articles.xml.bz2", max_gb=1),
-         url_ficha="https://es.wikinews.org/wiki/Wikinoticias:Derechos_de_autor", url_ficha_confirmada=False, licencia_esperada="cc-by-2.5",
-         licencia_regex_ficha=r"CC[ -]?BY[ -]?2\.5|Creative Commons Attribution 2\.5|Reconocimiento 2\.5", sintetico=False, clases=None, confianza_id="baja",
-         limpieza_esperada="media",
-         no_solapa="única fuente de noticias en español con licencia CC BY (Wikinoticias); v2 se quedó sin dominio de noticias por falta de licencia verificable",
-         riesgos="lector de volcado MediaWiki escrito SIN ver el volcado: el conjunto cerrado de categorías es una suposición (las que no aparezcan o tengan < 40 artículos se descartan; con < 2 clases queda fuera) y solo se usan artículos con UNA categoría temática; algunos artículos citan o copian prensa con otros derechos",
-         lector=dict(formato="mediawiki", ficheros=["*.xml.bz2", "*.xml"], ns="0", texto="texto", etiqueta="etiqueta", min_por_clase=40,
-                     categorias=["Política", "Economía", "Deportes", "Cultura y entretenimiento", "Ciencia y tecnología", "Salud", "Sociedad", "Internacional", "Desastres y accidentes",
-                                 "Crimen y derecho", "Conflicto armado", "Medio ambiente", "Educación", "Religión"]),
-         pregunta="¿De qué sección de noticias es el artículo?"),
     # ----------------------------------------------------------------------------------------------------------- reemplazos (W3b)
     # Tareas reales (no benchmarks de razonamiento) que sustituyen a las que pasan a `informativo`, para mantener >= 8 que cuenten por tipo. Todo de memoria, sin verificar:
     # lo que no resuelva en fase 2 queda fuera con su motivo y, si un tipo baja de 8 que cuenten, se informa con «n bajo».
@@ -170,14 +150,6 @@ CANDIDATAS = [
          lector=dict(formato="jsonl", ficheros=["**/*.jsonl"], pares=dict(bueno="moral_action", malo="immoral_action", contexto=["situation", "intention"]),
                      split_por_fichero=dict(train="train", test="test")),
          pregunta="¿Es moralmente aceptable la acción dada la situación y la intención?"),
-    dict(nombre="bbh-deportes", tipo="yesno", idioma="en", dominio="deportes", familia="bbh",
-         fuente=dict(tipo="hf", repo="lukaemon/bbh", patrones=["sports_understanding/*", "README.md"], max_gb=1),
-         url_ficha="https://huggingface.co/datasets/lukaemon/bbh", licencia_esperada="mit", sintetico="generada por LLM y revisada", clases=2, confianza_id="media",
-         limpieza_esperada="media",
-         no_solapa="frases sobre deportistas (BIG-Bench Hard); sin equivalente en v2 ni en el entrenamiento",
-         riesgos="solo ~250 filas; contaminación MUY probable en los LLM (benchmark de referencia); la tarjeta de BBH no siempre trae licencia",
-         lector=dict(formato="parquet", ficheros=["sports_understanding/*"], texto="input", etiqueta="target", mapa_etiqueta=dict(yes="si", no="no")),
-         pregunta="¿Es plausible la frase?"),
     dict(nombre="strategyqa-si-no", tipo="yesno", idioma="en", dominio="conocimiento general", familia="strategyqa",
          fuente=dict(tipo="hf", repo="ChilleD/StrategyQA", patrones=["*.json*", "*.parquet", "*.csv", "README.md"], max_gb=1),
          url_ficha="https://huggingface.co/datasets/ChilleD/StrategyQA", licencia_esperada="mit", sintetico=False, clases=2, confianza_id="baja", limpieza_esperada="media",
@@ -224,14 +196,6 @@ CANDIDATAS = [
          lector=dict(formato="parquet", ficheros=["**/*.parquet"], texto="problem", etiqueta="level",
                      mapa_etiqueta={"Level 1": "1", "Level 2": "2", "Level 3": "3", "Level 4": "4", "Level 5": "5"}),
          pregunta="¿Qué nivel de dificultad (1 a 5) tiene el problema?"),
-    dict(nombre="argq-calidad", tipo="score", idioma="en", dominio="argumentación", familia="ibm-argq",
-         fuente=dict(tipo="hf", repo="ibm-research/argument_quality_ranking_30k", patrones=["*.csv", "*.parquet", "*.json*", "README.md"], max_gb=1),
-         url_ficha="https://huggingface.co/datasets/ibm-research/argument_quality_ranking_30k", licencia_esperada="cc-by-3.0", sintetico=False, clases=5,
-         confianza_id="baja", limpieza_esperada="media",
-         no_solapa="argumentos escritos por anotadores sobre 71 temas; sin equivalente en v2 ni en el entrenamiento",
-         riesgos="id del repo y licencia de memoria (otras colecciones de IBM Debater son CC BY-SA: si la tarjeta lo dice, queda fuera); la nota es continua y aquí se parte en 5 cuantiles",
-         lector=dict(formato="csv", ficheros=["*.csv"], texto=["topic", "argument"], etiqueta="WA", cuantiles=5, split_col="set"),
-         pregunta="¿Qué calidad (1 a 5) tiene el argumento?"),
     dict(nombre="gsm8k-pasos", tipo="score", idioma="en", dominio="problemas de aritmética", familia="gsm8k",
          fuente=dict(tipo="hf", repo="openai/gsm8k", patrones=["main/*.parquet", "README.md"], max_gb=1),
          url_ficha="https://huggingface.co/datasets/openai/gsm8k", licencia_esperada="mit", sintetico=False, clases=6, confianza_id="alta", limpieza_esperada="alta",
@@ -249,14 +213,6 @@ CANDIDATAS = [
          lector=dict(formato="parquet", ficheros=["**/*.parquet"], texto="text", etiqueta_par=dict(col="labels", nombre="quality"), cuantiles=5,
                      filtro=dict(lang=["es"], role=["assistant"]), split_por_fichero=dict(train="train", test="validation")),
          pregunta="¿Qué calidad (1 a 5) tiene la respuesta?"),
-    dict(nombre="sts-es", tipo="score", idioma="es", dominio="similitud semántica", familia="sts-es",
-         fuente=dict(tipo="hf", repo="PlanTL-GOB-ES/sts-es", patrones=["*.json*", "*.tsv", "*.csv", "*.parquet", "README.md"], max_gb=1),
-         url_ficha="https://huggingface.co/datasets/PlanTL-GOB-ES/sts-es", licencia_esperada="cc-by-4.0", sintetico=False, clases=6, confianza_id="baja",
-         limpieza_esperada="baja",
-         no_solapa="pares de frases del STS de SemEval en español; v2 y el entrenamiento no traen STS (stsb_multi_mt se descartó por licencia)",
-         riesgos="el texto original viene de noticias, Wikipedia (-SA) y pies de foto: si la tarjeta lo dice queda fuera; muy probable que la licencia de la cabecera no mande",
-         lector=dict(formato="jsonl", ficheros=["**/*.json*", "**/*.tsv"], texto=["sentence_1", "sentence_2"], etiqueta="label", split_por_fichero=dict(train="train", test="test")),
-         pregunta="¿Cuánto se parecen las dos frases (1 a 6)?"),
     dict(nombre="helpsteer2-utilidad", tipo="score", idioma="en", dominio="calidad de respuestas de asistente", familia="helpsteer",
          fuente=dict(tipo="hf", repo="nvidia/HelpSteer2", patrones=["*.jsonl.gz", "README.md"], max_gb=1),
          url_ficha="https://huggingface.co/datasets/nvidia/HelpSteer2", licencia_esperada="cc-by-4.0", sintetico="respuestas generadas por LLM; notas humanas", clases=5,
@@ -386,13 +342,19 @@ CANDIDATAS = [
 ]
 
 # Benchmarks públicos de razonamiento y examen: probable contaminación de L3. Se construyen y se sellan, pero NO cuentan en el agregado ni en las hipótesis selladas.
-INFORMATIVAS = ("mmmlu-asignatura-es", "bbh-deportes", "gsm8k-pasos", "math-nivel", "strategyqa-si-no", "pubmedqa-si-no")
+INFORMATIVAS = ("mmmlu-asignatura-es", "gsm8k-pasos", "math-nivel", "strategyqa-si-no", "pubmedqa-si-no")
 MOTIVO_INFORMATIVO = "benchmark público, probable contaminación de L3"
 for _c in CANDIDATAS:
     if _c["nombre"] in INFORMATIVAS:
         _c.update(bloque="informativo", motivo_bloque=MOTIVO_INFORMATIVO)
 
 DESCARTADAS = [  # (fuente, motivo); «de memoria» = no comprobado en este nodo
+    # comprobadas en la fase 2 real (c7i, ud 100de63): fuera por su licencia o tamaño, no se repiten en la segunda iteración
+    ("NortheasternUniversity/big_patent (patentes-cpc)", "fase 2: demasiado grande (31,8 GB frente a un tope de 3 GB por tarea)"),
+    ("Wikinoticias en español (wikinoticias-es-categoria)", "fase 2: la ficha de derechos de Wikinoticias dice CC BY-SA (-SA)"),
+    ("IBM argument quality (argq-calidad)", "fase 2: cabecera cc-by-3.0 pero el cuerpo de la tarjeta dice CC BY-SA 3.0 (-SA)"),
+    ("lukaemon/bbh (bbh-deportes)", "fase 2: la tarjeta no declara licencia"),
+    ("PlanTL-GOB-ES/sts-es (sts-es)", "fase 2: la tarjeta no declara licencia"),
     ("fancyzhx/ag_news", "licencia solo de investigación no comercial y noticias con copyright"),
     ("stanfordnlp/imdb", "reseñas de IMDb: sin licencia declarada y términos del sitio"),
     ("stanfordnlp/sst2 y rotten_tomatoes", "frases de Rotten Tomatoes (copyright) sin licencia clara"),

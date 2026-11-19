@@ -94,65 +94,6 @@
  "aperturas": "model/datos/bateria-v3-aperturas.jsonl",
  "tareas": [
   {
-   "nombre": "patentes-cpc",
-   "estado": "candidata",
-   "tipo": "choice",
-   "idioma": "en",
-   "dominio": "patentes",
-   "familia": "big-patent",
-   "fuente": {
-    "tipo": "hf",
-    "repo": "NortheasternUniversity/big_patent",
-    "patrones": [
-     "*.parquet",
-     "README.md"
-    ],
-    "max_gb": 3
-   },
-   "rev": null,
-   "url_ficha": "https://huggingface.co/datasets/NortheasternUniversity/big_patent",
-   "url_ficha_confirmada": true,
-   "licencia_esperada": "cc-by-4.0",
-   "licencia_estado": "por verificar en fase 2",
-   "licencia": null,
-   "licencia_sha256": "",
-   "licencia_motivo": "",
-   "bloque": "cuentan",
-   "motivo_bloque": "",
-   "reemplazo_de": "",
-   "sintetico": false,
-   "clases_esperadas": 9,
-   "confianza_id": "media",
-   "limpieza_esperada": "media",
-   "no_solapa": "patentes de EE. UU. (Google Patents Public Data): ninguna fuente de v2 ni del entrenamiento es de patentes",
-   "riesgos": "el repo puede ser un script de carga sin ficheros de datos (entonces queda fuera por «sin ficheros»); la etiqueta (sección CPC) sale de la carpeta",
-   "pregunta": "¿A qué sección de la clasificación de patentes (CPC) pertenece el resumen?",
-   "lector": {
-    "formato": "parquet",
-    "ficheros": [
-     "**/*.parquet"
-    ],
-    "texto": "abstract",
-    "etiqueta_desde_carpeta": true,
-    "split_por_fichero": {
-     "train": "train",
-     "test": "test"
-    },
-    "muestra_por_clase": 3000
-   },
-   "fichero_soporte": "soporte/patentes-cpc.jsonl",
-   "fichero_test": "sellada/patentes-cpc.jsonl",
-   "sha256": "",
-   "sha256_soporte": "",
-   "ficheros_origen_sha256": {},
-   "n_soporte": null,
-   "n_test": null,
-   "clases": null,
-   "cifras": null,
-   "solapes": null,
-   "motivo_fuera": ""
-  },
-  {
    "nombre": "sql-complejidad",
    "estado": "candidata",
    "tipo": "choice",
@@ -523,76 +464,6 @@
    "cifras": null,
    "solapes": null,
    "motivo_fuera": ""
-  },
-  {
-   "nombre": "wikinoticias-es-categoria",
-   "estado": "candidata",
-   "tipo": "choice",
-   "idioma": "es",
-   "dominio": "noticias",
-   "familia": "wikinoticias",
-   "fuente": {
-    "tipo": "url",
-    "url": "https://dumps.wikimedia.org/eswikinews/latest/eswikinews-latest-pages-articles.xml.bz2",
-    "max_gb": 1
-   },
-   "rev": null,
-   "url_ficha": "https://es.wikinews.org/wiki/Wikinoticias:Derechos_de_autor",
-   "url_ficha_confirmada": false,
-   "licencia_esperada": "cc-by-2.5",
-   "licencia_estado": "por verificar en fase 2",
-   "licencia": null,
-   "licencia_sha256": "",
-   "licencia_motivo": "",
-   "bloque": "cuentan",
-   "motivo_bloque": "",
-   "reemplazo_de": "",
-   "sintetico": false,
-   "clases_esperadas": null,
-   "confianza_id": "baja",
-   "limpieza_esperada": "media",
-   "no_solapa": "única fuente de noticias en español con licencia CC BY (Wikinoticias); v2 se quedó sin dominio de noticias por falta de licencia verificable",
-   "riesgos": "lector de volcado MediaWiki escrito SIN ver el volcado: el conjunto cerrado de categorías es una suposición (las que no aparezcan o tengan < 40 artículos se descartan; con < 2 clases queda fuera) y solo se usan artículos con UNA categoría temática; algunos artículos citan o copian prensa con otros derechos",
-   "pregunta": "¿De qué sección de noticias es el artículo?",
-   "lector": {
-    "formato": "mediawiki",
-    "ficheros": [
-     "*.xml.bz2",
-     "*.xml"
-    ],
-    "ns": "0",
-    "texto": "texto",
-    "etiqueta": "etiqueta",
-    "min_por_clase": 40,
-    "categorias": [
-     "Política",
-     "Economía",
-     "Deportes",
-     "Cultura y entretenimiento",
-     "Ciencia y tecnología",
-     "Salud",
-     "Sociedad",
-     "Internacional",
-     "Desastres y accidentes",
-     "Crimen y derecho",
-     "Conflicto armado",
-     "Medio ambiente",
-     "Educación",
-     "Religión"
-    ]
-   },
-   "fichero_soporte": "soporte/wikinoticias-es-categoria.jsonl",
-   "fichero_test": "sellada/wikinoticias-es-categoria.jsonl",
-   "sha256": "",
-   "sha256_soporte": "",
-   "ficheros_origen_sha256": {},
-   "n_soporte": null,
-   "n_test": null,
-   "clases": null,
-   "cifras": null,
-   "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "CC[ -]?BY[ -]?2\\.5|Creative Commons Attribution 2\\.5|Reconocimiento 2\\.5"
   },
   {
    "nombre": "unam-tesis-carrera",
@@ -1157,64 +1028,6 @@
    "motivo_fuera": ""
   },
   {
-   "nombre": "bbh-deportes",
-   "estado": "candidata",
-   "tipo": "yesno",
-   "idioma": "en",
-   "dominio": "deportes",
-   "familia": "bbh",
-   "fuente": {
-    "tipo": "hf",
-    "repo": "lukaemon/bbh",
-    "patrones": [
-     "sports_understanding/*",
-     "README.md"
-    ],
-    "max_gb": 1
-   },
-   "rev": null,
-   "url_ficha": "https://huggingface.co/datasets/lukaemon/bbh",
-   "url_ficha_confirmada": true,
-   "licencia_esperada": "mit",
-   "licencia_estado": "por verificar en fase 2",
-   "licencia": null,
-   "licencia_sha256": "",
-   "licencia_motivo": "",
-   "bloque": "informativo",
-   "motivo_bloque": "benchmark público, probable contaminación de L3",
-   "reemplazo_de": "",
-   "sintetico": "generada por LLM y revisada",
-   "clases_esperadas": 2,
-   "confianza_id": "media",
-   "limpieza_esperada": "media",
-   "no_solapa": "frases sobre deportistas (BIG-Bench Hard); sin equivalente en v2 ni en el entrenamiento",
-   "riesgos": "solo ~250 filas; contaminación MUY probable en los LLM (benchmark de referencia); la tarjeta de BBH no siempre trae licencia",
-   "pregunta": "¿Es plausible la frase?",
-   "lector": {
-    "formato": "parquet",
-    "ficheros": [
-     "sports_understanding/*"
-    ],
-    "texto": "input",
-    "etiqueta": "target",
-    "mapa_etiqueta": {
-     "yes": "si",
-     "no": "no"
-    }
-   },
-   "fichero_soporte": "soporte/bbh-deportes.jsonl",
-   "fichero_test": "sellada/bbh-deportes.jsonl",
-   "sha256": "",
-   "sha256_soporte": "",
-   "ficheros_origen_sha256": {},
-   "n_soporte": null,
-   "n_test": null,
-   "clases": null,
-   "cifras": null,
-   "solapes": null,
-   "motivo_fuera": ""
-  },
-  {
    "nombre": "strategyqa-si-no",
    "estado": "candidata",
    "tipo": "yesno",
@@ -1543,67 +1356,6 @@
    "motivo_fuera": ""
   },
   {
-   "nombre": "argq-calidad",
-   "estado": "candidata",
-   "tipo": "score",
-   "idioma": "en",
-   "dominio": "argumentación",
-   "familia": "ibm-argq",
-   "fuente": {
-    "tipo": "hf",
-    "repo": "ibm-research/argument_quality_ranking_30k",
-    "patrones": [
-     "*.csv",
-     "*.parquet",
-     "*.json*",
-     "README.md"
-    ],
-    "max_gb": 1
-   },
-   "rev": null,
-   "url_ficha": "https://huggingface.co/datasets/ibm-research/argument_quality_ranking_30k",
-   "url_ficha_confirmada": true,
-   "licencia_esperada": "cc-by-3.0",
-   "licencia_estado": "por verificar en fase 2",
-   "licencia": null,
-   "licencia_sha256": "",
-   "licencia_motivo": "",
-   "bloque": "cuentan",
-   "motivo_bloque": "",
-   "reemplazo_de": "",
-   "sintetico": false,
-   "clases_esperadas": 5,
-   "confianza_id": "baja",
-   "limpieza_esperada": "media",
-   "no_solapa": "argumentos escritos por anotadores sobre 71 temas; sin equivalente en v2 ni en el entrenamiento",
-   "riesgos": "id del repo y licencia de memoria (otras colecciones de IBM Debater son CC BY-SA: si la tarjeta lo dice, queda fuera); la nota es continua y aquí se parte en 5 cuantiles",
-   "pregunta": "¿Qué calidad (1 a 5) tiene el argumento?",
-   "lector": {
-    "formato": "csv",
-    "ficheros": [
-     "*.csv"
-    ],
-    "texto": [
-     "topic",
-     "argument"
-    ],
-    "etiqueta": "WA",
-    "cuantiles": 5,
-    "split_col": "set"
-   },
-   "fichero_soporte": "soporte/argq-calidad.jsonl",
-   "fichero_test": "sellada/argq-calidad.jsonl",
-   "sha256": "",
-   "sha256_soporte": "",
-   "ficheros_origen_sha256": {},
-   "n_soporte": null,
-   "n_test": null,
-   "clases": null,
-   "cifras": null,
-   "solapes": null,
-   "motivo_fuera": ""
-  },
-  {
    "nombre": "gsm8k-pasos",
    "estado": "candidata",
    "tipo": "score",
@@ -1726,71 +1478,6 @@
    },
    "fichero_soporte": "soporte/oasst1-calidad-es.jsonl",
    "fichero_test": "sellada/oasst1-calidad-es.jsonl",
-   "sha256": "",
-   "sha256_soporte": "",
-   "ficheros_origen_sha256": {},
-   "n_soporte": null,
-   "n_test": null,
-   "clases": null,
-   "cifras": null,
-   "solapes": null,
-   "motivo_fuera": ""
-  },
-  {
-   "nombre": "sts-es",
-   "estado": "candidata",
-   "tipo": "score",
-   "idioma": "es",
-   "dominio": "similitud semántica",
-   "familia": "sts-es",
-   "fuente": {
-    "tipo": "hf",
-    "repo": "PlanTL-GOB-ES/sts-es",
-    "patrones": [
-     "*.json*",
-     "*.tsv",
-     "*.csv",
-     "*.parquet",
-     "README.md"
-    ],
-    "max_gb": 1
-   },
-   "rev": null,
-   "url_ficha": "https://huggingface.co/datasets/PlanTL-GOB-ES/sts-es",
-   "url_ficha_confirmada": true,
-   "licencia_esperada": "cc-by-4.0",
-   "licencia_estado": "por verificar en fase 2",
-   "licencia": null,
-   "licencia_sha256": "",
-   "licencia_motivo": "",
-   "bloque": "cuentan",
-   "motivo_bloque": "",
-   "reemplazo_de": "",
-   "sintetico": false,
-   "clases_esperadas": 6,
-   "confianza_id": "baja",
-   "limpieza_esperada": "baja",
-   "no_solapa": "pares de frases del STS de SemEval en español; v2 y el entrenamiento no traen STS (stsb_multi_mt se descartó por licencia)",
-   "riesgos": "el texto original viene de noticias, Wikipedia (-SA) y pies de foto: si la tarjeta lo dice queda fuera; muy probable que la licencia de la cabecera no mande",
-   "pregunta": "¿Cuánto se parecen las dos frases (1 a 6)?",
-   "lector": {
-    "formato": "jsonl",
-    "ficheros": [
-     "**/*.json*",
-     "**/*.tsv"
-    ],
-    "texto": [
-     "sentence_1",
-     "sentence_2"
-    ],
-    "etiqueta": "label",
-    "split_por_fichero": {
-     "train": "train",
-     "test": "test"
-    }
-   },
-   "fichero_soporte": "soporte/sts-es.jsonl",
-   "fichero_test": "sellada/sts-es.jsonl",
    "sha256": "",
    "sha256_soporte": "",
    "ficheros_origen_sha256": {},
@@ -2777,6 +2464,31 @@
   }
  ],
  "descartadas": [
+  {
+   "fuente": "NortheasternUniversity/big_patent (patentes-cpc)",
+   "motivo": "fase 2: demasiado grande (31,8 GB frente a un tope de 3 GB por tarea)",
+   "comprobado": "de memoria, sin red"
+  },
+  {
+   "fuente": "Wikinoticias en español (wikinoticias-es-categoria)",
+   "motivo": "fase 2: la ficha de derechos de Wikinoticias dice CC BY-SA (-SA)",
+   "comprobado": "de memoria, sin red"
+  },
+  {
+   "fuente": "IBM argument quality (argq-calidad)",
+   "motivo": "fase 2: cabecera cc-by-3.0 pero el cuerpo de la tarjeta dice CC BY-SA 3.0 (-SA)",
+   "comprobado": "de memoria, sin red"
+  },
+  {
+   "fuente": "lukaemon/bbh (bbh-deportes)",
+   "motivo": "fase 2: la tarjeta no declara licencia",
+   "comprobado": "de memoria, sin red"
+  },
+  {
+   "fuente": "PlanTL-GOB-ES/sts-es (sts-es)",
+   "motivo": "fase 2: la tarjeta no declara licencia",
+   "comprobado": "de memoria, sin red"
+  },
   {
    "fuente": "fancyzhx/ag_news",
    "motivo": "licencia solo de investigación no comercial y noticias con copyright",

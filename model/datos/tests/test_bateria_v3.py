@@ -301,9 +301,9 @@ def test_auditar_log(corrida, tmp_path):
 
 
 # ----------------------------------------------------------------------------------------------------------------- bloque informativo y recuento por idioma (W3b)
-def test_informativas_son_los_seis_benchmarks_y_no_cuentan():
+def test_informativas_son_los_cinco_benchmarks_y_no_cuentan():
     inf = {c["nombre"] for c in CANDIDATAS if c.get("bloque") == "informativo"}
-    assert inf == {"mmmlu-asignatura-es", "bbh-deportes", "gsm8k-pasos", "math-nivel", "strategyqa-si-no", "pubmedqa-si-no"}
+    assert inf == {"mmmlu-asignatura-es", "gsm8k-pasos", "math-nivel", "strategyqa-si-no", "pubmedqa-si-no"}
     assert all(c["motivo_bloque"] == "benchmark público, probable contaminación de L3" for c in CANDIDATAS if c["nombre"] in inf)
     m = json.loads((b.AQUI / "bateria-v3-manifiesto.json").read_text(encoding="utf-8"))
     assert {t["nombre"] for t in m["tareas"] if t["bloque"] == "informativo"} == inf
