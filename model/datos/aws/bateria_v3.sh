@@ -2,9 +2,9 @@
 CHISPA_S3=${CHISPA_S3_LOCAL:-__CHISPA_S3__}   # CHISPA_S3_LOCAL (con CHISPA_LOCAL=1): directorio en vez de S3, solo para pruebas en seco
 # Batería v3, FASE 2: hace en la propia instancia las huellas de v2 (dev y selladas) y del entrenamiento (fuentes públicas), baja las candidatas por su URL y revisión, lee y guarda cada licencia,
 #   comprueba la lista admitida, mide solapes, parte, sella y sube. Los textos de v2 y del entrenamiento NO salen de la instancia: solo hashes y sketches (y el log se audita contra ellos).
-# Máquina: c7i.xlarge (4 vCPU, 8 GB), volumen raíz >= 30 GB, rol chispa-pruebas-ec2 (sin ListBucket), CON red saliente (Hugging Face, NOAA, GitHub...). NO lanzar sin que Juan lo decida.
+# Máquina: c7i.xlarge (4 vCPU, 8 GB), volumen raíz de 80 GB (tsjev se baja fichero a fichero: el mayor pesa hasta 40 GB), rol chispa-pruebas-ec2 (sin ListBucket), CON red saliente (Hugging Face, NOAA, GitHub...). NO lanzar sin que Juan lo decida.
 # COSTE: tope duro CHISPA_MIN = 90 min con autoapagado (shutdown -h +90) -> 90/60 h x 0,1785 USD/h (el que usa LEEME §19.3 para c7i.xlarge en us-east-1; COMPROBAR en la consola: otra región o un precio
-#   vigente distinto cambian la cuenta: a 0,20 USD/h serían 0,30) = 0,268 USD, más ~0,015 USD de volumen de 30 GB (gp3) = ~0,28 USD < 0,3 USD. Sin GPU, sin llamadas de pago a ningún LLM.
+#   vigente distinto cambian la cuenta: a 0,20 USD/h serían 0,30) = 0,268 USD, más ~0,013 USD de volumen de 80 GB (gp3: 80 × 0,08 USD/GB-mes ÷ 730 h × 1,5 h) = ~0,281 USD < 0,3 USD. Sin GPU, sin llamadas de pago a ningún LLM.
 # Lee por nombre exacto $CHISPA_S3/codigo.tgz y los dos .tgz de v2 de abajo (el rol no tiene ListBucket; sha256 comprobados antes de abrirlos); escribe $CHISPA_S3/{manifiesto.json,licencias.tgz,datos-sellados.tgz,resumen.json,reservas-v2.json,log.txt,listo}
 # y espera $CHISPA_S3/verificado. NUNCA sube texto de test fuera de datos-sellados.tgz ni lo imprime: el log se audita antes de subirlo (si trae texto de test no se sube).
 MIN=${CHISPA_MIN:-90}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-5}

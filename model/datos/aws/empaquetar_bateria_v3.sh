@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Batería v3, fase 2: empaqueta lo que lee bateria_v3.sh y escribe su user-data. NO sube ni lanza nada: se sube a mano, por nombre exacto, a
-# s3://chispa-pruebas-879381269751/bateria-v3-SHA/codigo.tgz, y el ud se lanza (si Juan lo decide) en una c7i.xlarge con volumen >= 30 GB.
+# s3://chispa-pruebas-879381269751/bateria-v3-SHA/codigo.tgz, y el ud se lanza (si Juan lo decide) en una c7i.xlarge con volumen de 80 GB.
 #   codigo.tgz    de `git archive SHA`: model/__init__.py, model/datos/{__init__,bateria_v3*.py}, model/datos/bateria-v3-manifiesto.json, model/datos/aws/bateria_v3_fases.sh y
 #                 model/alt/manifiesto-entrenamiento.json (las fuentes públicas del entrenamiento de las que el ud saca huellas).
 #   Ya no hay huellas.tgz: el ud baja dev.tgz y selladas.tgz de v2 (nombre exacto y sha256 fijos en el propio ud) y hace TODAS las huellas dentro de la c7i.
@@ -42,4 +42,4 @@ grep -n '__[A-Z0-9_]*__' "$ud" | grep -v 'CHISPA_S3_LOCAL' && { echo "quedan pla
 bash -n <(git show "$sha:model/datos/aws/bateria_v3_fases.sh")
 (cd "$sal" && ls -l codigo.tgz && shasum -a 256 codigo.tgz)
 echo "ud: $ud ($(wc -c < "$ud") bytes, sha256 $(shf "$ud")); tareas=$ntareas"
-echo "sube a s3://chispa-pruebas-879381269751/bateria-v3-$sha/: codigo.tgz; lanza $ud en una c7i.xlarge con volumen >= 30 GB (tope 90 min, ~0,28 USD)"
+echo "sube a s3://chispa-pruebas-879381269751/bateria-v3-$sha/: codigo.tgz; lanza $ud en una c7i.xlarge con volumen de 80 GB (tope 90 min, ~0,28 USD)"
