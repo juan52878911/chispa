@@ -36,10 +36,11 @@ udd=${CHISPA_UD_DIR:-model/datos/aws/lanzados}; mkdir -p "$udd"
 ud=$udd/ud-bateria-v3-$sha.sh
 git show "$sha:model/datos/aws/bateria_v3.sh" | sed -e "s#__CHISPA_S3__#s3://chispa-pruebas-879381269751/bateria-v3-$sha#" -e "s#__COD_SHA256__#$(shf "$sal/codigo.tgz")#" \
   -e "s#__MAN_SHA256__#$(shf "$t/model/datos/bateria-v3-manifiesto.json")#" -e "s#__N_TAREAS__#$ntareas#" > "$ud"
+cp "$sal/codigo.tgz" "$udd/codigo-bateria-v3-$sha.tgz"      # el tgz no es reproducible byte a byte: se guarda al lado del ud (su sha256 va dentro del ud) para subir ESE
 bash -n "$ud"
 grep -n '__[A-Z0-9_]*__' "$ud" | grep -v 'CHISPA_S3_LOCAL' && { echo "quedan placeholders sin sustituir" >&2; exit 1; }
 [ "$(wc -c < "$ud")" -lt 15500 ] || { echo "el ud pesa $(wc -c < "$ud") bytes: el user-data de EC2 admite 16384 como máximo (objetivo < 15500)" >&2; exit 1; }
 bash -n <(git show "$sha:model/datos/aws/bateria_v3_fases.sh")
 (cd "$sal" && ls -l codigo.tgz && shasum -a 256 codigo.tgz)
 echo "ud: $ud ($(wc -c < "$ud") bytes, sha256 $(shf "$ud")); tareas=$ntareas"
-echo "sube a s3://chispa-pruebas-879381269751/bateria-v3-$sha/: codigo.tgz; lanza $ud en una c7i.xlarge con volumen de 80 GB (tope 90 min, ~0,28 USD)"
+echo "sube a s3://chispa-pruebas-879381269751/bateria-v3-$sha/: codigo.tgz (el de $sal o $udd/codigo-bateria-v3-$sha.tgz, el mismo); lanza $ud en una c7i.xlarge con volumen de 80 GB (tope 90 min, ~0,28 USD)"
