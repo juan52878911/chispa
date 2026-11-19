@@ -1,0 +1,31 @@
+{
+ "ronda": "R11: tres alternativas nuevas en las 6 tareas de DESARROLLO de la batería v2 (las selladas no se abren). Todo «pasa» es indicativo: confirmarlo exige la batería v3.",
+ "datos": "dev.tgz de v2 (6 jsonl, 2930 filas de test y 728 de soporte); test entero, la misma partición y las mismas filas que T3, T3a y T3b",
+ "metrica": "exactitud por tarea con lineas_base_v2.evaluar_tarea (choice: argmax; score: la mediana de la distribución, como T3 y T3a, salvo donde se diga); macro = media simple de las 6",
+ "ic": "IC95 de la diferencia de macro por bootstrap pareado: en cada uno de 2000 remuestreos (semilla 0) se remuestrean con reemplazo las filas de cada tarea, con los mismos índices para los dos sistemas",
+ "A": {
+  "modelo": "Qwen/Qwen3-Embedding-0.6B @ 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3 (Apache-2.0)",
+  "vectores": "último token (relleno a la izquierda), normalizados, 320 tokens; textos de soporte y de test con la instrucción de consulta del modelo: «Instruct: Classify the text to answer this question: <pregunta>\\nQuery:<texto>»; descripciones de etiqueta sin instrucción",
+  "referencia": "kNN-e5 (intfloat/multilingual-e5-small @ 614241f6, el código de T3a: media de tokens, «query: », 256 tokens, CPU) calculado en la misma máquina",
+  "knn": "8 de oro por clase (fusion_knn_l2.muestrear(ys, 8, 0)), temperatura 0,05; principal: 32 vecinos (la configuración de T3a); informativo: 8 vecinos",
+  "zero_shot": "informativo: coseno con la descripción de cada etiqueta (o su id), softmax(cos/0,05); el mismo con e5 («query: » en los dos lados)",
+  "pasa": "macro(kNN Qwen3-Emb, 32 vecinos) − macro(kNN-e5, 32 vecinos) >= +0,020 y el límite inferior de su IC95 > 0"
+ },
+ "B": {
+  "modelo": "Qwen/Qwen3-Reranker-0.6B @ e61197ed45024b0ed8a2d74b80b4d909f1255473 (Apache-2.0)",
+  "pregunta": "una por etiqueta, con la plantilla de la tarjeta: <Instruct>: <pregunta de la tarea> / <Query>: <texto, recortado a 384 tokens> / <Document>: <descripción de la etiqueta o su id>; se lee el logit del token «yes» en la última posición",
+  "decision": "choice: la etiqueta con el mayor logit de «yes»; score: esperanza ordinal (lineas_base_v2.top1 con esp=True) sobre softmax de los logits de «yes» entre las opciones de la fila",
+  "opciones": "todas las de la fila (finanzas: las 59); informativo: finanzas restringida a las 10 candidatas de la preselección top-k que usó el 4B (T3b)",
+  "referencias": "4B zero-shot por logprobs: T3 (pred/4b-zs) en 5 tareas y T3b (pred/zs-topk) en finanzas, como en E; L2 zero-shot de T3a (pred/l2-zs)",
+  "latencia": "p50 por consulta sobre las 90 filas de lat1 de T3 (las 15 primeras de test de cada tarea), una consulta cada vez con todas sus etiquetas en un lote, con la tokenización y cuda.synchronize; referencia: el 4B por vLLM en g5 (lat1-4b-zs de T3), p50 = 104,5 ms",
+  "lat_ref_4b_ms_p50": 104.5,
+  "pasa": "macro(B) > macro(4B zs), o bien macro(B) >= macro(4B zs) − 0,020 con latencia p50 del 4B / latencia p50 de B >= 5"
+ },
+ "C": {
+  "modelo": "Horizon-Labs/multilingual-zeroshot-small @ 17af5f8a728d101ce33a9bffad227b0cd005e95e",
+  "estado": "no medido: licencia",
+  "motivo": "los pesos son Apache-2.0 sobre mmBERT-small (MIT), pero la tarjeta declara como datos de entrenamiento SNLI (CC BY-SA 4.0) y MultiNLI (con partes CC BY-SA 3.0); no es verificable como libre de -SA",
+  "pasa": "superaría a L2-zs en >= +5 puntos de macro (no se evalúa)"
+ },
+ "opcional": "informativo, sin veredicto: la cascada de E (cascada_sin_fondo, su criterio y su partición) con el kNN de Qwen3-Emb como L2"
+}
