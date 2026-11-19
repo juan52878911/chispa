@@ -6,12 +6,13 @@
 
 muestra   las M primeras filas por tarea (por el orden del fichero) en el formato del soporte de `chispa-banco-qwen` (tarea, id, etiqueta, pregunta, tipo, opciones, texto): se codifican con
           esa herramienta (`-k 0`) y salen `banco-<tarea>.npy` con los vectores de las consultas, por la misma ruta de codificación que el servidor.
-escribir  del registro del servidor (`chispa-server -demos-log`: {id, tarea, demos: [ids]}) saca, por tarea, `<tarea>.jsonl` con {id, ejemplos: [ids]} (el formato de `llm_logprobs.py --demos`)
+escribir  del registro del servidor (`chispa-server -demos-log`: {id, estado_sha, tarea, demos: [ids]}; la fila se busca por el sha256 de su texto) saca, por tarea, `<tarea>.jsonl` con {id, ejemplos: [ids]} (el formato de `llm_logprobs.py --demos`)
           y las filas de test que tienen registro (las demás no se pueden puntuar con las mismas demostraciones y cuentan como sin cobertura en Python).
 comparar  la elección INDEPENDIENTE de Python (`lineas_base_v2_pred.demos_fila` sobre los vectores del banco y los de la muestra) frente a las demostraciones del registro del servidor, misma fila
           y mismo orden. Con --hash-dim (solo la prueba en seco) los vectores de la muestra salen de la función hash del codificador de prueba del servidor.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -41,11 +42,15 @@ def cmd_muestra(a):
     print("muestra %d filas de %d tareas" % (len(out), len(cuenta)))
 
 
+def sha_estado(texto):
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()[:16]
+
+
 def registro(ruta):
-    """id -> (tarea, demos); si una fila se repite, vale la última."""
+    """(tarea, estado_sha) -> demos: el servidor registra cada pregunta por el sha256 del texto (el id de la pregunta es el mismo en todas las peticiones); si se repite, vale la última."""
     out = {}
     for r in leer(ruta):
-        out[(r["tarea"], r["id"])] = r["demos"]
+        out[(r["tarea"], r["estado_sha"])] = r["demos"]
     return out
 
 
@@ -54,8 +59,8 @@ def cmd_escribir(a):
     n = 0
     for p in sorted(Path(a.test).glob("*.jsonl")):
         t = p.stem
-        filas = [r for r in leer(p) if (t, r["id"]) in reg]
-        escribir(Path(a.salida) / (t + ".jsonl"), [{"id": r["id"], "ejemplos": reg[(t, r["id"])]} for r in filas])
+        filas = [r for r in leer(p) if (t, sha_estado(r["texto"])) in reg]
+        escribir(Path(a.salida) / (t + ".jsonl"), [{"id": r["id"], "ejemplos": reg[(t, sha_estado(r["texto"]))]} for r in filas])
         escribir(Path(a.salida_test) / (t + ".jsonl"), filas)
         n += len(filas)
     print("demos de %d filas" % n)
@@ -87,7 +92,7 @@ def cmd_comparar(a):
         distintas = []
         for j, r in enumerate(filas):
             py = [pool[i]["id"] for i in demos_fila(S[j], ys, a.k)]
-            go = reg.get((t, r["id"]))
+            go = reg.get((t, sha_estado(r["texto"])))
             if go is None:
                 faltan += 1
             elif go == py:

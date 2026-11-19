@@ -192,11 +192,11 @@ type L2KNN struct {
 	cod      Codificador
 	met      *Metricas
 	cfg      ConfigKNN
-	cacheVec *cacheVectores                            // vectores de los examples de la petición
-	regDemos func(id, tarea string, demos []EjemploFS) // diagnóstico: ver ConRegistroDemos
-	demosK   int                                       // > 0: demostraciones por consulta (kNN sobre el soporte), ver l3_demos_knn.go
-	sinTopK  bool                                      // L3 no usa el top-k del kNN (l3.top_k_knn = 0 o l3.top_k explícito): en modo gpu el kNN no tiene nada que hacer
-	Avisos   []string                                  // cosas dudosas al cargar (tareas con oro y sin ejemplos fs)
+	cacheVec *cacheVectores                                    // vectores de los examples de la petición
+	regDemos func(p Pregunta, tarea string, demos []EjemploFS) // diagnóstico: ver ConRegistroDemos
+	demosK   int                                               // > 0: demostraciones por consulta (kNN sobre el soporte), ver l3_demos_knn.go
+	sinTopK  bool                                              // L3 no usa el top-k del kNN (l3.top_k_knn = 0 o l3.top_k explícito): en modo gpu el kNN no tiene nada que hacer
+	Avisos   []string                                          // cosas dudosas al cargar (tareas con oro y sin ejemplos fs)
 }
 
 // EjemplosDe da los ejemplos de oro del few-shot de L3 para una pregunta (la tarea cuyo texto de `question` coincide); nil si no hay.
@@ -464,7 +464,7 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 			r.Demos = k.demosDeTarea(tv, q)
 		}
 		if k.regDemos != nil {
-			k.regDemos(p.ID, nombre, r.Demos)
+			k.regDemos(p, nombre, r.Demos)
 		}
 	}
 	if d.Escala && p.Kind == KindChoice && len(ops) > L3TopKKNNDesde { // desempate de la preselección top-k de L3

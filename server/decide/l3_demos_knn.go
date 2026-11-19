@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -170,20 +171,22 @@ func conDemosDeL2(ctx context.Context, previas Previas) context.Context {
 }
 
 // ConRegistroDemos llama a f con las demostraciones elegidas de cada pregunta (diagnóstico: flag -demos-log del servidor); nil = nada.
-func (k *L2KNN) ConRegistroDemos(f func(id, tarea string, demos []EjemploFS)) *L2KNN {
+func (k *L2KNN) ConRegistroDemos(f func(p Pregunta, tarea string, demos []EjemploFS)) *L2KNN {
 	k.regDemos = f
 	return k
 }
 
-// NuevoRegistroDemos escribe cada selección como una línea jsonl {id, tarea, demos: [ids de los ejemplos, en el orden del prompt]} en w.
-func NuevoRegistroDemos(w io.Writer) func(id, tarea string, demos []EjemploFS) {
+// NuevoRegistroDemos escribe cada selección como una línea jsonl {id, estado_sha, tarea, demos: [ids de los ejemplos, en el orden del prompt]} en w. El id es el de la pregunta
+// (el mismo en todas las peticiones de un cliente); la fila se identifica por estado_sha, los 16 primeros hex del sha256 del texto del mensaje (`state`).
+func NuevoRegistroDemos(w io.Writer) func(p Pregunta, tarea string, demos []EjemploFS) {
 	var mu sync.Mutex
-	return func(id, tarea string, demos []EjemploFS) {
+	return func(p Pregunta, tarea string, demos []EjemploFS) {
+		h := sha256.Sum256([]byte(p.Estado))
 		ids := make([]string, len(demos))
 		for i, d := range demos {
 			ids[i] = d.ID
 		}
-		b, _ := json.Marshal(map[string]any{"id": id, "tarea": tarea, "demos": ids})
+		b, _ := json.Marshal(map[string]any{"id": p.ID, "estado_sha": hex.EncodeToString(h[:8]), "tarea": tarea, "demos": ids})
 		mu.Lock()
 		w.Write(append(b, '\n'))
 		mu.Unlock()

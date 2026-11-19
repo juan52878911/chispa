@@ -55,7 +55,7 @@ def test_comparar_iguales_y_distintas(tmp_path):
         ys = [e["etiqueta"] for e in pool]
         for r in [r for r in filas if r["tarea"] == t]:
             S = (w1_banco_falso.vector(r["texto"]) @ X.T)
-            reg.append({"id": r["id"], "tarea": t, "demos": [pool[i]["id"] for i in demos_fila(S, ys, 8)]})
+            reg.append({"id": "q", "estado_sha": w1_demos.sha_estado(r["texto"]), "tarea": t, "demos": [pool[i]["id"] for i in demos_fila(S, ys, 8)]})
     log = tmp_path / "log.jsonl"
     w1_demos.escribir(log, reg)
     sal = tmp_path / "sel.json"
@@ -70,4 +70,4 @@ def test_comparar_iguales_y_distintas(tmp_path):
     w1_demos.main(["escribir", "--log", str(log), "--test", str(ent / "test"), "--salida", str(tmp_path / "demos"), "--salida-test", str(tmp_path / "td")])
     t = reg[0]["tarea"]
     d = {r["id"]: r["ejemplos"] for r in w1_demos.leer(tmp_path / "demos" / (t + ".jsonl"))}
-    assert d[reg[0]["id"]] == reg[0]["demos"] and set(d) == {r["id"] for r in w1_demos.leer(tmp_path / "td" / (t + ".jsonl"))}
+    assert list(d.values())[0] == reg[0]["demos"] and w1_demos.sha_estado(w1_demos.leer(tmp_path / "td" / (t + ".jsonl"))[0]["texto"]) == reg[0]["estado_sha"] and set(d) == {r["id"] for r in w1_demos.leer(tmp_path / "td" / (t + ".jsonl"))}
