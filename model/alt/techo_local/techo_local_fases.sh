@@ -150,7 +150,7 @@ medir_modelo() {
   if [ "$LOCAL" != 1 ] && [ "$M" = qwen3-30b-a3b ]; then
     MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1); [ "${MIB:-0}" -ge 40000 ] || { estado "$M" "OMITIDO: GPU de ${MIB} MiB, el FP8 de 31 GB no cabe"; return; }
   fi
-  echo "== modelo $M $(date -u +%T) quedan $(quedan_min) min"
+  echo "== modelo $M $(date -u +%T) quedan $(quedan_min) min"; mkdir -p "$PRED/$M"
   local t1=$(date +%s) dl; dl=$(limite "$M_CAP")
   if [ "$LOCAL" = 1 ]; then URL=${CHISPA_LOCAL_URL:?en local hace falta CHISPA_LOCAL_URL}; estado "servidor-$M" "OMITIDO (local: $URL)"
   else

@@ -18,7 +18,7 @@ export HOME="${HOME:-/root}"; T0=$(date +%s)
 BASE=${CHISPA_BASE:-/opt/chispa}; [ "$LOCAL" = 1 ] && BASE=${CHISPA_BASE:-/tmp/chispa-tl}
 mkdir -p "$BASE/res/pred"; exec > >(tee -a "$BASE/log.txt") 2>&1
 echo "== arranque techo-local $(date -u +%FT%TZ) local=$LOCAL tope=${MIN} min modelos=$MODELOS"
-OUT=$BASE/res; PRED=$OUT/pred; FALLO=""; VP=""
+OUT=$BASE/res; PRED=$OUT/pred; FALLO=""; VP=""; WATCH=0
 quedan_min() { echo $(( MIN - ($(date +%s) - T0) / 60 )); }
 s3cp() { if [ "$LOCAL" = 1 ]; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; else aws s3 cp --only-show-errors "$1" "$2"; fi; }
 estado() { printf '%s\t%s\n' "$1" "$2" >> "$OUT/estado.tsv"; echo "[$1] $2"; }
@@ -26,7 +26,7 @@ fallo() { echo "FALLO: $*"; FALLO="${FALLO:+$FALLO; }$*"; }
 sha_ok() { if command -v sha256sum >/dev/null; then echo "$1  $2" | sha256sum -c --quiet -; else [ "$(shasum -a 256 "$2" | cut -d' ' -f1)" = "$1" ]; fi; }
 parar() { pkill -TERM -f "$1" 2>/dev/null; for _ in $(seq 30); do pgrep -f "$1" > /dev/null || return 0; sleep 2; done; pkill -KILL -f "$1" 2>/dev/null; sleep 3; }
 subir_y_apagar() {
-  trap - EXIT; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"
+  trap - EXIT; kill "${WATCH:-0}" 2>/dev/null; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"
   [ -d "$BASE/codigo/model/alt" ] && [ -d "$BASE/dev" ] && [ -f "$BASE/t/rubrica.json" ] && ( cd "$BASE/codigo" && PYTHONPATH=$BASE/codigo timeout 300 "${PY:-python3}" -m model.alt.techo_local medir --dev "$BASE/dev" \
       --pred "$PRED" --rubrica "$BASE/t/rubrica.json" --licencias "$OUT/licencias" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null
   cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
@@ -41,7 +41,7 @@ subir_y_apagar() {
 }
 trap subir_y_apagar EXIT; trap 'exit 143' TERM INT HUP
 cierre() { echo "== listo $(date -u +%FT%TZ) fallo=${FALLO:-no} ($(( $(date +%s) - T0 )) s)"; exit 0; }
-( while sleep 30; do [ "$(quedan_min)" -le $((5 + ESPERA_MIN)) ] && { echo "== tope: se cierra"; pkill -TERM -f techo_local_cliente; pkill -TERM -f llm_logprobs; pkill -TERM -f model.alt.techo_local; pkill -TERM -f vllm.entrypoints; break; }; done ) &
+( while sleep 30; do [ "$(quedan_min)" -le $((5 + ESPERA_MIN)) ] && { echo "== tope: se cierra"; pkill -TERM -f techo_local_cliente; pkill -TERM -f llm_logprobs; pkill -TERM -f model.alt.techo_local; pkill -TERM -f vllm.entrypoints; break; }; done ) & WATCH=$!
 
 echo "== 1. entradas $(date -u +%T)"
 mkdir -p "$BASE/in" "$BASE/codigo" "$BASE/dev"
