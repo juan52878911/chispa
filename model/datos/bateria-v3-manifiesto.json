@@ -273,14 +273,17 @@
    "dominio": "meteorología",
    "familia": "noaa-storm-events",
    "fuente": {
-    "tipo": "url",
-    "url": "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
+    "tipo": "ckan",
+    "busqueda": "NOAA Storm Events Database",
+    "titulo_regex": "storm events",
+    "recurso_regex": "noaa\\.gov",
+    "descarga": "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
     "indice": true,
     "patron": "StormEvents_details-ftp_v1\\.0_d2022_c\\d+\\.csv\\.gz",
     "max_gb": 1
    },
    "rev": null,
-   "url_ficha": "https://www.ncei.noaa.gov/stormevents/",
+   "url_ficha": "https://catalog.data.gov/dataset?q=NOAA+Storm+Events+Database",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -295,7 +298,7 @@
    "confianza_id": "media",
    "limpieza_esperada": "alta",
    "no_solapa": "relatos de fenómenos meteorológicos de la NOAA (obra del gobierno de EE. UU.); ni v2 ni el entrenamiento son de meteorología",
-   "riesgos": "URL de la ficha y de la licencia sin confirmar; la licencia se comprueba contra el texto de la ficha (si la página no dice dominio público, queda fuera)",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); URL de la ficha y de la licencia sin confirmar; la licencia se comprueba contra el texto de la ficha (si la página no dice dominio público, queda fuera)",
    "pregunta": "¿Qué tipo de fenómeno meteorológico describe el relato?",
    "lector": {
     "formato": "csv",
@@ -317,8 +320,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|no restrictions|U\\.S\\. Government"
+   "motivo_fuera": ""
   },
   {
    "nombre": "nhtsa-componente",
@@ -328,13 +330,16 @@
    "dominio": "automoción",
    "familia": "nhtsa-quejas",
    "fuente": {
-    "tipo": "url",
-    "url": "https://static.nhtsa.gov/odi/ffdd/cmpl/FLAT_CMPL.zip",
+    "tipo": "ckan",
+    "busqueda": "NHTSA complaints Office of Defects Investigation",
+    "titulo_regex": "complaint",
+    "recurso_regex": "nhtsa\\.gov",
+    "descarga": "https://static.nhtsa.gov/odi/ffdd/cmpl/FLAT_CMPL.zip",
     "descomprimir": true,
     "max_gb": 3
    },
    "rev": null,
-   "url_ficha": "https://www.nhtsa.gov/nhtsa-datasets-and-apis",
+   "url_ficha": "https://catalog.data.gov/dataset?q=NHTSA+complaints",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -349,7 +354,7 @@
    "confianza_id": "media",
    "limpieza_esperada": "alta",
    "no_solapa": "quejas de conductores a la NHTSA (obra del gobierno de EE. UU.); es «quejas» como dominio vecino de cfpb-quejas (v2) pero otra fuente, otro sector y otra tarea",
-   "riesgos": "fichero sin cabecera: las posiciones de columna (COMPDESC=12, CDESCR=20) son de memoria y el sondeo las comprueba; el relato puede traer datos personales sueltos (no se imprimen)",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); fichero sin cabecera: las posiciones de columna (COMPDESC=12, CDESCR=20) son de memoria y el sondeo las comprueba; el relato puede traer datos personales sueltos (no se imprimen)",
    "pregunta": "¿Qué componente del vehículo describe la queja?",
    "lector": {
     "formato": "tsv",
@@ -379,8 +384,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|U\\.S\\. Government|open data|data\\.gov"
+   "motivo_fuera": ""
   },
   {
    "nombre": "neiss-parte-cuerpo",
@@ -390,12 +394,15 @@
    "dominio": "lesiones por productos",
    "familia": "cpsc-neiss",
    "fuente": {
-    "tipo": "url",
-    "url": "https://www.cpsc.gov/cgibin/NEISSQuery/Data/Archived%20Data/2022/neiss2022.tsv",
+    "tipo": "ckan",
+    "busqueda": "National Electronic Injury Surveillance System NEISS",
+    "titulo_regex": "neiss|injury surveillance",
+    "recurso_regex": "cpsc\\.gov",
+    "descarga": "https://www.cpsc.gov/cgibin/NEISSQuery/Data/Archived%20Data/2022/neiss2022.tsv",
     "max_gb": 1
    },
    "rev": null,
-   "url_ficha": "https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data",
+   "url_ficha": "https://catalog.data.gov/dataset?q=NEISS",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -410,7 +417,7 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "relatos de urgencias por productos de consumo (CPSC, EE. UU.); distinto de osha-hospitalizado (otra agencia, otro entorno): son dominios vecinos, una sola familia por agencia",
-   "riesgos": "URL de descarga de memoria (si da 404 queda fuera); la tabla de códigos de parte del cuerpo es de memoria y se comprueba con el sondeo",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); URL de descarga de memoria (si da 404 queda fuera); la tabla de códigos de parte del cuerpo es de memoria y se comprueba con el sondeo",
    "pregunta": "¿Qué parte del cuerpo se lesionó?",
    "lector": {
     "formato": "tsv",
@@ -454,8 +461,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|U\\.S\\. Government|open data"
+   "motivo_fuera": ""
   },
   {
    "nombre": "nsf-direccion",
@@ -465,13 +471,16 @@
    "dominio": "financiación de la ciencia",
    "familia": "nsf-awards",
    "fuente": {
-    "tipo": "url",
-    "url": "https://www.nsf.gov/awardsearch/download?DownloadFileName=2022&All=true",
+    "tipo": "ckan",
+    "busqueda": "NSF Award Search awards",
+    "titulo_regex": "award",
+    "recurso_regex": "nsf\\.gov",
+    "descarga": "https://www.nsf.gov/awardsearch/download?DownloadFileName=2022&All=true",
     "max_gb": 1,
     "descomprimir": true
    },
    "rev": null,
-   "url_ficha": "https://www.nsf.gov/awardsearch/download.jsp",
+   "url_ficha": "https://catalog.data.gov/dataset?q=NSF+awards",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -486,7 +495,7 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "resúmenes de proyectos de la NSF (EE. UU.); v2 tiene arxiv (artículos) pero no concesiones de financiación",
-   "riesgos": "lector XML escrito SIN ver el esquema real (tolerante): si no hay registros <Award> con AbstractNarration y Organization/Directorate/LongName queda fuera con las etiquetas vistas; muchos resúmenes terminan con el mismo párrafo estándar de la NSF",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); lector XML escrito SIN ver el esquema real (tolerante): si no hay registros <Award> con AbstractNarration y Organization/Directorate/LongName queda fuera con las etiquetas vistas; muchos resúmenes terminan con el mismo párrafo estándar de la NSF",
    "pregunta": "¿Qué dirección de la NSF financia el proyecto?",
    "lector": {
     "formato": "xml",
@@ -513,8 +522,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|U\\.S\\. Government"
+   "motivo_fuera": ""
   },
   {
    "nombre": "wikinoticias-es-categoria",
@@ -621,18 +629,19 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "resúmenes de tesis de licenciatura de la UNAM (español de México); v2 y el entrenamiento no traen tesis ni exámenes",
-   "riesgos": "id, formato y columnas de memoria (puede ser csv o json y llamarse distinto); pocas carreras y pocos miles de filas; licencia de la tarjeta sin confirmar",
+   "riesgos": "columnas comprobadas en fase 2 (cabecera «texto|titulo|carrera», delimitador «|»); pocas carreras y pocos miles de filas; licencia de la tarjeta sin confirmar",
    "pregunta": "¿De qué carrera es la tesis?",
    "lector": {
     "formato": "csv",
+    "separador": "|",
     "ficheros": [
      "**/*.csv"
     ],
     "texto": [
-     "Título",
-     "Resumen"
+     "titulo",
+     "texto"
     ],
-    "etiqueta": "Carrera",
+    "etiqueta": "carrera",
     "min_por_clase": 40
    },
    "fichero_soporte": "soporte/unam-tesis-carrera.jsonl",
@@ -717,12 +726,15 @@
    "dominio": "retiradas de productos",
    "familia": "cpsc-recalls",
    "fuente": {
-    "tipo": "url",
-    "url": "https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=2015-01-01&RecallDateEnd=2024-12-31",
+    "tipo": "ckan",
+    "busqueda": "CPSC recalls",
+    "titulo_regex": "recall",
+    "recurso_regex": "cpsc\\.gov|saferproducts\\.gov",
+    "descarga": "https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=2015-01-01&RecallDateEnd=2024-12-31",
     "max_gb": 1
    },
    "rev": null,
-   "url_ficha": "https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information",
+   "url_ficha": "https://catalog.data.gov/dataset?q=CPSC+recalls",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -737,7 +749,7 @@
    "confianza_id": "baja",
    "limpieza_esperada": "alta",
    "no_solapa": "avisos de retirada de productos de consumo de la CPSC (EE. UU.); distinto de neiss (urgencias) aunque sea la misma agencia: otra fuente, otro texto y otra tarea",
-   "riesgos": "URL de la API y de su ficha de memoria; la API puede pedir parámetros o limitar filas; la etiqueta es Hazards[0].Name (nombres libres: se quedan las 10 más frecuentes)",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); URL de la API y de su ficha de memoria; la API puede pedir parámetros o limitar filas; la etiqueta es Hazards[0].Name (nombres libres: se quedan las 10 más frecuentes)",
    "pregunta": "¿Qué peligro motiva la retirada del producto?",
    "lector": {
     "formato": "jsonl",
@@ -762,8 +774,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|U\\.S\\. Government|no restrictions"
+   "motivo_fuera": ""
   },
   {
    "nombre": "blimp-aceptable",
@@ -896,13 +907,16 @@
    "dominio": "farmacovigilancia",
    "familia": "vaers",
    "fuente": {
-    "tipo": "url",
-    "url": "https://vaers.hhs.gov/eSubDownload/index.jsp?fn=2022VAERSData.zip",
+    "tipo": "ckan",
+    "busqueda": "Vaccine Adverse Event Reporting System VAERS",
+    "titulo_regex": "vaers|vaccine adverse",
+    "recurso_regex": "vaers\\.hhs\\.gov|cdc\\.gov",
+    "descarga": "https://vaers.hhs.gov/eSubDownload/index.jsp?fn=2022VAERSData.zip",
     "descomprimir": true,
     "max_gb": 1
    },
    "rev": null,
-   "url_ficha": "https://vaers.hhs.gov/data/datasets.html",
+   "url_ficha": "https://catalog.data.gov/dataset?q=VAERS",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -917,7 +931,7 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "informes de eventos adversos (CDC/FDA, EE. UU.); sin equivalente en v2 ni en el entrenamiento",
-   "riesgos": "texto sanitario de personas (anonimizado; no se imprime); «vacío» en HOSPITAL se toma como «no» (etiqueta ruidosa); URL de descarga de memoria",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); texto sanitario de personas (anonimizado; no se imprime); «vacío» en HOSPITAL se toma como «no» (etiqueta ruidosa); URL de descarga de memoria",
    "pregunta": "¿Acabó hospitalizada la persona?",
    "lector": {
     "formato": "csv",
@@ -944,8 +958,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|public use|U\\.S\\. Government"
+   "motivo_fuera": ""
   },
   {
    "nombre": "wnli-es",
@@ -958,9 +971,10 @@
     "tipo": "hf",
     "repo": "PlanTL-GOB-ES/wnli-es",
     "patrones": [
+     "*.csv",
+     "*.tsv",
      "*.json*",
      "*.parquet",
-     "*.csv",
      "README.md"
     ],
     "max_gb": 1
@@ -981,13 +995,14 @@
    "confianza_id": "media",
    "limpieza_esperada": "media",
    "no_solapa": "WNLI no es XNLI (que está fuera por -NC): otra fuente y otra tarea (Winograd); ni v2 ni el entrenamiento la traen",
-   "riesgos": "muy pequeña (decenas de filas de test) y con adversarios conocidos (el WNLI original tiene train/dev mal repartidos); licencia del WNLI original sin verificar",
+   "riesgos": "la fase 2 falló con JSON de varias líneas (ahora se lee entero) y la tarjeta cita tres ficheros tsv (train, dev, test sin etiquetas: solo se usan train y dev, sin partición oficial); muy pequeña (decenas de filas de test) y con adversarios conocidos (el WNLI original tiene train/dev mal repartidos); licencia del WNLI original sin verificar",
    "pregunta": "¿Se sigue la segunda frase de la primera?",
    "lector": {
-    "formato": "jsonl",
+    "formato": "auto",
     "ficheros": [
-     "**/*.jsonl",
-     "**/*.json"
+     "**/*train*",
+     "**/*dev*",
+     "**/*valid*"
     ],
     "texto": [
      "sentence1",
@@ -997,10 +1012,6 @@
     "mapa_etiqueta": {
      "1": "si",
      "0": "no"
-    },
-    "split_por_fichero": {
-     "train": "train",
-     "test": "valid|test"
     }
    },
    "fichero_soporte": "soporte/wnli-es.jsonl",
@@ -1023,12 +1034,15 @@
    "dominio": "seguridad laboral",
    "familia": "osha-severe-injury",
    "fuente": {
-    "tipo": "url",
-    "url": "https://www.osha.gov/sites/default/files/severeinjury.csv",
+    "tipo": "ckan",
+    "busqueda": "OSHA Severe Injury Reports",
+    "titulo_regex": "severe injury",
+    "recurso_regex": "osha\\.gov|dol\\.gov",
+    "descarga": "https://www.osha.gov/sites/default/files/severeinjury.csv",
     "max_gb": 1
    },
    "rev": null,
-   "url_ficha": "https://www.osha.gov/severeinjury",
+   "url_ficha": "https://catalog.data.gov/dataset?q=OSHA+severe+injury",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -1043,7 +1057,7 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "informes de lesiones graves en el trabajo (OSHA, EE. UU.); sin equivalente en v2 ni en el entrenamiento",
-   "riesgos": "URL del CSV de memoria (puede ser otra); etiqueta (hospitalización) sale de un campo estructurado, no del relato",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); URL del CSV de memoria (puede ser otra); etiqueta (hospitalización) sale de un campo estructurado, no del relato",
    "pregunta": "¿Fue hospitalizado el trabajador?",
    "lector": {
     "formato": "csv",
@@ -1074,8 +1088,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|U\\.S\\. Government"
+   "motivo_fuera": ""
   },
   {
    "nombre": "moral-stories-accion",
@@ -1093,7 +1106,7 @@
      "*.parquet",
      "README.md"
     ],
-    "max_gb": 1
+    "max_gb": 3
    },
    "rev": null,
    "url_ficha": "https://huggingface.co/datasets/demelin/moral_stories",
@@ -1111,7 +1124,7 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "historias morales escritas por anotadores; solapa en tema (valores) solo de lejos con hatecheck/toxicidad, pero no en fuente ni en tarea",
-   "riesgos": "el repo puede ser un script de carga; contexto + acción en un solo texto; pares moral/inmoral mantenidos juntos",
+   "riesgos": "el repo trae varias configuraciones y la fase 2 leyó una sin las columnas (ID, label, moral_action): ahora se saltan los ficheros sin situation/intention/moral_action/immoral_action y se usa la configuración completa; el repo puede ser un script de carga; contexto + acción en un solo texto; pares moral/inmoral mantenidos juntos",
    "pregunta": "¿Es moralmente aceptable la acción dada la situación y la intención?",
    "lector": {
     "formato": "jsonl",
@@ -1235,13 +1248,15 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "preguntas de sí/no de varios pasos; no hay QA en v2 ni en el entrenamiento",
-   "riesgos": "id y licencia de memoria (puede ser una copia con licencia distinta de la original); contaminación probable; pocas filas",
+   "riesgos": "la fase 2 falló con JSON de varias líneas (ahora se lee entero); id y licencia de memoria (puede ser una copia con licencia distinta de la original); contaminación probable; pocas filas",
    "pregunta": "¿Es cierta la afirmación implícita en la pregunta (sí o no)?",
    "lector": {
-    "formato": "jsonl",
+    "formato": "auto",
     "ficheros": [
      "**/*.json",
-     "**/*.jsonl"
+     "**/*.jsonl",
+     "**/*.parquet",
+     "**/*.csv"
     ],
     "texto": "question",
     "etiqueta": "answer",
@@ -1303,23 +1318,25 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "noticias en español verificadas o falsas (Spanish Fake News Corpus); v2 y el entrenamiento no traen verificación de noticias",
-   "riesgos": "id, formato, columnas y licencia de memoria; los textos son noticias de prensa de terceros (la tarjeta puede no cubrirlos: la comprobación automática decide); el corpus tiene pocas filas",
+   "riesgos": "esquema real visto en fase 2 (CATEGORY, HEADLINE, TEXT, TOPICS, SOURCE, LINK, ID: es el Spanish Fake News Corpus que se quería; CATEGORY sin mapa visible: si no es Fake/True, el motivo trae los valores); los textos son noticias de prensa de terceros (la tarjeta puede no cubrirlos: la comprobación automática decide); el corpus tiene pocas filas",
    "pregunta": "¿La noticia es falsa?",
    "lector": {
-    "formato": "csv",
+    "formato": "auto",
     "ficheros": [
-     "**/*.csv"
+     "**/*.csv",
+     "**/*.tsv",
+     "**/*.json",
+     "**/*.jsonl",
+     "**/*.parquet"
     ],
     "texto": [
-     "Titulo",
-     "Descripcion"
+     "HEADLINE",
+     "TEXT"
     ],
-    "etiqueta": "Label",
+    "etiqueta": "CATEGORY",
     "mapa_etiqueta": {
      "Fake": "si",
-     "FAKE": "si",
-     "True": "no",
-     "TRUE": "no"
+     "True": "no"
     }
    },
    "fichero_soporte": "soporte/fake-news-es.jsonl",
@@ -1860,12 +1877,15 @@
    "dominio": "ensayos clínicos",
    "familia": "clinicaltrials",
    "fuente": {
-    "tipo": "url",
-    "url": "https://clinicaltrials.gov/AllAPIJSON.zip",
+    "tipo": "ckan",
+    "busqueda": "ClinicalTrials.gov",
+    "titulo_regex": "clinicaltrials",
+    "recurso_regex": "clinicaltrials\\.gov|nih\\.gov",
+    "descarga": "https://clinicaltrials.gov/AllAPIJSON.zip",
     "max_gb": 4
    },
    "rev": null,
-   "url_ficha": "https://clinicaltrials.gov/about-site/terms-conditions",
+   "url_ficha": "https://catalog.data.gov/dataset?q=ClinicalTrials.gov",
    "url_ficha_confirmada": false,
    "licencia_esperada": "dominio-publico",
    "licencia_estado": "por verificar en fase 2",
@@ -1880,7 +1900,7 @@
    "confianza_id": "baja",
    "limpieza_esperada": "media",
    "no_solapa": "resúmenes de ensayos clínicos (NLM, EE. UU.); distinto de pubmedqa (PubMed, otra fuente y otra tarea)",
-   "riesgos": "ClinicalTrials.gov dice que cada responsable puede conservar derechos sobre su texto; la URL del volcado es de memoria; pesa varios GB (lectura en flujo)",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov (license_id; sin licencia admitida o sin recurso descargable queda fuera; la web de la agencia dio 403 en la fase 2 y no se fuerza el user-agent); ClinicalTrials.gov dice que cada responsable puede conservar derechos sobre su texto; la URL del volcado es de memoria; pesa varios GB (lectura en flujo)",
    "pregunta": "¿En qué fase (1 a 4) está el ensayo?",
    "lector": {
     "formato": "json_zip",
@@ -1908,8 +1928,7 @@
    "clases": null,
    "cifras": null,
    "solapes": null,
-   "motivo_fuera": "",
-   "licencia_regex_ficha": "public domain|no copyright|U\\.S\\. Government"
+   "motivo_fuera": ""
   },
   {
    "nombre": "msha-gravedad",
@@ -2031,6 +2050,730 @@
    "solapes": null,
    "motivo_fuera": "",
    "licencia_regex_ficha": "CC0|public domain"
+  },
+  {
+   "nombre": "readability-es",
+   "estado": "candidata",
+   "tipo": "yesno",
+   "idioma": "es",
+   "dominio": "legibilidad de frases",
+   "familia": "readability-es",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "hackathon-pln-es/readability-es-hackathon-pln-public",
+    "patrones": [
+     "*.csv",
+     "*.tsv",
+     "*.json*",
+     "*.parquet",
+     "README.md"
+    ],
+    "max_gb": 1
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/hackathon-pln-es/readability-es-hackathon-pln-public",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": 2,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "frases en español anotadas como simples o complejas (hackathon PLN-ES); ni v2 ni el entrenamiento miden legibilidad",
+   "riesgos": "id, columnas, etiquetas y licencia de memoria; si la etiqueta no se llama simple/complejo (p. ej. 0/1) NO se adivina la polaridad y la tarea queda fuera con los valores vistos; frases de varias fuentes",
+   "pregunta": "¿Es una frase compleja de leer?",
+   "lector": {
+    "formato": "auto",
+    "ficheros": [
+     "**/*.csv",
+     "**/*.tsv",
+     "**/*.json",
+     "**/*.jsonl",
+     "**/*.parquet"
+    ],
+    "auto": {
+     "etiqueta_regex": "label|complej|complex|clase|class|categor|nivel|level"
+    },
+    "mapa_etiqueta": {
+     "complex": "si",
+     "complejo": "si",
+     "compleja": "si",
+     "complicado": "si",
+     "simple": "no",
+     "sencillo": "no",
+     "sencilla": "no"
+    }
+   },
+   "fichero_soporte": "soporte/readability-es.jsonl",
+   "fichero_test": "sellada/readability-es.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "arena-preferencia-es",
+   "estado": "candidata",
+   "tipo": "yesno",
+   "idioma": "es",
+   "dominio": "preferencias entre asistentes",
+   "familia": "arena-preferencias",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "lmarena-ai/arena-human-preference-100k",
+    "patrones": [
+     "*.parquet",
+     "README.md"
+    ],
+    "max_gb": 3
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/lmarena-ai/arena-human-preference-100k",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": "respuestas de LLM, votos de personas",
+   "clases_esperadas": 2,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "votos humanos entre dos respuestas de asistentes, solo conversaciones en español; no hay preferencias en v2 y oasst1/helpsteer miden calidad de una respuesta",
+   "riesgos": "id, licencia y columnas (winner, conversation_a/b, language) de memoria; respuestas de LLM comerciales con sus términos; texto largo (los de > 3 000 caracteres se descartan); se quitan empates",
+   "pregunta": "¿Prefieren las personas la primera conversación (A) a la segunda (B)?",
+   "lector": {
+    "formato": "parquet",
+    "ficheros": [
+     "**/*.parquet"
+    ],
+    "texto": [
+     "conversation_a",
+     "conversation_b"
+    ],
+    "etiqueta": "winner",
+    "filtro": {
+     "language": [
+      "spanish",
+      "español",
+      "es"
+     ]
+    },
+    "mapa_etiqueta": {
+     "model_a": "si",
+     "model_b": "no"
+    }
+   },
+   "fichero_soporte": "soporte/arena-preferencia-es.jsonl",
+   "fichero_test": "sellada/arena-preferencia-es.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "helpsteer3-es",
+   "estado": "candidata",
+   "tipo": "score",
+   "idioma": "es",
+   "dominio": "preferencias entre asistentes",
+   "familia": "helpsteer3",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "nvidia/HelpSteer3",
+    "patrones": [
+     "preference/*",
+     "README.md"
+    ],
+    "max_gb": 2
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/nvidia/HelpSteer3",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": "respuestas de LLM, notas de personas",
+   "clases_esperadas": 7,
+   "confianza_id": "media",
+   "limpieza_esperada": "media",
+   "no_solapa": "parte en español de HelpSteer3-Preference (conversaciones nuevas, no las de HelpSteer2 de v2); la nota es una comparación de dos respuestas, no la utilidad de una",
+   "riesgos": "familia vecina de helpsteer2-utilidad (misma institución, otro conjunto y otro idioma: se cuenta como distinta, decisión de Juan si no); columnas y valores de idioma de memoria; respuestas de LLM con sus términos",
+   "pregunta": "¿Cuánto mejor es la segunda respuesta que la primera (1 = mucho peor, 4 = igual, 7 = mucho mejor)?",
+   "lector": {
+    "formato": "jsonl",
+    "ficheros": [
+     "preference/*"
+    ],
+    "texto": [
+     "context",
+     "response1",
+     "response2"
+    ],
+    "etiqueta": "overall_preference",
+    "filtro": {
+     "language": [
+      "spanish",
+      "español",
+      "es"
+     ]
+    },
+    "mapa_etiqueta": {
+     "-3": "1",
+     "-2": "2",
+     "-1": "3",
+     "0": "4",
+     "1": "5",
+     "2": "6",
+     "3": "7"
+    }
+   },
+   "fichero_soporte": "soporte/helpsteer3-es.jsonl",
+   "fichero_test": "sellada/helpsteer3-es.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "cares-capitulo",
+   "estado": "candidata",
+   "tipo": "choice",
+   "idioma": "es",
+   "dominio": "informes radiológicos",
+   "familia": "cares",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "chizhikchi/CARES",
+    "patrones": [
+     "*.csv",
+     "*.tsv",
+     "*.json*",
+     "*.parquet",
+     "README.md"
+    ],
+    "max_gb": 1
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/chizhikchi/CARES",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": null,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "informes radiológicos en español etiquetados con capítulos de la CIE-10; ni v2 ni el entrenamiento traen informes clínicos en español",
+   "riesgos": "id, esquema y licencia de memoria (la etiqueta puede ser una lista de capítulos: solo se usan filas con uno); texto clínico anonimizado (no se imprime); pocas filas",
+   "pregunta": "¿A qué capítulo de la CIE-10 corresponde el informe?",
+   "lector": {
+    "formato": "auto",
+    "ficheros": [
+     "**/*.csv",
+     "**/*.tsv",
+     "**/*.json",
+     "**/*.jsonl",
+     "**/*.parquet"
+    ],
+    "auto": {
+     "etiqueta_regex": "chapter|capitulo|label|cie|icd"
+    },
+    "clases_max": 12,
+    "min_por_clase": 30
+   },
+   "fichero_soporte": "soporte/cares-capitulo.jsonl",
+   "fichero_test": "sellada/cares-capitulo.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "humset-sector-es",
+   "estado": "candidata",
+   "tipo": "choice",
+   "idioma": "es",
+   "dominio": "crisis humanitarias",
+   "familia": "humset",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "nlp-thedeep/humset",
+    "patrones": [
+     "*.csv",
+     "*.tsv",
+     "*.json*",
+     "*.parquet",
+     "README.md"
+    ],
+    "max_gb": 2
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/nlp-thedeep/humset",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": null,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "extractos de informes humanitarios (parte en español) etiquetados por sector; sin equivalente en v2 ni en el entrenamiento",
+   "riesgos": "id, formato (puede ser solo un script de carga: entonces «sin ficheros»), columnas (excerpt, sectors, lang) y licencia de memoria; etiqueta multi-etiqueta: solo filas con un sector",
+   "pregunta": "¿De qué sector humanitario trata el extracto?",
+   "lector": {
+    "formato": "auto",
+    "ficheros": [
+     "**/*.csv",
+     "**/*.tsv",
+     "**/*.json",
+     "**/*.jsonl",
+     "**/*.parquet"
+    ],
+    "texto": "excerpt",
+    "etiqueta": "sectors",
+    "filtro": {
+     "lang": [
+      "es",
+      "spanish"
+     ]
+    },
+    "clases_max": 12,
+    "min_por_clase": 30
+   },
+   "fichero_soporte": "soporte/humset-sector-es.jsonl",
+   "fichero_test": "sellada/humset-sector-es.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "noticias-es-categoria",
+   "estado": "candidata",
+   "tipo": "choice",
+   "idioma": "es",
+   "dominio": "noticias",
+   "familia": "noticias-es",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "MarcOrfilaCarreras/spanish-news",
+    "patrones": [
+     "*.csv",
+     "*.tsv",
+     "*.json*",
+     "*.parquet",
+     "README.md"
+    ],
+    "max_gb": 2
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/MarcOrfilaCarreras/spanish-news",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": null,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "noticias en español por sección; v2 se quedó sin dominio de noticias por falta de licencia verificable (Wikinoticias es -SA)",
+   "riesgos": "id, esquema y licencia de memoria (si la tarjeta no declara licencia o dice otra cosa, fuera); noticias de prensa con derechos de terceros que la tarjeta puede no cubrir",
+   "pregunta": "¿De qué sección es la noticia?",
+   "lector": {
+    "formato": "auto",
+    "ficheros": [
+     "**/*.csv",
+     "**/*.tsv",
+     "**/*.json",
+     "**/*.jsonl",
+     "**/*.parquet"
+    ],
+    "auto": {
+     "etiqueta_regex": "categor|section|seccion|topic|tema|label|class"
+    },
+    "clases_max": 12,
+    "min_por_clase": 60
+   },
+   "fichero_soporte": "soporte/noticias-es-categoria.jsonl",
+   "fichero_test": "sellada/noticias-es-categoria.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "ethics-justicia",
+   "estado": "candidata",
+   "tipo": "yesno",
+   "idioma": "en",
+   "dominio": "juicios morales",
+   "familia": "ethics-justice",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "hendrycks/ethics",
+    "patrones": [
+     "justice/*",
+     "README.md"
+    ],
+    "max_gb": 1
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/hendrycks/ethics",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "mit",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": 2,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "escenarios de justicia escritos por anotadores (subconjunto «justice» de ETHICS; «commonsense» sale de Reddit y no se baja); ni v2 ni el entrenamiento miden juicio moral",
+   "riesgos": "id y licencia de memoria; benchmark público (contaminación posible); misma temática que moral-stories-accion (otra fuente, otra tarea); sin partición dev",
+   "pregunta": "¿Es razonable (justa) la situación descrita?",
+   "lector": {
+    "formato": "auto",
+    "ficheros": [
+     "justice/*"
+    ],
+    "texto": "scenario",
+    "etiqueta": "label",
+    "mapa_etiqueta": {
+     "1": "si",
+     "0": "no"
+    },
+    "split_por_fichero": {
+     "train": "train",
+     "test": "test"
+    }
+   },
+   "fichero_soporte": "soporte/ethics-justicia.jsonl",
+   "fichero_test": "sellada/ethics-justicia.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "news-category-en",
+   "estado": "candidata",
+   "tipo": "choice",
+   "idioma": "en",
+   "dominio": "noticias",
+   "familia": "huffpost-news",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "heegyu/news-category-dataset",
+    "patrones": [
+     "*.csv",
+     "*.tsv",
+     "*.json*",
+     "*.parquet",
+     "README.md"
+    ],
+    "max_gb": 1
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/heegyu/news-category-dataset",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": 15,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "titulares y entradillas de HuffPost por sección; v2 no trae noticias en inglés con licencia verificable",
+   "riesgos": "id y licencia de memoria; titulares de prensa con derechos de la editorial que la licencia del conjunto puede no cubrir (la tarjeta decide); cada titular es corto",
+   "pregunta": "¿De qué sección es la noticia?",
+   "lector": {
+    "formato": "auto",
+    "ficheros": [
+     "**/*.csv",
+     "**/*.tsv",
+     "**/*.json",
+     "**/*.jsonl",
+     "**/*.parquet"
+    ],
+    "texto": [
+     "headline",
+     "short_description"
+    ],
+    "etiqueta": "category",
+    "clases_max": 15,
+    "min_por_clase": 200
+   },
+   "fichero_soporte": "soporte/news-category-en.jsonl",
+   "fichero_test": "sellada/news-category-en.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "worldbank-sector",
+   "estado": "candidata",
+   "tipo": "choice",
+   "idioma": "en",
+   "dominio": "proyectos de desarrollo",
+   "familia": "worldbank-projects",
+   "fuente": {
+    "tipo": "hf",
+    "repo": "lukesjordan/worldbank-project-documents",
+    "patrones": [
+     "*.csv",
+     "*.tsv",
+     "*.json*",
+     "*.parquet",
+     "README.md"
+    ],
+    "max_gb": 2
+   },
+   "rev": null,
+   "url_ficha": "https://huggingface.co/datasets/lukesjordan/worldbank-project-documents",
+   "url_ficha_confirmada": true,
+   "licencia_esperada": "cc-by-4.0",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": null,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "documentos de proyectos del Banco Mundial por sector; sin equivalente en v2 ni en el entrenamiento",
+   "riesgos": "id, columnas y licencia de memoria; la regla `auto` puede no hallar una etiqueta de pocas clases (entonces fuera con nombres y tipos); documentos largos (se descartan los de > 3 000 caracteres)",
+   "pregunta": "¿De qué sector es el proyecto?",
+   "lector": {
+    "formato": "auto",
+    "ficheros": [
+     "**/*.csv",
+     "**/*.tsv",
+     "**/*.json",
+     "**/*.jsonl",
+     "**/*.parquet"
+    ],
+    "auto": {
+     "etiqueta_regex": "sector|theme|tema|category|categor"
+    },
+    "clases_max": 12,
+    "min_por_clase": 60
+   },
+   "fichero_soporte": "soporte/worldbank-sector.jsonl",
+   "fichero_test": "sellada/worldbank-sector.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "grants-categoria",
+   "estado": "candidata",
+   "tipo": "choice",
+   "idioma": "en",
+   "dominio": "convocatorias de subvenciones",
+   "familia": "grants-gov",
+   "fuente": {
+    "tipo": "ckan",
+    "busqueda": "Grants.gov Database Extract",
+    "titulo_regex": "grants",
+    "recurso_regex": "grants\\.gov|amazonaws\\.com",
+    "descarga": "https://prod-grants-gov-chatbot.s3.amazonaws.com/extracts/GrantsDBExtract20240101v2.zip",
+    "descomprimir": true,
+    "max_gb": 1
+   },
+   "rev": null,
+   "url_ficha": "https://catalog.data.gov/dataset?q=Grants.gov+Database+Extract",
+   "url_ficha_confirmada": false,
+   "licencia_esperada": "dominio-publico",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": 10,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "descripciones de convocatorias federales de EE. UU. por categoría de actividad; v2 y el entrenamiento no traen convocatorias",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov; la fecha del extracto en la URL y los nombres XML (OpportunitySynopsisDetail_1_0, Description, CategoryOfFundingActivity) son de memoria; el dominio de la URL debe ser el de un recurso del catálogo",
+   "pregunta": "¿A qué categoría de actividad pertenece la convocatoria?",
+   "lector": {
+    "formato": "xml",
+    "ficheros": [
+     "**/*.xml"
+    ],
+    "registro": "OpportunitySynopsisDetail_1_0",
+    "campos": {
+     "texto": "Description",
+     "etiqueta": "CategoryOfFundingActivity"
+    },
+    "texto": "texto",
+    "etiqueta": "etiqueta",
+    "clases_max": 10,
+    "min_por_clase": 60
+   },
+   "fichero_soporte": "soporte/grants-categoria.jsonl",
+   "fichero_test": "sellada/grants-categoria.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
+  },
+  {
+   "nombre": "fsis-clase",
+   "estado": "candidata",
+   "tipo": "score",
+   "idioma": "en",
+   "dominio": "retiradas de alimentos",
+   "familia": "fsis-recalls",
+   "fuente": {
+    "tipo": "ckan",
+    "busqueda": "FSIS recalls API",
+    "titulo_regex": "recall",
+    "recurso_regex": "fsis\\.usda\\.gov",
+    "descarga": "https://www.fsis.usda.gov/fsis/api/recall/v/1",
+    "max_gb": 1
+   },
+   "rev": null,
+   "url_ficha": "https://catalog.data.gov/dataset?q=FSIS+recalls",
+   "url_ficha_confirmada": false,
+   "licencia_esperada": "dominio-publico",
+   "licencia_estado": "por verificar en fase 2",
+   "licencia": null,
+   "licencia_sha256": "",
+   "licencia_motivo": "",
+   "bloque": "cuentan",
+   "motivo_bloque": "",
+   "reemplazo_de": "",
+   "sintetico": false,
+   "clases_esperadas": 3,
+   "confianza_id": "baja",
+   "limpieza_esperada": "media",
+   "no_solapa": "retiradas de carne y aves del USDA-FSIS; otra agencia y otro texto que fda-clase-retirada (medicamentos) o cpsc (productos de consumo)",
+   "riesgos": "licencia y descarga del registro de catalog.data.gov; URL de la API y nombres de campo (field_recall_reason, field_summary, field_recall_classification) de memoria; pocas filas (~1 500); resúmenes con HTML",
+   "pregunta": "¿Qué clase de riesgo asigna el USDA a la retirada (1 = menor, 3 = mayor)?",
+   "lector": {
+    "formato": "jsonl",
+    "ficheros": [
+     "*"
+    ],
+    "texto": [
+     "field_recall_reason",
+     "field_summary"
+    ],
+    "etiqueta": "field_recall_classification",
+    "mapa_etiqueta": {
+     "Class III": "1",
+     "Class II": "2",
+     "Class I": "3"
+    }
+   },
+   "fichero_soporte": "soporte/fsis-clase.jsonl",
+   "fichero_test": "sellada/fsis-clase.jsonl",
+   "sha256": "",
+   "sha256_soporte": "",
+   "ficheros_origen_sha256": {},
+   "n_soporte": null,
+   "n_test": null,
+   "clases": null,
+   "cifras": null,
+   "solapes": null,
+   "motivo_fuera": ""
   }
  ],
  "descartadas": [

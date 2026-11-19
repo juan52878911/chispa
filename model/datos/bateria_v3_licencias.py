@@ -4,6 +4,7 @@ Admitidas: CC0, CC BY, MIT, Apache-2.0, ODC-BY, CDLA-Permissive y dominio públi
 ambigua o contradictoria entre cabecera y cuerpo, y fuentes de Twitter/X o Reddit. Lo que no se puede comprobar queda fuera: nunca se «adivina».
 """
 import hashlib
+import json
 import re
 
 ADMITIDAS = {
@@ -119,4 +120,37 @@ def evaluar_ficha(texto, patron_exigido, licencia_si_pasa="dominio-publico", ori
         r["motivo"] = "origen declarado %s: términos de la plataforma" % "/".join(orig)
         return r
     r.update(estado="admitida", licencia=licencia_si_pasa)
+    return r
+
+
+# Registro oficial (catalog.data.gov, API CKAN `package_show`): `license_id` -> licencia admitida. Cualquier otro valor (other-open, other-at, license-not-specified, cc-by-sa, cc-nc...) queda fuera.
+CKAN_ADMITIDAS = {"us-pd": "dominio-publico", "other-pd": "dominio-publico", "odc-pddl": "dominio-publico", "cc-zero": "cc0-1.0", "cc0-1.0": "cc0-1.0", "cc-by": "cc-by-4.0",
+                  "cc-by-4.0": "cc-by-4.0", "odc-by": "odc-by", "mit": "mit", "apache-2.0": "apache-2.0"}
+
+
+def evaluar_ckan(ficha):
+    """Evalúa la ficha de un paquete de un catálogo CKAN (dict con license_id, license_title, license_url, titulo, organizacion, extras, recurso). Admite solo un `license_id` de
+    CKAN_ADMITIDAS, sin alertas de -SA/-NC/-ND en la licencia o en los derechos declarados, con acceso público y sin origen Twitter/X o Reddit."""
+    texto = json.dumps(ficha, ensure_ascii=False, indent=1, sort_keys=True)
+    r = dict(estado="fuera", licencia="", motivo="", avisos=[], sha256_texto=sha256_texto(texto))
+    lid = str(ficha.get("license_id") or "").strip().lower()
+    if not lid:
+        r["motivo"] = "el catálogo no da license_id"
+        return r
+    if lid not in CKAN_ADMITIDAS:
+        r["motivo"] = "el catálogo da license_id «%s» (%s), no admitido" % (lid, ficha.get("license_title") or "sin título")
+        return r
+    ex = ficha.get("extras") or {}
+    if str(ex.get("accessLevel") or "public").strip().lower() != "public":
+        r["motivo"] = "el catálogo declara accessLevel «%s»: no es público" % ex.get("accessLevel")
+        return r
+    al = _alertas_cuerpo(" ".join(str(x) for x in (ficha.get("license_title"), ficha.get("license_url"), ex.get("rights"), ex.get("license"), ex.get("licenseUrl")) if x), lid)
+    if al:
+        r["motivo"] = "el registro del catálogo contradice la licencia: %s" % "; ".join(al)
+        return r
+    orig = _origen_prohibido(" ".join(str(x) for x in (ficha.get("titulo"), ficha.get("organizacion"), (ficha.get("recurso") or {}).get("url")) if x))
+    if orig:
+        r["motivo"] = "el registro menciona %s: términos de la plataforma" % "/".join(orig)
+        return r
+    r.update(estado="admitida", licencia=CKAN_ADMITIDAS[lid])
     return r

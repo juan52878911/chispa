@@ -46,7 +46,7 @@ def test_empaquetador_escribe_ud_y_tgz_sin_subir_nada(empaquetado):
     assert len(ud.encode("utf-8")) < 15500 and "huellas.tgz" not in ud.replace("# ", "") .split("set -uo")[1] and "HUE_SHA256" not in ud
     assert "COD_SHA256=%s" % sha256(empaquetado["dir"] / "sal" / "codigo.tgz") in ud and not (empaquetado["dir"] / "sal" / "huellas.tgz").exists()
     assert "aws s3 cp" in ud and "s3 sync" not in ud and "s3 rm" not in ud                 # solo copia por nombre exacto: nada de listar ni borrar
-    assert not (RAIZ / "model/datos/aws/lanzados").exists() or not list((RAIZ / "model/datos/aws/lanzados").glob("ud-bateria-v3-*"))
+    assert not (RAIZ / "model/datos/aws/lanzados" / ("ud-bateria-v3-%s.sh" % empaquetado["head"])).exists()      # la prueba no deja un ud de este HEAD en lanzados/
 
 
 def test_ud_fija_nombres_y_sha_de_v2_dev_y_selladas(empaquetado):
