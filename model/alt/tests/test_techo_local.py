@@ -329,7 +329,7 @@ def test_empaquetador_en_seco_sin_placeholders_y_se_niega_sin_congelar(tmp_path)
     uds = list(udd.glob("ud-techo-local-*.sh"))
     assert len(uds) == 1
     ud = uds[0].read_text()
-    assert not re.findall(r"__[A-Z0-9_]+__", ud) and "REV30=" + "0" * 40 in ud and "shutdown -h +$MIN" in ud
+    assert not re.findall(r"__[A-Z0-9_]+__", ud) and "REV30=5a5a776300a41aaa681dd7ff0106608ef2bc90db" in ud and "REVOSS=6cee5e81ee83917806bbde320786a8fb61efebee" in ud and "shutdown -h +$MIN" in ud
     assert (sal / "codigo.tgz").exists() and (sal / "dev.tgz").exists() and "ENSAYO" in r.stdout and "110" in r.stdout and "3.41" in r.stdout
     nombres = subprocess.run(["tar", "-tzf", str(sal / "dev.tgz")], capture_output=True, text=True).stdout.split()
     assert len(nombres) == 6 and not any("sellad" in n for n in nombres)
@@ -339,14 +339,15 @@ def test_empaquetador_en_seco_sin_placeholders_y_se_niega_sin_congelar(tmp_path)
     r2, *_ = empaquetar(tmp_path / "otro", {"CHISPA_ENSAYO": "0"})
     assert r2.returncode != 0 and "CRIT_SHA256_ESPERADO" in r2.stderr
     crit = hashlib.sha256(subprocess.run(["git", "show", "HEAD:model/alt/crit-techo-local.json"], cwd=RAIZ, capture_output=True).stdout).hexdigest()
-    r3, *_ = empaquetar(tmp_path / "otro2", {"CHISPA_ENSAYO": "0", "CRIT_SHA256_ESPERADO": crit})
-    assert r3.returncode != 0 and "no está fijada" in r3.stderr
+    r3, _, udd3, _ = empaquetar(tmp_path / "otro2", {"CHISPA_ENSAYO": "0", "CRIT_SHA256_ESPERADO": crit})   # ya congelado (revisiones fijadas): empaqueta
+    assert r3.returncode == 0 and crit in next(udd3.glob("ud-techo-local-*.sh")).read_text()
     r4, *_ = empaquetar(tmp_path / "otro3", {"CHISPA_ENSAYO": "0", "CRIT_SHA256_ESPERADO": "f" * 64})
     assert r4.returncode != 0 and "no es el congelado" in r4.stderr
 
 
-def test_ud_en_local_con_vllm_falso_de_punta_a_punta(tmp_path, servidor):
-    """El ud real en modo local: tres modelos contra el servidor falso; el de licencia GPL no se mide; sale cifras.json con veredicto y solo res/ en resultados.tgz."""
+def _ud_local(tmp_path, servidor, extra=None, timeout=900):
+    tmp_path.mkdir(exist_ok=True)
+    """Prepara el ud real en modo local: tres modelos contra el servidor falso; el de licencia GPL no se mide; sale cifras.json con veredicto y solo res/ en resultados.tgz."""
     pytest.importorskip("torch")
     sint = tmp_path / "sint"
     r = subprocess.run(["python", "-m", "model.alt.destilar_biencoder", "sintetico", "--salida", str(sint)], cwd=RAIZ, capture_output=True, text=True)
@@ -366,9 +367,28 @@ def test_ud_en_local_con_vllm_falso_de_punta_a_punta(tmp_path, servidor):
     (tmp_path / "ud.sh").write_text(ud)
     env = {**os.environ, "CHISPA_LOCAL": "1", "CHISPA_S3_LOCAL": str(s3), "CHISPA_BASE": str(base), "CHISPA_PY": subprocess.run(["which", "python"], capture_output=True, text=True).stdout.strip(),
            "CHISPA_LOCAL_URL": servidor, "CHISPA_LOCAL_E5": str(sint / "e5"), "CHISPA_LOCAL_N": "16", "CHISPA_HILOS": "4", "CHISPA_MIN": "60", "CHISPA_ESPERA_MIN": "1",
-           "CHISPA_LOCAL_LIC_GPT_OSS_20B": "gpl-3.0", "CHISPA_TOPK_UMBRAL": "2"}
+           "CHISPA_LOCAL_LIC_GPT_OSS_20B": "gpl-3.0", "CHISPA_TOPK_UMBRAL": "2", **(extra or {})}
     r = subprocess.run(["bash", str(tmp_path / "ud.sh")], cwd=RAIZ, capture_output=True, text=True, env=env, timeout=900)
-    assert r.returncode == 0, r.stdout[-1500:]
+    return r, base, s3, sint
+
+
+def test_ud_en_local_con_vllm_falso_de_punta_a_punta(tmp_path, servidor):
+    """El ud en local: tres modelos contra el servidor falso, y la preselección (vectores de e5 -> topk -> demos) corre con el intérprete NPY, distinto del PY: un envoltorio lo registra."""
+    npy = tmp_path / "npy.sh"
+    reg = tmp_path / "npy.log"
+    npy.write_text('#!/bin/bash\necho "$@" >> %s\nexec %s "$@"\n' % (reg, subprocess.run(["which", "python"], capture_output=True, text=True).stdout.strip()))
+    npy.chmod(0o755)
+    for intento in range(3):   # torch CPU de la microVM de pruebas muere a veces con SIGILL (también en la versión anterior del ud); solo eso se repite
+        reg.write_text("")
+        r, base, s3, sint = _ud_local(tmp_path / f"i{intento}", servidor, {"CHISPA_NPY": str(npy)})
+        assert r.returncode == 0, r.stdout[-1500:]
+        if "Illegal instruction" not in (base / "presel.log").read_text(errors="replace"):
+            break
+    llamadas = reg.read_text()
+    assert "-m model.alt.lineas_base_v2_pred vectores" in llamadas and "-m model.alt.lineas_base_v2_pred demos" in llamadas
+    if (base / "t" / "topk.txt").read_text().strip():   # con el umbral de opciones de la prueba puede no haber tareas de top-k
+        assert "-m model.alt.lineas_base_v2_pred topk" in llamadas and (base / "t" / "topk").exists()
+    assert (base / "vec").exists() and (base / "topk.ok").exists() and (base / "demos.ok").exists()
     res = base / "res"
     est = (res / "estado.tsv").read_text()
     assert "[gpt-oss-20b]" not in est and "gpt-oss-20b\tNO SE MIDE" in est and "licencia-gpt-oss-20b\tgpt-oss-20b: licencia gpl-3.0 -> NO se mide" in est
@@ -388,3 +408,16 @@ def test_ud_en_local_con_vllm_falso_de_punta_a_punta(tmp_path, servidor):
         blob += p.read_bytes()
     assert not any(t.encode() in blob for t in list(texto_dev)[:200] if len(t) > 12)   # ningún texto de dev en lo que sube
     assert not np.isnan(c["modelos"]["qwen3-4b"]["fs8"]["B"]["macro"]["valor"])
+
+
+def test_ud_cierra_antes_de_gastar_gpu_si_a_npy_le_falta_un_import(tmp_path, servidor):
+    """Un NPY sin torch (el fallo del primer intento): cierre inmediato con el motivo en estado.tsv, sin servidor ni preselección."""
+    npy = tmp_path / "npy_roto.sh"
+    npy.write_text('#!/bin/bash\necho "ModuleNotFoundError: No module named torch" >&2\nexit 1\n')
+    npy.chmod(0o755)
+    r, base, s3, sint = _ud_local(tmp_path, servidor, {"CHISPA_NPY": str(npy)})
+    assert r.returncode == 0, r.stdout[-1500:]
+    est = (base / "res" / "estado.tsv").read_text()
+    assert "entorno\tFALLO imports NPY" in est and "No module named torch" in est and str(npy) in est
+    assert "servidor-" not in est and "prueba-" not in est and not (base / "topk.ok").exists()
+    assert "imports de NPY" in (base / "res" / "FALLO").read_text()
