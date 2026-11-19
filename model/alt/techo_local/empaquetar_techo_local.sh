@@ -61,10 +61,10 @@ rm -f "$sal/codigo.tgz" "$sal/dev.tgz"
 
 tarz "$sal/codigo.tgz" "$t" model sdk
 ( cd "$dev" && { tar --no-xattrs -czf "$sal/dev.tgz" $want 2>/dev/null || tar -czf "$sal/dev.tgz" $want; } )
-for x in codigo dev; do tar -tzf "$sal/$x.tgz" | grep -q '\._' && { echo "$x.tgz trae ._*" >&2; exit 1; }; done
-tar -tzf "$sal/dev.tgz" | grep -qi 'sellad' && { echo "dev.tgz trae algo sellado" >&2; exit 1; }
-[ "$(tar -tzf "$sal/dev.tgz" | wc -l | tr -d ' ')" = 6 ] || { echo "dev.tgz no trae 6 ficheros" >&2; exit 1; }
-tar -tzf "$sal/codigo.tgz" | grep -q 'model/alt/techo_local/techo_local_fases.sh' || { echo "codigo.tgz sin las fases" >&2; exit 1; }
+for x in codigo dev; do tar -tzf "$sal/$x.tgz" > "$t/$x.lst"; [ "$(grep -c '\._' "$t/$x.lst")" = 0 ] || { echo "$x.tgz trae ._*" >&2; exit 1; }; done
+[ "$(grep -ci 'sellad' "$t/dev.lst")" = 0 ] || { echo "dev.tgz trae algo sellado" >&2; exit 1; }
+[ "$(wc -l < "$t/dev.lst" | tr -d ' ')" = 6 ] || { echo "dev.tgz no trae 6 ficheros" >&2; exit 1; }
+[ "$(grep -c 'model/alt/techo_local/techo_local_fases.sh' "$t/codigo.lst")" = 1 ] || { echo "codigo.tgz sin las fases" >&2; exit 1; }
 cuenta=$(python3 -I - "$dev" <<'PY'
 import glob, json, sys
 t = s = 0
