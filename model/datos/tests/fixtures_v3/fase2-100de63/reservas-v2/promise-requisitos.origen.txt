@@ -1,0 +1,332 @@
+<!DOCTYPE HTML PUBLIC "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <title>PROMISE DATASETS PAGE</title>
+</head>  
+<body>
+ <TABLE  widtH=100% bgcolor="#9F0202">
+ <TBODY>
+  <TR>
+   <TD >
+    <CENTER>
+    <img src="sitehead.gif" border="0" usemap="#headermap"><map name="headermap"><area shape="rect" coords="0,0,90,17" alt="l'ÉITI" href="http://www.site.uottawa.ca/index.html"><area shape="rect" coords="91,0,169,17" alt="Recherche" href="http://www.uottawa.ca/search/indexf.html"><area shape="rect" coords="170,0,314,17" alt="Nouvelles" href="http://www.site.uottawa.ca/events/indexf.html"><area shape="rect" coords="315,0,387,17" alt="Répertoires" href="http://www.uottawa.ca/phonebook/indexf.html"><area shape="rect" coords="388,0,499,17" alt="Ressources" href="http://www.uottawa.ca/inetres/indexf.html"><area shape="rect" coords="10,40,148,60" alt="Génie/Engineering" href="http://www.genie.uottawa.ca/"><area shape="rect" coords="310,30,495,70" alt="Ud'O/UofO" href="http://www.uottawa.ca/"><area shape="rect" coords="0,81,77,99" alt="SITE" href="http://www.site.uottawa.ca/index.html"><area shape="rect" coords="78,81,151,99" alt="Search" href="http://www.uottawa.ca/search/"><area shape="rect" coords="152,81,264,99" alt="News" href="http://www.site.uottawa.ca/events/index.html"><area shape="rect" coords="265,81,357,99" alt="Directories" href="http://www.uottawa.ca/phonebook/"><area shape="rect" coords="358,81,499,99" alt="Resources" href="http://www.uottawa.ca/inetres/"><area shape="rect" coords="0,103,499,133" alt="SITE" href="http://www.site.uottawa.ca/"></map>
+    </CENTER>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD colspan=2>
+    <CENTER><A href="./index.html"><IMG src="promise-logo.gif" border=0></A></CENTER>
+   </TD>
+  </TR>
+
+ </TBODY>
+ </TABLE>
+
+ <CENTER><FONT size=5><B>Public Datasets</B></FONT></CENTER><BR>
+ <BR>
+
+ <TABLE>
+ <TBODY>
+  <TR>
+   <TD bgcolor="#C4C1C0">
+    <B>Title/Topic: </B><a href="datasets/cm1.arff">CM1/Software defect prediction</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/jm1.arff">JM1/Software defect prediction</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+  
+  <TR bgcolor="#C4C1C0">
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/kc1.arff">KC1/Software defect prediction</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>  
+    <B>Title/Topic: </B><a href="datasets/kc2.arff">KC2/Software defect prediction</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+  
+  <TR>
+   <TD  bgcolor="#C4C1C0">
+    <B>Title/Topic: </B><a href="datasets/pc1.arff">PC1/Software defect prediction</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program.<BR>
+         http://mdp.ivv.nasa.gov<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>  
+    <B>Title/Topic: </B><a href="datasets/cocomo81.arff">Cocomo81/Software cost estimation</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%">
+    Boehm's 1981 text, transcribed by Srinivasan and Fisher.<BR>
+    <div style="margin-left:1.5%">
+    B. Boehm 1981. Software Engineering Economics, Prentice Hall.<BR>
+    </div>
+    Then converted to arff format by Tim Menzies from<BR>
+    <div style="margin-left:1.5%">
+    http://www.vuse.vanderbilt.edu/~dfisher/tech-reports/raw-TSE-95
+    </div>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+ 
+  <TR>
+   <TD bgcolor="#C4C1C0">
+    <B>Title/Topic: </B><a href="datasets/cocomonasa_v1.arff">Cocomo NASA/Software cost estimation</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Latest Version:</B> 1<BR>
+    <B>Last Update:</B> April 4, 2005<BR>
+    <B>Additional Contibutors:</B><BR>
+    <div style="margin-left:1.5%">Zhihao Chen (zhihaoch@cse.usc.edu)<BR></div>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Data from different centers for 60 NASA projects from 1980s and 1990s was collected by Jairus Hihn, JPL, NASA, Manager SQIP Measurement & Benchmarking Element.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/reuse.arff">Reuse/Predicting successful reuse</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@barmag.net)<BR>
+    <B>Date:</B>  December 2, 2004<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD bgcolor="#C4C1C0">
+    <B>Title/Topic: </B><a href="datasets/datatrieve.arff">DATATRIEVE Transition/Software defect prediction</a><BR>
+    <B>Donor:</B> Guenther Ruhe (ruhe@ucalgary.ca)<BR>
+    <B>Date:</B>  January 15, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">DATATRIEVETM project carried out at Digital Engineering Italy<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+
+  <TR>
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/kc1-class-level-numericdefect.arff">Class-level data for KC1 (Defect Count)/Software defect prediction</a><BR>
+    <B>Donor:</B> A. G&uuml;nes Koru (gkoru@umbc.edu )<BR>
+    <B>Date:</B>  February 21, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov .<BR>
+    Further processed by A. G&uuml;nes Koru to create the ARFF file.<BR>
+    </div>
+    <B>Additional Information</B><BR>
+    <div style="margin-left:1.5%"><a href="datasets/Rfunction_getclassleveldataforKC1">
+       The R function used to generate this dataset.
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD  bgcolor="#C4C1C0">
+    <B>Title/Topic: </B><a href="datasets/kc1-class-level-defectiveornot.arff">Class-level data for KC1 (Defective or Not)/Software defect prediction</a><BR>
+    <B>Donor:</B> A. G&uuml;nes Koru (gkoru@umbc.edu )<BR>
+    <B>Date:</B>  February 21, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov .<BR>
+    Further processed by A. G&uuml;nes Koru to create the ARFF file.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/kc1-class-level-top5percentDF.arff">Class-level data for KC1 (Top 5% Defect Count Ranking or Not)/Software defect prediction</a><BR>
+    <B>Donor:</B> A. G&uuml;nes Koru (gkoru@umbc.edu )<BR>
+    <B>Date:</B>  February 21, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+    http://mdp.ivv.nasa.gov .<BR>
+    Further processed by A. G&uuml;nes Koru to create the ARFF file.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+
+  <TR bgcolor="#C4C1C0">
+   <TD>
+    <B>Title: </B><a href="datasets/nickle.arff">Nickle Repository Transaction Data</a><BR>
+    <B>Donor:</B> Bart Massey (bart@cs.pdx.edu)<BR>
+    <B>Date:</B>  March 31, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Bart Massey after analyzing the publicly available CVS archives of the Nickle programming language<BR>
+    http://nickle.org .<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>
+    <B>Title: </B><a href="datasets/xfree86.arff.zip">XFree86  Repository Transaction Data</a><BR>
+    <B>Donor:</B> Bart Massey (bart@cs.pdx.edu)<BR>
+    <B>Date:</B>  March 31, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Bart Massey after analyzing the publicly available CVS archives of the XFree86 Project<BR>
+    http://xfree86.org .<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD bgcolor="#C4C1C0">
+    <B>Title: </B><a href="datasets/xorg.arff.zip">X.org Repository Transaction Data</a><BR>
+    <B>Donor:</B> Bart Massey (bart@cs.pdx.edu)<BR>
+    <B>Date:</B>  March 31, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Bart Massey after analyzing the publicly available CVS archives of the X.org Project<BR>
+    http://x.org .<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/ModisDataset.zip">MODIS/Requirements Tracing</a><BR>
+    <B>Description File: </B><a href="datasets/modis.desc">modis.desc</a><BR>
+    <B>Donor:</B> Jane Hayes (hayes@cs.uky.edu)<BR>
+    <B>Date:</B>  March 31, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Open source MODIS dataset, NASA.<BR> Jane Hayes and Alex Dekhtyar modified the original dataset and created an answerset with the help of analysts.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD bgcolor="#C4C1C0">
+    <B>Title/Topic: </B><a href="datasets/CM1Dataset.zip">CM1/Requirements Tracing</a><BR>
+    <B>Description File: </B><a href="datasets/cm1.desc">cm1.desc</a><BR>
+    <B>Donor:</B> Jane Hayes (hayes@cs.uky.edu)<BR>
+    <B>Date:</B>  March 31, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">NASA, then the NASA Metrics Data Program,<BR>
+http://mdp.ivv.nasa.gov . <BR>Jane Hayes and Alex Dekhtyar modified the original dataset and created an answerset with the help of analysts.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+  <TR>
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/desharnais.arff">Desharnais Software Cost Estimation</a><BR>
+    <B>Donor:</B> Martin Shepperd (Martin.Shepperd@brunel.ac.uk)<BR>
+    <B>Date:</B>  September 29, 2005<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Original data was presented in J. M. Desharnais' Masters Thesis. Martin Shepperd  created the ARFF file.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+   <TD bgcolor="#C4C1C0">
+    <B>Title/Topic: </B><a href="datasets/cocomonasa_2.arff">COCOMO NASA 2 / Software cost estimation</a><BR>
+    <B>Donor:</B> Tim Menzies (tim@menzies.us)<BR>
+    <B>Date:</B>  April 3, 2006<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Data from different centers for 93 NASA projects between years 1971-1987 was collected by Jairus Hihn, JPL, NASA, Manager SQIP Measurement & Benchmarking Element.<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+   <TD>
+    <B>Title/Topic: </B><a href="datasets/qosdata.arff">QoS data for numerical computation library</a><BR>
+    <B>Donor:</B> Jia Zhou (jxz023100 AT utdallas DOT edu)<BR>
+    <B>Date:</B>  September 19, 2006<BR>
+    <B>Sources:</B><BR>
+    <div style="margin-left:0.5%"><i>Creators:</i></div>
+    <div style="margin-left:1.5%">Jia Zhou<BR>
+    </div>
+    <BR>
+   </TD>
+  </TR>
+
+ </TBODY>
+ </TABLE>
+
+</body>
+</html>
+
+
+

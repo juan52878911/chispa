@@ -1,0 +1,149 @@
+== arranque bateria-v3 fase 2 2026-11-19T22:07:39Z local=0 tope=90 min
+== 1. entradas 22:07:39
+[entradas] OK codigo, dev y selladas de v2 y manifiesto (sha256 comprobados)
+== 2. entorno 22:07:48
+
+Installed:
+  libxcrypt-compat-4.4.33-7.amzn2023.x86_64                                     
+  python3.11-3.11.18-1.amzn2023.0.1.x86_64                                      
+  python3.11-libs-3.11.18-1.amzn2023.0.1.x86_64                                 
+  python3.11-pip-22.3.1-2.amzn2023.0.15.noarch                                  
+  python3.11-pip-wheel-22.3.1-2.amzn2023.0.15.noarch                            
+  python3.11-setuptools-65.5.1-2.amzn2023.0.7.noarch                            
+  python3.11-setuptools-wheel-65.5.1-2.amzn2023.0.7.noarch                      
+
+
+[notice] A new release of pip available: 22.3.1 -> 26.3
+[notice] To update, run: python3.11 -m pip install --upgrade pip
+red OK https://huggingface.co/api/datasets/openai/gsm8k
+red OK https://www.ncei.noaa.gov/
+red OK https://static.nhtsa.gov/
+red OK https://github.com/github/advisory-database
+red OK https://clinicaltrials.gov/
+curl: (22) The requested URL returned error: 403
+AVISO: sin respuesta de https://vaers.hhs.gov/ (las tareas de esa fuente quedaran fuera por descarga)
+curl: (22) The requested URL returned error: 403
+AVISO: sin respuesta de https://www.osha.gov/ (las tareas de esa fuente quedaran fuera por descarga)
+red OK https://www.cpsc.gov/
+[entorno] OK python 3.11.18 pyarrow 26.0.0 huggingface_hub 2.4.0; 4 vCPU; 7 GB RAM; 31 tareas; v2: dev.tgz y selladas.tgz con sha256 comprobado
+== 2b. huellas 22:08:43 quedan 89 min
+HUELLAS v2: huellas=7185 ficheros={'dev': 6, 'selladas': 8} filas_sin_campo_de_texto=0
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 22.73it/s]
+HUELLAS entrenamiento toxicidad_protestas        bgonzalezbustamante/toxicity-protests-ES rev=d38de59c1c59 ficheros=1 huellas=1997
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 33.88it/s]
+HUELLAS entrenamiento toxicidad_constitucion     bgonzalezbustamante/toxicity-Constitution-ES rev=8f65bc16c71e ficheros=1 huellas=1998
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files:  50%|█████     | 2/4 [00:00<00:00,  5.38it/s]Fetching 4 files: 100%|██████████| 4/4 [00:00<00:00,  9.14it/s]Fetching 4 files: 100%|██████████| 4/4 [00:00<00:00,  8.26it/s]
+HUELLAS entrenamiento goemociones_es             mrm8488/go_emotions-es-mt rev=f881ecdb455e ficheros=3 huellas=100241
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 22.23it/s]
+HUELLAS entrenamiento spam_tanaos                tanaos/synthetic-spam-detection-dataset-spanish rev=1bf0a602a61b ficheros=1 huellas=14744
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files:  50%|█████     | 1/2 [00:00<00:00,  6.83it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00, 12.54it/s]
+HUELLAS entrenamiento soporte_ti                 tasksource/it-support-tickets rev=e0bbdcb96c84 ficheros=2 huellas=1424
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 17.74it/s]
+HUELLAS entrenamiento ciberacoso                 FelipeGuerra/Colombian_Spanish_Cyberbullying_Dataset_1 rev=40c8a0620056 ficheros=1 huellas=3491
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 30.37it/s]
+HUELLAS entrenamiento ciberacoso                 FelipeGuerra/Colombian_Spanish_Cyberbullying_Dataset_2 rev=eb56aab0d9ee ficheros=1 huellas=2503
+HUELLAS entrenamiento tsjev                      NO COMPROBADO: la descarga previsible (134.5 GB) pasa del tope (14.0 GB)
+HUELLAS entrenamiento: huellas=126398 comprobados=7 no_comprobado=12
+[huellas] OK v2=7185 entrenamiento=126398 comprobadas=7 solape_no_comprobado=12
+== 3. reservas v2 22:08:56 quedan 89 min
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 14.38it/s]
+RESERVA promise-requisitos     tarjeta=admitida licencia=cc-by-4.0 origen_descargado=True menciona=False
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 33.12it/s]
+RESERVA ropa-resenas           tarjeta=admitida licencia=cc0-1.0 origen_descargado=True menciona=True
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 38.70it/s]
+RESERVA rtp-toxicidad          tarjeta=fuera licencia=apache-2.0 origen_descargado=True menciona=True
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 38.24it/s]
+RESERVA cfpb-quejas            tarjeta=admitida licencia=cc0-1.0 origen_descargado=False menciona=False
+[reservas-v2] OK 2066 bytes de resultado
+== 4. construir 22:08:57 quedan 89 min
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 22.41it/s]
+FUERA  patentes-cpc               esquema/descarga: la descarga previsible (31.8 GB) pasa del tope de la tarea (3.0 GB)
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 33.68it/s]
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [00:00<00:00,  8.53it/s]Fetching 3 files:  67%|██████▋   | 2/3 [00:00<00:00,  6.31it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00,  7.78it/s]
+OK     sql-complejidad            licencia=apache-2.0 rev=740ab236e645 filas_utiles=105851 clases_origen=8
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 39.44it/s]
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00, 23.95it/s]
+OK     mmmlu-asignatura-es        licencia=mit rev=325a01dc3e17 filas_utiles=14042 clases_origen=57
+FUERA  tormentas-tipo             licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|no restrictions|U\.S\. Government/)
+FUERA  nhtsa-componente           licencia: no se pudo bajar la ficha https://www.nhtsa.gov/nhtsa-datasets-and-apis (HTTPError: HTTP Error 403: Forbidden)
+FUERA  neiss-parte-cuerpo         licencia: no se pudo bajar la ficha https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data (HTTPError: HTTP Error 403: Forbidden)
+FUERA  nsf-direccion              licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|U\.S\. Government/)
+FUERA  wikinoticias-es-categoria  licencia: la ficha contradice la licencia: SA en el texto («…la licencia que utiliza wikipedia, la licencia creative commons attribution <b>sharealike</b> 3.0, <b>es incompatible</b>. </p><p>no cumpli
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 14.91it/s]
+Fetching 7 files:   0%|          | 0/7 [00:00<?, ?it/s]Fetching 7 files:  29%|██▊       | 2/7 [00:00<00:00, 16.73it/s]Fetching 7 files: 100%|██████████| 7/7 [00:00<00:00, 31.58it/s]Fetching 7 files: 100%|██████████| 7/7 [00:00<00:00, 29.29it/s]
+FUERA  unam-tesis-carrera         esquema/descarga: faltan columnas esperadas ['Carrera', 'Resumen', 'Título']; la fila trae ['texto|titulo|carrera']
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 19.01it/s]
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  67%|██████▋   | 2/3 [00:00<00:00, 12.30it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00,  9.99it/s]
+FUERA  biotech-evento             esquema/descarga: faltan columnas esperadas ['content', 'label 1', 'title']; la fila trae ['Content', 'Label 1', 'Label 2', 'Label 3', 'Label 4', 'Label 5', 'Target Organization', 'Title']
+FUERA  cpsc-recall-peligro        licencia: no se pudo bajar la ficha https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information (HTTPError: HTTP Error 403: Forbidden)
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 42.08it/s]
+Fetching 68 files:   0%|          | 0/68 [00:00<?, ?it/s]Fetching 68 files:   1%|▏         | 1/68 [00:00<00:07,  8.98it/s]Fetching 68 files:  10%|█         | 7/68 [00:00<00:01, 37.00it/s]Fetching 68 files:  26%|██▋       | 18/68 [00:00<00:00, 68.75it/s]Fetching 68 files:  38%|███▊      | 26/68 [00:00<00:00, 63.94it/s]Fetching 68 files:  50%|█████     | 34/68 [00:00<00:00, 69.01it/s]Fetching 68 files:  63%|██████▎   | 43/68 [00:00<00:00, 71.81it/s]Fetching 68 files:  75%|███████▌  | 51/68 [00:00<00:00, 69.14it/s]Fetching 68 files:  85%|████████▌ | 58/68 [00:00<00:00, 64.87it/s]Fetching 68 files: 100%|██████████| 68/68 [00:01<00:00, 65.50it/s]Fetching 68 files: 100%|██████████| 68/68 [00:01<00:00, 63.52it/s]
+OK     blimp-aceptable            licencia=cc-by-4.0 rev=877fba0801ff filas_utiles=134000 clases_origen=2
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 35.06it/s]
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00,  6.21it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00,  6.21it/s]
+OK     pubmedqa-si-no             licencia=mit rev=9001f2853fb8 filas_utiles=890 clases_origen=2
+FUERA  vaers-hospitalizado        licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|public use|U\.S\. Government/)
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 24.91it/s]
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files: 100%|██████████| 4/4 [00:00<00:00, 26.91it/s]Fetching 4 files: 100%|██████████| 4/4 [00:00<00:00, 26.84it/s]
+FUERA  wnli-es                    error JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 1 (char 2)
+FUERA  osha-hospitalizado         licencia: no se pudo bajar la ficha https://www.osha.gov/severeinjury (HTTPError: HTTP Error 403: Forbidden)
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 40.67it/s]
+Fetching 78 files:   0%|          | 0/78 [00:00<?, ?it/s]Fetching 78 files:   3%|▎         | 2/78 [00:00<00:11,  6.44it/s]Fetching 78 files:   8%|▊         | 6/78 [00:00<00:04, 15.77it/s]Fetching 78 files:  13%|█▎        | 10/78 [00:00<00:03, 20.22it/s]Fetching 78 files:  21%|██        | 16/78 [00:00<00:02, 28.16it/s]Fetching 78 files:  27%|██▋       | 21/78 [00:00<00:01, 32.07it/s]Fetching 78 files:  35%|███▍      | 27/78 [00:00<00:01, 37.85it/s]Fetching 78 files:  41%|████      | 32/78 [00:01<00:01, 40.21it/s]Fetching 78 files:  47%|████▋     | 37/78 [00:01<00:00, 41.97it/s]Fetching 78 files:  54%|█████▍    | 42/78 [00:01<00:00, 39.99it/s]Fetching 78 files:  60%|██████    | 47/78 [00:01<00:00, 38.66it/s]Fetching 78 files:  68%|██████▊   | 53/78 [00:01<00:00, 41.12it/s]Fetching 78 files:  77%|███████▋  | 60/78 [00:01<00:00, 46.85it/s]Fetching 78 files:  83%|████████▎ | 65/78 [00:01<00:00, 43.84it/s]Fetching 78 files:  92%|█████████▏| 72/78 [00:01<00:00, 49.98it/s]Fetching 78 files: 100%|██████████| 78/78 [00:02<00:00, 44.42it/s]Fetching 78 files: 100%|██████████| 78/78 [00:02<00:00, 37.20it/s]
+FUERA  moral-stories-accion       esquema/descarga: faltan columnas esperadas ['immoral_action', 'intention', 'situation']; la fila trae ['ID', 'label', 'moral_action']
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 34.91it/s]
+FUERA  bbh-deportes               licencia: la tarjeta no declara licencia (campo license ausente)
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 36.62it/s]
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00, 15.28it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00, 15.95it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00, 15.84it/s]
+FUERA  strategyqa-si-no           error JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 1 (char 2)
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 18.30it/s]
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00, 12.00it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00, 11.98it/s]
+FUERA  fake-news-es               esquema/descarga: faltan columnas esperadas ['Descripcion', 'Label', 'Titulo']; la fila trae ['CATEGORY', 'HEADLINE', 'ID', 'LINK', 'SOURCE', 'TEXT', 'TOPICS']
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 23.59it/s]
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  7.85it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  5.73it/s]Fetching 5 files:  80%|████████  | 4/5 [00:01<00:00,  3.54it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  2.12it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  2.60it/s]
+OK     civil-comments-toxico      licencia=cc0-1.0 rev=f2970eb3a557 filas_utiles=40000 clases_origen=2
+OK     ghsa-severidad             licencia=cc-by-4.0 rev=dc2f6a7026e1 filas_utiles=37914 clases_origen=4
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 37.81it/s]
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00,  4.44it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00,  4.43it/s]
+OK     math-nivel                 licencia=mit rev=e839825f9ec5 filas_utiles=12498 clases_origen=5
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 40.25it/s]
+FUERA  argq-calidad               licencia: cabecera cc-by-3.0 pero el cuerpo de la tarjeta contradice: SA en el texto («…ts#reusers.27_rights_and_obligations) * (c) copyright ibm 2014. released under [cc-by-sa 3.0](http://creativecom
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 42.73it/s]
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  67%|██████▋   | 2/3 [00:00<00:00, 11.20it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 15.43it/s]
+OK     gsm8k-pasos                licencia=mit rev=740312add88f filas_utiles=8792 clases_origen=6
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 34.25it/s]
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  67%|██████▋   | 2/3 [00:00<00:00,  6.32it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00,  6.65it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00,  6.58it/s]
+OK     oasst1-calidad-es          licencia=apache-2.0 rev=fdf72ae0827c filas_utiles=16062 clases_origen=5
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 17.47it/s]
+FUERA  sts-es                     licencia: la tarjeta no declara licencia (campo license ausente)
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:00<00:00, 41.36it/s]
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  7.96it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  6.49it/s]Fetching 5 files:  80%|████████  | 4/5 [00:00<00:00,  9.19it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00, 10.56it/s]
+OK     helpsteer2-utilidad        licencia=cc-by-4.0 rev=990b2711a361 filas_utiles=21362 clases_origen=5
+FUERA  ctgov-fase                 licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|no copyright|U\.S\. Government/)
+OK     msha-gravedad              licencia=dominio-publico rev=sha256:f383c filas_utiles=164856 clases_origen=4
+OK     fda-clase-retirada         licencia=cc0-1.0 rev=sha256:2723f filas_utiles=18164 clases_origen=3
+HUELLAS huellas-entrenamiento.jsonl.gz: 126398
+HUELLAS huellas-v2.jsonl.gz: 7185
+HECHA  sql-complejidad            soporte=64 test=500 clases=8 solape(desc/marc)=0/0
+HECHA  mmmlu-asignatura-es        soporte=456 test=500 clases=57 solape(desc/marc)=0/5
+HECHA  blimp-aceptable            soporte=16 test=500 clases=2 solape(desc/marc)=0/0
+HECHA  pubmedqa-si-no             soporte=16 test=500 clases=2 solape(desc/marc)=0/0
+HECHA  civil-comments-toxico      soporte=16 test=500 clases=2 solape(desc/marc)=10/5
+HECHA  ghsa-severidad             soporte=32 test=500 clases=4 solape(desc/marc)=0/0
+HECHA  math-nivel                 soporte=40 test=500 clases=5 solape(desc/marc)=0/5
+HECHA  gsm8k-pasos                soporte=48 test=500 clases=6 solape(desc/marc)=0/0
+HECHA  oasst1-calidad-es          soporte=40 test=500 clases=5 solape(desc/marc)=13/0
+HECHA  helpsteer2-utilidad        soporte=40 test=500 clases=5 solape(desc/marc)=0/0
+HECHA  msha-gravedad              soporte=24 test=500 clases=3 solape(desc/marc)=1/0
+HECHA  fda-clase-retirada         soporte=24 test=500 clases=3 solape(desc/marc)=0/0
+RESUMEN {"por_estado": {"fuera": 19, "construida": 12}, "por_tipo": {"choice": {"candidatas": 11, "construidas": 2, "cuentan": 1, "informativo": 1, "n_bajo": true, "es": 0, "en": 1, "es_informativo": 1, "en_informativo": 0}, "yesno": {"candidatas": 10, "construidas": 3, "cuentan": 2, "informativo": 1, "n_bajo": true, "es": 0, "en": 2, "es_informativo": 0, "en_informativo": 1}, "score": {"candidatas": 10, "construidas": 7, "cuentan": 5, "informativo": 2, "n_bajo": true, "es": 1, "en": 4, "es_informativo": 0, "en_informativo": 2}}, "fuera": {"patentes-cpc": "esquema/descarga: la descarga previsible (31.8 GB) pasa del tope de la tarea (3.0 GB)", "tormentas-tipo": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|no restrictions|U\\.S\\. Government/)", "nhtsa-componente": "licencia: no se pudo bajar la ficha https://www.nhtsa.gov/nhtsa-datasets-and-apis (HTTPError: HTTP Error 403: Forbidden)", "neiss-parte-cuerpo": "licencia: no se pudo bajar la ficha https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data (HTTPError: HTTP Error 403: Forbidden)", "nsf-direccion": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|U\\.S\\. Government/)", "wikinoticias-es-categoria": "licencia: la ficha contradice la licencia: SA en el texto («…la licencia que utiliza wikipedia, la licencia creative commons attribution <b>sharealike</b> 3.0, <b>es incompatible</b>. </p><p>no cumplir con estas normas puede dañar…»)", "unam-tesis-carrera": "esquema/descarga: faltan columnas esperadas ['Carrera', 'Resumen', 'Título']; la fila trae ['texto|titulo|carrera']", "biotech-evento": "esquema/descarga: faltan columnas esperadas ['content', 'label 1', 'title']; la fila trae ['Content', 'Label 1', 'Label 2', 'Label 3', 'Label 4', 'Label 5', 'Target Organization', 'Title']", "cpsc-recall-peligro": "licencia: no se pudo bajar la ficha https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information (HTTPError: HTTP Error 403: Forbidden)", "vaers-hospitalizado": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|public use|U\\.S\\. Government/)", "wnli-es": "error JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 1 (char 2)", "osha-hospitalizado": "licencia: no se pudo bajar la ficha https://www.osha.gov/severeinjury (HTTPError: HTTP Error 403: Forbidden)", "moral-stories-accion": "esquema/descarga: faltan columnas esperadas ['immoral_action', 'intention', 'situation']; la fila trae ['ID', 'label', 'moral_action']", "bbh-deportes": "licencia: la tarjeta no declara licencia (campo license ausente)", "strategyqa-si-no": "error JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 1 (char 2)", "fake-news-es": "esquema/descarga: faltan columnas esperadas ['Descripcion', 'Label', 'Titulo']; la fila trae ['CATEGORY', 'HEADLINE', 'ID', 'LINK', 'SOURCE', 'TEXT', 'TOPICS']", "argq-calidad": "licencia: cabecera cc-by-3.0 pero el cuerpo de la tarjeta contradice: SA en el texto («…ts#reusers.27_rights_and_obligations) * (c) copyright ibm 2014. released under [cc-by-sa 3.0](http://creativecommons.org/licenses/by-sa/3.0/) ## citation information…»)", "sts-es": "licencia: la tarjeta no declara licencia (campo license ausente)", "ctgov-fase": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|no copyright|U\\.S\\. Government/)"}, "n_bajo_minimo": 8, "por_idioma": {"es": {"cuentan": 1, "informativo": 1, "candidatas": 7, "n_bajo": true}, "en": {"cuentan": 7, "informativo": 3, "candidatas": 24}}}
+construidas=12 fuera=19 pendientes=0
+tipo choice: candidatas=11 construidas=2 cuentan=1 (es 0, en 1) informativo=1 N_BAJO
+tipo yesno: candidatas=10 construidas=3 cuentan=2 (es 0, en 2) informativo=1 N_BAJO
+tipo score: candidatas=10 construidas=7 cuentan=5 (es 1, en 4) informativo=2 N_BAJO
+espanol: cuentan=1 informativo=1 N_BAJO
+OK: sellada, sha256 y licencias coinciden con el manifiesto
+[comprobacion] OK construidas=12 fuera=19 pendientes=0
+== listo 2026-11-19T22:12:38Z fallo=no (299 s)
