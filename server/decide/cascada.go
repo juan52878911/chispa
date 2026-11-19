@@ -375,3 +375,13 @@ func (c *Cascada) Decidir(ctx context.Context, p Pregunta) Resultado {
 }
 
 func ms(d time.Duration) float64 { return float64(d.Microseconds()) / 1000 }
+
+// ExigeEjemplos dice si alguna capa (el kNN con knn.modo = cpu) rechaza la pregunta por no traer examples ni ser de ninguna tarea con banco.
+func (c *Cascada) ExigeEjemplos(p Pregunta) bool {
+	for _, l := range c.capas {
+		if e, ok := l.d.(interface{ ExigeEjemplos(Pregunta) bool }); ok && !c.saltadas[l.d.Nombre()] && e.ExigeEjemplos(p) {
+			return true
+		}
+	}
+	return false
+}

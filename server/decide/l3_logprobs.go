@@ -421,7 +421,13 @@ func (l *L3LLM) decidirLogprobs(ctx context.Context, p Pregunta, ordenadas []Opc
 			l.met.l3Cuenta("invalida")
 			return Respuesta{Incompleto: true}, nil
 		}
-		if t := l.turnosParaL3(p.Texto); len(t) > 0 { // few-shot: ejemplos de oro de la tarea como turnos previos
+		if len(p.Ejemplos) > 0 { // los examples de la petición mandan sobre el banco: son las demostraciones (ver DemosDePeticion)
+			if ejs := DemosDePeticion(p, l.ejemplosPorPeticion()); len(ejs) > 0 {
+				if t, err := turnosEjemplosL3(ejs); err == nil && len(t) > 0 {
+					msgs = conEjemplosL3(msgs, t)
+				}
+			}
+		} else if t := l.turnosParaL3(p.Texto); len(t) > 0 { // few-shot: ejemplos de oro de la tarea como turnos previos
 			msgs = conEjemplosL3(msgs, t)
 		}
 	}

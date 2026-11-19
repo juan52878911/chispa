@@ -29,6 +29,8 @@ type Pregunta struct {
 	Kind     string   `json:"kind"`
 	Opciones []Opcion `json:"options"`
 	Nonce    string   `json:"nonce,omitempty"`
+	// Ejemplos: los examples[] de la petición (vacío = no vienen). Sustituyen al banco de la pregunta en el kNN y, si L3 hace fs8, son sus demostraciones.
+	Ejemplos []EjemploPeticion `json:"-"`
 }
 
 // Respuesta de una capa. Conf es la confianza top-1; 0 significa «sin opinión».
