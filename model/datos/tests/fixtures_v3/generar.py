@@ -3,10 +3,12 @@
     python -m model.datos.tests.fixtures_v3.generar DIR     # deja DIR/{espejo,url,huellas,manifiesto.json}
 Todo el texto sale de un vocabulario inventado con semilla fija: nada real.
 """
+import bz2
 import gzip
 import json
 import random
 import sys
+import tarfile
 import zipfile
 from pathlib import Path
 
@@ -63,7 +65,8 @@ def generar(destino):
     _jsonl(esp / "ej__pares" / "datos.jsonl", pares)
     (esp / "ej__pares" / "README.md").write_text(_readme("mit"), encoding="utf-8")
     cands.append(cand("mini-yesno", "yesno", dict(formato="jsonl", ficheros=["datos.jsonl"], pares=dict(bueno="bueno", malo="malo", contexto=["ctx"])),
-                      dict(tipo="hf", repo="ej/pares", patrones=["*.jsonl", "README.md"]), clases=2, licencia_esperada="mit"))
+                      dict(tipo="hf", repo="ej/pares", patrones=["*.jsonl", "README.md"]), clases=2, licencia_esperada="mit",
+                      bloque="informativo", motivo_bloque="benchmark público, probable contaminación de L3"))
     # 3. score con nota continua en csv -> 5 cuantiles
     import csv
     (esp / "ej__score").mkdir(parents=True)
@@ -117,21 +120,70 @@ def generar(destino):
                                                 mapa_etiqueta=dict(LOW="1", MODERATE="2", HIGH="3")),
                       dict(tipo="url", url=(url / "avisos.zip").as_uri(), max_gb=1), url_ficha=(url / "ficha2.txt").as_uri(), licencia_esperada="cc-by-4.0",
                       licencia_fichero_en_descarga="*/LICENSE.md", licencia_regex_ficha=r"CC BY 4\.0", clases=3))
-    # 11. pendiente de lector
+    # 11. XML por registro (zip con un XML por concesión, con espacio de nombres y HTML escapado en el resumen), con ficha de dominio público
+    dirs = ["Dirección de Matemáticas", "Dirección de Biología", "Dirección de Ingeniería"]
+    with zipfile.ZipFile(url / "premios.zip", "w") as z:
+        for i in range(180):
+            z.writestr("2022/%d.xml" % i, '<?xml version="1.0" encoding="UTF-8"?><rootTag xmlns="http://example.invalid/ns"><Award><AwardTitle>t%d</AwardTitle>'
+                       '<AbstractNarration>&lt;br/&gt;%s&lt;/p&gt;</AbstractNarration><Organization><Code>%d</Code><Directorate><Abbreviation>X</Abbreviation>'
+                       '<LongName>%s</LongName></Directorate></Organization></Award></rootTag>' % (i, texto(rng, 20, "premio"), i, dirs[i % 3]))
+        z.writestr("2022/malo.xml", "<rootTag><Award>sin cerrar")
+    (url / "ficha3.txt").write_text("Los datos son de dominio público (inventado).", encoding="utf-8")
+    cands.append(cand("mini-xml", "choice", dict(formato="xml", ficheros=["**/*.xml"], registro="Award", campos=dict(texto="AbstractNarration", etiqueta="Organization/Directorate/LongName"),
+                                                 texto="texto", etiqueta="etiqueta", min_por_clase=40),
+                      dict(tipo="url", url=(url / "premios.zip").as_uri(), descomprimir=True, max_gb=1), url_ficha=(url / "ficha3.txt").as_uri(), licencia_esperada="dominio-publico",
+                      licencia_regex_ficha=r"dominio p[uú]blico", clases=3))
+    # 12. volcado MediaWiki en bz2: categorías, una sola categoría temática por artículo, redirecciones y otros espacios de nombres
+    paginas = []
+    for i in range(240):
+        cat = ["Política", "Deportes", "Salud"][i % 3]
+        extra = "[[Categoría:%s]]" % ["Salud", "Política", "Deportes"][i % 3] if i % 10 == 0 else ""      # dos temáticas: no etiquetable
+        w = "{{publicado|2020}}\n== Titular ==\nUna [[ciudad|urbe]] '''inventada''' %s<ref>fuente</ref>\n\n== Fuentes ==\n* http://example.invalid\n[[Categoría:%s]]%s[[Categoría:Argentina]]" % (texto(rng, 20, "noticia"), cat, extra)
+        paginas.append('<page><title>Nota %d</title><ns>0</ns><id>%d</id><revision><text xml:space="preserve">%s</text></revision></page>' % (i, i, w.replace("&", "&amp;").replace("<", "&lt;")))
+    paginas.append('<page><title>Redir</title><ns>0</ns><redirect title="Nota 1" /><revision><text>#REDIRECCIÓN [[Nota 1]]</text></revision></page>')
+    paginas.append("<page><title>Portada</title><ns>4</ns><revision><text>[[Categoría:Política]] texto</text></revision></page>")
+    (url / "wiki.xml.bz2").write_bytes(bz2.compress(('<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/">' + "".join(paginas) + "</mediawiki>").encode("utf-8")))
+    (url / "ficha4.txt").write_text("Texto bajo Creative Commons Attribution 2.5 (CC BY 2.5), inventado.", encoding="utf-8")
+    cands.append(cand("mini-wiki", "choice", dict(formato="mediawiki", ficheros=["*.xml.bz2"], ns="0", texto="texto", etiqueta="etiqueta", min_por_clase=40,
+                                                  categorias=["Política", "Deportes", "Salud", "Economía"]),
+                      dict(tipo="url", url=(url / "wiki.xml.bz2").as_uri(), max_gb=1), url_ficha=(url / "ficha4.txt").as_uri(), licencia_esperada="cc-by-2.5",
+                      licencia_regex_ficha=r"CC BY 2\.5", clases=None))
+    # 13. pendiente de lector
     cands.append(cand("mini-pendiente", "choice", dict(pendiente="XML por escribir"), dict(tipo="url", url="https://example.invalid/x.xml"), clases=None))
     # manifiesto
     man = b.manifiesto_inicial()
     man["tareas"] = [b.entrada_inicial(c) for c in cands]
     man["descartadas"], man["reservas_v2"] = [], []
     b.guardar_json(d / "manifiesto.json", man)
-    # huellas de «referencia»: un texto exacto y un casi-duplicado (cambia la última palabra) de la tarea mini-choice, más relleno ajeno
+    # huellas de «referencia» de v2: un texto exacto (en dev) y un casi-duplicado (en selladas, cambia la última palabra) de la tarea mini-choice, más relleno ajeno
     hue.mkdir(parents=True)
     from model.datos import bateria_v3_solapes as s
     otros = [texto(random.Random(99 + i), 30) for i in range(50)]
     ref_dir = d / "refs"
-    _jsonl(ref_dir / "v2.jsonl", [{"texto": ref_exacto}, {"texto": ref_casi.rsplit(" ", 1)[0] + " palabra-nueva"}] + [{"texto": t} for t in otros])
+    ref_casi_v2 = ref_casi.rsplit(" ", 1)[0] + " palabra-nueva"
+    for k in range(6):
+        _jsonl(ref_dir / "dev" / ("d%d.jsonl" % k), ([{"texto": ref_exacto}] if k == 0 else []) + [{"texto": t} for t in otros[k::6]])
+    for k in range(8):
+        _jsonl(ref_dir / "selladas" / ("s%d.jsonl" % k), ([{"texto": ref_casi_v2}] if k == 0 else []) + [{"texto": t} for t in otros[k + 1::8]])
     s.escribir_huellas([ref_dir], hue / "huellas-v2.jsonl.gz", "v2")
-    return dict(manifiesto=d / "manifiesto.json", espejo=d / "espejo", huellas=hue, ref_exacto=ref_exacto, ref_casi=ref_casi)
+    for nombre in ("dev", "selladas"):                                  # los .tgz de entrada del ud
+        with tarfile.open(d / (nombre + ".tgz"), "w:gz") as tf:
+            for f in sorted((ref_dir / nombre).glob("*.jsonl")):
+                tf.add(f, arcname=f.name)
+    # entrenamiento falso: dos fuentes públicas (jsonl y parquet), una pública sin datos, una propia; el texto exacto de otra fila de test de mini-choice está en la pública
+    ref_entren = filas["test"][4]["texto"]
+    _jsonl(esp / "ent__publica" / "train.jsonl", [{"text": ref_entren, "label": 1}, {"text": texto(rng, 25), "label": 0}, {"text": "corto", "label": 1}])
+    (esp / "ent__tabla").mkdir(parents=True)
+    pq.write_table(pa.table({"inputs": [texto(rng, 15) for _ in range(5)], "meta": [{"nota": texto(rng, 6)} for _ in range(5)]}), str(esp / "ent__tabla" / "t.parquet"))
+    (esp / "ent__sindatos").mkdir(parents=True)
+    (esp / "ent__sindatos" / "README.md").write_text("solo ficha", encoding="utf-8")
+    ent = dict(version=1, descripcion="inventado", conjuntos=[
+        dict(nombre="publica", fuente="ent/publica", licencia="mit"), dict(nombre="tabla", fuente="ent/tabla", licencia="mit"),
+        dict(nombre="sindatos", fuente="ent/sindatos", licencia="mit"), dict(nombre="interna", fuente="buzón interno de quejas", licencia="propia")],
+        exclusiones=dict(mientras_Juan_no_decida=["Fuente Propia A"], medicion_solo=["inventada-v1"]))
+    b.guardar_json(d / "entrenamiento.json", ent)
+    return dict(manifiesto=d / "manifiesto.json", espejo=d / "espejo", huellas=hue, ref_exacto=ref_exacto, ref_casi=ref_casi, ref_entren=ref_entren,
+                dev=d / "dev.tgz", selladas=d / "selladas.tgz", entrenamiento=d / "entrenamiento.json", refs=ref_dir)
 
 
 if __name__ == "__main__":

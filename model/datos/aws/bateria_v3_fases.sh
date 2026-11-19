@@ -1,7 +1,7 @@
 #!/bin/bash
-# Batería v3, FASE 2: fases (las carga con `.` el user-data bateria_v3.sh tras bajar y comprobar el sha256 de codigo.tgz, huellas.tgz y el manifiesto; comparte sus variables y funciones:
+# Batería v3, FASE 2: fases (las carga con `.` el user-data bateria_v3.sh tras bajar y comprobar el sha256 de codigo.tgz, dev.tgz y selladas.tgz de v2 y el manifiesto; comparte sus variables y funciones:
 # BASE, OUT, LOCAL, MIN, ESPERA_MIN, HUB, PYARROW, PYYAML, MANIF, N_TAREAS, estado, fallo, cierre, quedan_min).
-# Modo local (CHISPA_LOCAL=1, prueba en seco sin red): CHISPA_PY, CHISPA_V3_ESPEJO (carpeta con hf/<owner>__<repo>/, ver model/datos/tests/fixtures_v3), CHISPA_V3_MANIFIESTO, CHISPA_V3_RESERVAS=1.
+# Modo local (CHISPA_LOCAL=1, prueba en seco sin red): CHISPA_PY, CHISPA_V3_ESPEJO (carpeta con hf/<owner>__<repo>/, ver model/datos/tests/fixtures_v3), CHISPA_V3_MANIFIESTO, CHISPA_V3_RESERVAS=1, CHISPA_V3_ENTRENAMIENTO (manifiesto de entrenamiento de pruebas), CHISPA_V3_N_DEV y CHISPA_V3_N_SELLADAS (nº de jsonl esperados en los .tgz de v2; 6 y 8).
 # Nada de lo que imprime esto lleva texto de filas: solo recuentos, estados y motivos.
 fases_main() {
 CH=$BASE/codigo; DATOS=$OUT/datos; TRAB=$BASE/trabajo; export PYTHONPATH=$CH
@@ -22,7 +22,7 @@ import pyarrow, huggingface_hub, yaml, zipfile, csv
 if '$LOCAL' != '1':
     assert pyarrow.__version__ == '$PYARROW' and huggingface_hub.__version__ == '$HUB' and yaml.__version__ == '$PYYAML', (pyarrow.__version__, huggingface_hub.__version__, yaml.__version__)
 " || { fallo "imports o versiones"; estado entorno "FALLO imports"; cierre; }
-"$PY" -c "import model.datos.bateria_v3, model.datos.bateria_v3_licencias, model.datos.bateria_v3_solapes, model.datos.bateria_v3_candidatas" || { fallo "imports del codigo"; estado entorno "FALLO imports codigo"; cierre; }
+"$PY" -c "import model.datos.bateria_v3, model.datos.bateria_v3_licencias, model.datos.bateria_v3_solapes, model.datos.bateria_v3_candidatas, model.datos.bateria_v3_huellas" || { fallo "imports del codigo"; estado entorno "FALLO imports codigo"; cierre; }
 CN=$("$PY" -c "import json;print(len(json.load(open('$MANIF'))['tareas']))")
 [ "$CN" = "$N_TAREAS" ] || { fallo "el manifiesto trae $CN tareas y se esperaban $N_TAREAS"; estado entorno "FALLO tareas"; cierre; }
 if [ "$LOCAL" != 1 ]; then
@@ -31,7 +31,22 @@ if [ "$LOCAL" != 1 ]; then
   done
 fi
 estado entorno "OK $("$PY" -c "import sys, pyarrow, huggingface_hub; print('python', sys.version.split()[0], 'pyarrow', pyarrow.__version__, 'huggingface_hub', huggingface_hub.__version__)"); $(nproc) vCPU; $(free -g | awk '/Mem:/{print $2}') GB RAM; $N_TAREAS tareas; \
-huellas: $(ls "$BASE"/huellas | tr '\n' ' ')"
+v2: dev.tgz y selladas.tgz con sha256 comprobado"
+
+# --- 2b. huellas DENTRO de la instancia: v2 (dev y selladas) y fuentes públicas del entrenamiento. Salen hashes y sketches; los textos se quedan aquí (el log se audita contra ellos al final)
+echo "== 2b. huellas $(date -u +%T) quedan $(quedan_min) min"
+HUE=$BASE/huellas; MENT=${CHISPA_V3_ENTRENAMIENTO:-$CH/model/alt/manifiesto-entrenamiento.json}
+( cd "$CH" && "$PY" -m model.datos.bateria_v3_huellas v2 --dev "$BASE/in/dev.tgz" --selladas "$BASE/in/selladas.tgz" --trabajo "$BASE/v2txt" --salida "$HUE" --n-dev "${CHISPA_V3_N_DEV:-6}" --n-selladas "${CHISPA_V3_N_SELLADAS:-8}" ) > "$OUT/huellas-v2.out" 2>&1
+RC=$?; cat "$OUT/huellas-v2.out"
+[ "$RC" = 0 ] && [ -f "$HUE/huellas-v2.jsonl.gz" ] || { fallo "huellas de v2 rc=$RC"; estado huellas "FALLO v2"; cierre; }
+( cd "$CH" && timeout $(( ($(quedan_min) - ESPERA_MIN - 30) * 60 )) "$PY" -m model.datos.bateria_v3_huellas entrenamiento --manifiesto "$MENT" --trabajo "$BASE/entr" --salida "$HUE" --muestra "$BASE/muestra" --tope-min "${CHISPA_V3_TOPE_HUELLAS_MIN:-35}" ) > "$OUT/huellas-entr.out" 2>&1
+RC=$?; cat "$OUT/huellas-entr.out"
+[ "$RC" = 0 ] && [ -f "$HUE/huellas-entrenamiento.jsonl.gz" ] && [ -f "$HUE/estado-huellas.json" ] || { fallo "huellas del entrenamiento rc=$RC (124 = tope de tiempo)"; estado huellas "FALLO entrenamiento"; cierre; }
+estado huellas "OK $("$PY" -I -c "
+import json, sys
+e = json.load(open(sys.argv[1]))
+print('v2=%d entrenamiento=%d comprobadas=%d solape_no_comprobado=%d' % (e['v2']['huellas'], e['entrenamiento']['huellas'], len(e['entrenamiento']['comprobados']), len(e['no_comprobado'])))" "$HUE/estado-huellas.json")"
+rm -rf "$BASE/entr" "$BASE/in/dev.tgz" "$BASE/in/selladas.tgz"       # los .tgz de v2 ya son huellas; los textos extraídos quedan en v2txt solo hasta la auditoría del log
 
 # --- 3. reservas de v2: tarjetas (en la revision de v2) y fichas de origen de promise, ropa, rtp y CFPB, con sha256 y la comprobacion automatica
 echo "== 3. reservas v2 $(date -u +%T) quedan $(quedan_min) min"
@@ -68,7 +83,8 @@ for t in m["tareas"]:
 r = m["resumen"]
 print("construidas=%d fuera=%d pendientes=%d" % (r["por_estado"].get("construida", 0), r["por_estado"].get("fuera", 0), r["por_estado"].get("pendiente", 0)))
 for tp, v in r["por_tipo"].items():
-    print("tipo %s: candidatas=%d construidas=%d es=%d en=%d" % (tp, v["candidatas"], v["construidas"], v["es"], v["en"]))
+    print("tipo %s: candidatas=%d construidas=%d cuentan=%d (es %d, en %d) informativo=%d%s" % (tp, v["candidatas"], v["construidas"], v["cuentan"], v["es"], v["en"], v["informativo"], " N_BAJO" if v["n_bajo"] else ""))
+print("espanol: cuentan=%d informativo=%d%s" % (r["por_idioma"]["es"]["cuentan"], r["por_idioma"]["es"]["informativo"], " N_BAJO" if r["por_idioma"]["es"]["n_bajo"] else ""))
 print("MAL: " + ",".join(mal) if mal else "OK: sellada, sha256 y licencias coinciden con el manifiesto")
 sys.exit(1 if mal else 0)
 PYEOF
