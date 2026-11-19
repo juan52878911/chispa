@@ -1,7 +1,7 @@
 #!/bin/bash
 CHISPA_S3=${CHISPA_S3_LOCAL:-__CHISPA_S3__}   # CHISPA_S3_LOCAL (con CHISPA_LOCAL=1): directorio en vez de S3, solo para pruebas
-# W1-fs8: e2e fs8 POR EL SERVIDOR Go (modo gpu: todo a L3, vLLM real con Qwen3-4B-Instruct-2507, banco de Qwen3-Embedding con <banco>.ejemplos.jsonl) frente al fs8 de Python
-# (llm_logprobs.py --ejemplos --k 8, mismas filas y mismas 8 demostraciones) en las 6 tareas de DESARROLLO. Criterio: model/alt/crit-w1-fs8-e2e.json (sha abajo; lo congela el orquestador).
+# W1-fs8: e2e fs8 POR EL SERVIDOR Go (modo gpu: todo a L3, vLLM real con Qwen3-4B-Instruct-2507, banco de Qwen3-Embedding con el pool <banco>.ejemplos.jsonl: las 8 demostraciones MÁS CERCANAS por consulta) frente al fs8-kNN de Python
+# (llm_logprobs.py --ejemplos --demos, mismas filas y las mismas demostraciones que registra el servidor; la selección se comprueba aparte con demos_fila sobre una muestra) en las 6 tareas de DESARROLLO. Criterio: model/alt/crit-w1-fs8-e2e.json (sha abajo; lo congela el orquestador).
 # UNA g5.xlarge bajo demanda (A10G, 4 vCPU, 16 GB), DLAMI GPU PyTorch AL2023, volumen raíz >= 100 GB, rol rol-ec2-pruebas (sin ListBucket). TOPE DURO CHISPA_MIN=55 min:
 # 55/60 x 1,006 USD/h = 0,92 USD de cómputo (+ ≈ 0,01 de EBS) <= 1 USD. N = __N_POR_TAREA__ filas de test por tarea (6 x N por el servidor y otras 6 x N por Python), calculadas en el criterio.
 # Lee por nombre exacto $CHISPA_S3/{codigo.tgz,dev.tgz} (sha256 abajo); escribe $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado. Las fases viven en

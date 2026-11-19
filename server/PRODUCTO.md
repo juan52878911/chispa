@@ -6,8 +6,8 @@ y sus configs siguen arrancando igual. En uso general L0 y L1 están apagados (c
 | | **Modo GPU** (`deploy/config.modo-gpu.json`) | **Modo CPU** (`deploy/config.modo-cpu.json`) |
 |---|---|---|
 | Quién contesta | L3 = Qwen3-4B por logprobs con 8 demostraciones (fs8), siempre | solo el kNN (e5 por defecto), siempre; sin LLM |
-| `knn.modo` | `"gpu"`: todo escala a L3; el kNN solo sirve para el top-k de las preguntas con más de 20 opciones (y no codifica la consulta en el resto) | `"cpu"`: contesta L2 siempre, sin escalado por margen ni `siempre` |
-| Ejemplos | del banco (`<banco>.ejemplos.jsonl`, demos fs8) o de la petición (`examples[]`) | **obligatorios**: en la petición o de un banco; si no, 400 `examples_required` |
+| `knn.modo` | `"gpu"`: todo escala a L3; el kNN elige las demostraciones de cada consulta (codifica la consulta) y sirve para el top-k de las preguntas con más de 20 opciones | `"cpu"`: contesta L2 siempre, sin escalado por margen ni `siempre` |
+| Ejemplos | del banco (`<banco>.ejemplos.jsonl`, el pool de demos fs8) o de la petición (`examples[]`); las 8 demos son **las más cercanas a cada consulta** (kNN), ver «Demostraciones por consulta» | **obligatorios**: en la petición o de un banco; si no, 400 `examples_required` |
 | Exactitud macro sellada (§17.26) | **0,501** (final todo-L3) | **0,402** (kNN) |
 | Hardware | una GPU (A10G: 10,6 a 12,4 peticiones/s) + vLLM | CPU: e5 ≈ 9 ms por consulta; Qwen3-Embedding ≈ 1 s en CPU |
 
@@ -23,11 +23,23 @@ entero, cuya cola acumulada no pasa de 0,5); `choice` y sí/no siguen con el arg
 las filas guardadas del e2e de L2-qwen3emb no están en el repo, así que el 0,4700 se reproduce solo en el sentido de que la regla Go da, fila a fila, lo mismo que Python sobre un fixture sintético.
 Si los ids de `score` no son enteros o las probabilidades suman 0, el servidor se queda con el argmax.
 
+## Demostraciones por consulta (modo gpu, fs8-kNN)
+En modo gpu las 8 demostraciones del prompt de L3 no son fijas por tarea: son **las 8 del soporte más cercanas a cada consulta**, como `lineas_base_v2_pred demos` / `lineas_base_v2d.py` (fs8-knn) y la apertura sellada (`apertura_v2.py`, LEEME §17.24 D y §17.26).
+El soporte es el pool de `<banco>.ejemplos.jsonl` (todo el oro del banco) o, si la pregunta trae `examples[]`, esos examples. L2 codifica la consulta (un coste de codificador por fila: con Qwen en CPU ≈ 0,2 a 1 s) y deja las demos elegidas a L3 (`Respuesta.Demos`).
+- **Regla** (`SeleccionarDemos`, idéntica a `lineas_base_v2_pred.demos_fila`; fixture `testdata/w1_demos_knn.json` de `model/alt/w1_fixture_demos.py`, 8 casos con empates exactos, soportes menores que k, k clases justas y etiquetas que ordenan distinto como texto y como número):
+  similitud = coseno de la consulta con cada ejemplo (float64 redondeado a float32); orden estable por similitud descendente y, a igualdad, posición en el soporte; si el soporte tiene **k clases o menos**, la más cercana de cada clase (clases en orden alfabético) y el resto por cercanía hasta k (cuota por clase);
+  si tiene más, las k más cercanas; **orden en el prompt: de menor a mayor similitud** (la más parecida pegada a la pregunta; a igualdad, el orden de elección). Con menos de k ejemplos salen todos. `k = l3.ejemplos` (8).
+- **Formato pool de `<banco>.ejemplos.jsonl`**: una línea por ejemplo de oro, las de siempre (`id, pregunta, tipo, texto, opciones, etiqueta`) más `fila` (índice de su vector en el `.npy`, del oro; el servidor comprueba que la etiqueta coincide con la del banco y no arranca si no) y, en las elegidas para el modo fijo, `fs` (su posición, desde 1).
+  `chispa-banco-qwen` lo escribe por defecto (`-ejemplos-fijos` escribe el formato viejo: solo las k fijas, sin `fila`). Un fichero del formato viejo (los de `generar_banco.py` de e5, que no cambia) se sigue leyendo y esa tarea usa sus ejemplos fijos; para tener kNN con un banco de e5 hay que regenerarlo con el pool.
+- **Modo fijo** (opción, no por defecto): `l3.demos_fijas: true` (o bancos/ejemplos sin codificador: sin vector de consulta no hay kNN) deja las demos como antes: las del fichero marcadas `fs` (o todas, en el formato viejo) y, con `examples[]`, una vuelta por clase en orden de aparición. Fuera de modo gpu todo es fijo.
+- **Diagnóstico**: `chispa-server -demos-log FICHERO` escribe una línea por pregunta `{id, estado_sha, tarea, demos: [ids]}`; `-pruebas -codificador-prueba N` pone vectores inventados por hash (solo la prueba en seco del ud).
+- Los examples de la petición cuestan ahora su codificación aunque todo escale (se guardan en la caché de vectores igual); el tope `max_ejemplos*` sigue valiendo.
+
 ## Ejemplos en la petición (`examples[]`)
 Cada pregunta puede traer `"examples": [{"text": "…", "label": "<id de una opción>"}, …]` (no en `multi`). Validación (400, `question_id` y la posición del ejemplo en el mensaje): `invalid_example` (texto vacío, sin etiqueta),
 `invalid_example_label` (la etiqueta no es una opción), `too_many_examples` (por defecto 256 por pregunta y 1 024 por petición; `limites.max_ejemplos` y `limites.max_ejemplos_peticion`: cada ejemplo sin caché es una codificación) y `field_too_long` (16 KiB por `text`; `limites.max_ejemplo_texto`).
 - **Regla si llegan banco y examples**: los de la petición **sustituyen** al banco de esa pregunta (no se mezclan; el fondo y los umbrales de score del banco no se usan). La pregunta no tiene que estar en `knn.tareas`: sin tarea se usan el umbral global y el kNN cuenta como tarea `(peticion)` en las métricas.
-  Con examples, L3 usa como demostraciones fs8 hasta `l3.ejemplos` de ellos: una vuelta por clase en orden de aparición, sin azar (mismo prompt para la misma petición). Sin `examples` la respuesta es la de siempre, byte a byte (test), y los bancos fuera de línea no cambian.
+  Con examples, L3 usa como demostraciones fs8 hasta `l3.ejemplos` de ellos: en modo gpu las más cercanas a la consulta (ver arriba); en el resto, una vuelta por clase en orden de aparición, sin azar (mismo prompt para la misma petición). Sin `examples` la respuesta es la de siempre, byte a byte (test), y los bancos fuera de línea no cambian.
 - **Caché de vectores**: los vectores de los ejemplos se guardan por clave sha256 del texto ya preparado para el codificador (Qwen: la consulta con instrucción y pregunta; e5: texto con las mayúsculas normalizadas) + codificador + revisión del modelo,
   en una LRU con tope de memoria (`knn.cache_vectores_mb`, 64 por defecto) y sin codificar dos veces lo mismo si dos peticiones lo piden a la vez. La primera petición con N ejemplos nuevos cuesta N codificaciones (con Qwen en CPU ≈ 1 s cada una); las siguientes, ninguna. El caché de respuestas por `nonce` incluye los ejemplos en su clave.
 - `knn.tareas` puede estar vacío si hay codificador en el servidor (`e5_onnx` o `qwen3-emb`): entonces solo hay kNN con examples de la petición.
@@ -82,7 +94,7 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
   - Bancos: `chispa-banco-qwen -onnx … -tok … -soporte soporte.jsonl -salida DIR` (Go, sin torch: usa la misma ruta de codificación que el servidor, así que banco y consultas comparten codificador por construcción; el `soporte.jsonl` lleva `tarea, etiqueta, pregunta, texto` por fila y el formato de salida es el de siempre, `.npy` + `.jsonl`). Elegir el oro (8 por clase) queda fuera: en la medida lo hace `model/alt/aws/qwen3emb_filas.py` con `muestrear(ys, 8, 0)`.
     La herramienta escribe también `banco-<tarea>.ejemplos.jsonl` (los ejemplos fs8 de L3) con el formato y la elección de `generar_banco.py` (estratificados por clase con la semilla 20261115; el Mersenne Twister de CPython está reimplementado en Go y un test lo compara byte a byte con ficheros de Python).
     Las filas del soporte deben llevar además `id`, `tipo` y `opciones` (ids) (y `split`: solo cuenta `train`); flags `-k` (8 por defecto; 0 = sin fichero) y `-semilla`. Si las filas no traen esos campos, avisa y no escribe el fichero (L3 contesta zero-shot); con `-k` explícito es un error.
-    Las demostraciones son **fijas por tarea** (las del fichero), no las k más cercanas por fila de `lineas_base_v2_pred demos`. La medida de L2-qwen3emb es solo L2 (L3 apagado).
+    El fichero es ahora el pool (todo el oro con `fila`, las k fijas con `fs`; ver «Demostraciones por consulta»); en modo gpu las demostraciones son las k más cercanas por fila, como `lineas_base_v2_pred demos`. La medida de L2-qwen3emb es solo L2 (L3 apagado).
 - **Qué reproduce el codificador** (y nada más): consulta de soporte y de test «Instruct: Classify the text to answer this question: <pregunta>\nQuery:<texto>» (`<pregunta>` es el `question` de la petición); descripciones de etiqueta sin instrucción; truncado a 320 tokens; pooling del último token y norma L2. **No** normaliza las mayúsculas del mensaje (el camino de e5 sí; R11 no lo hacía con Qwen).
 - **Memoria y CPU**: cada sesión ORT carga su copia de los pesos (≈ 2,4 GB fp32, ≈ 1,2 GB int8): `qwen_sesiones` vale 1 por defecto (usa todos los núcleos en cada consulta), no el min(4, núcleos) de e5.
 - **Reglas de elección** (criterio congelado `model/alt/crit-l2-qwen3emb.json`): int8 solo si su macro e2e queda a ≤ 0,5 puntos del fp32 con los mismos vecinos; si la p50 por consulta en CPU (c7i.xlarge, 4 hilos) del modo elegido pasa de 150 ms, esta nota pasa a ser «**recomendado con GPU o cuando la latencia no importe**».
@@ -125,7 +137,7 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
 - **`multi`: extensión solo de Go.** Sí/no independiente por opción (una llamada por opción con etiquetas S/N); `llm_logprobs.py` no lo tiene. Sin medir.
 
 ## Pendiente para producción
-- Medir el e2e fs8 por el servidor con vLLM real, Qwen3-4B y banco Qwen con `ejemplos.jsonl` frente a Python: ud preparado y NO lanzado (`model/alt/aws/empaquetar_w1_fs8.sh`, criterio propuesto `model/alt/crit-w1-fs8-e2e.json`, sin congelar).
+- Medir el e2e fs8-kNN por el servidor con vLLM real, Qwen3-4B y banco Qwen con el pool de `ejemplos.jsonl` frente a Python: ud preparado y NO lanzado (`model/alt/aws/empaquetar_w1_fs8.sh`, criterio propuesto `model/alt/crit-w1-fs8-e2e.json`, sin congelar; 100 filas por tarea: el servidor codifica cada consulta con Qwen en CPU).
 - Medir fs8 con vLLM real (exactitud y latencia: los 8 turnos de ejemplo alargan el prompt; con 60 opciones y prefijo común, `--enable-prefix-caching` debería amortizarlo, sin medir).
 - Paridad fila a fila del top-k en Go con los vectores e5 reales de finanzas, que hoy solo está probado con datos sintéticos.
 - Calibrar u por cliente (hoy a mano); automatizarlo con un jsonl de validación.
