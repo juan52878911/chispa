@@ -1,0 +1,351 @@
+{
+ "criterio_sha256": "6d48047802a67b6ebf6ba54964d6f15ad4e3a337cf9acab684503ce9bdcec8c7",
+ "n_test": {
+  "cfpb-quejas": 500,
+  "congreso-eeuu-partido": 500,
+  "finanzas-documentos": 461,
+  "horeca-resenas": 500,
+  "jql-valor-educativo": 469,
+  "usajobs-nivel": 500
+ },
+ "sistemas": {
+  "4b-zs": {
+   "sistema": "4b-zs",
+   "macro": 0.4779,
+   "macro_sin_sinteticas": 0.3908,
+   "por_tarea": {
+    "cfpb-quejas": 0.672,
+    "congreso-eeuu-partido": 0.596,
+    "finanzas-documentos": 0.7983,
+    "horeca-resenas": 0.506,
+    "jql-valor-educativo": 0.1493,
+    "usajobs-nivel": 0.146
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "l2-zs": {
+   "sistema": "l2-zs",
+   "macro": 0.2135,
+   "macro_sin_sinteticas": 0.2448,
+   "por_tarea": {
+    "cfpb-quejas": 0.166,
+    "congreso-eeuu-partido": 0.508,
+    "finanzas-documentos": 0.1041,
+    "horeca-resenas": 0.198,
+    "jql-valor-educativo": 0.2111,
+    "usajobs-nivel": 0.094
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "knn-e5-k8-t3a": {
+   "sistema": "knn-e5-k8-t3a",
+   "macro": 0.3901,
+   "macro_sin_sinteticas": 0.3169,
+   "por_tarea": {
+    "cfpb-quejas": 0.39,
+    "congreso-eeuu-partido": 0.516,
+    "finanzas-documentos": 0.7614,
+    "horeca-resenas": 0.312,
+    "jql-valor-educativo": 0.2175,
+    "usajobs-nivel": 0.144
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "knn-e5-v32": {
+   "sistema": "knn-e5-v32",
+   "macro": 0.3901,
+   "macro_sin_sinteticas": 0.3169,
+   "por_tarea": {
+    "cfpb-quejas": 0.39,
+    "congreso-eeuu-partido": 0.516,
+    "finanzas-documentos": 0.7614,
+    "horeca-resenas": 0.312,
+    "jql-valor-educativo": 0.2175,
+    "usajobs-nivel": 0.144
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "knn-e5-v8": {
+   "sistema": "knn-e5-v8",
+   "macro": 0.4429,
+   "macro_sin_sinteticas": 0.3616,
+   "por_tarea": {
+    "cfpb-quejas": 0.454,
+    "congreso-eeuu-partido": 0.526,
+    "finanzas-documentos": 0.8048,
+    "horeca-resenas": 0.406,
+    "jql-valor-educativo": 0.2985,
+    "usajobs-nivel": 0.168
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "knn-qwen-v32": {
+   "sistema": "knn-qwen-v32",
+   "macro": 0.4675,
+   "macro_sin_sinteticas": 0.3895,
+   "por_tarea": {
+    "cfpb-quejas": 0.58,
+    "congreso-eeuu-partido": 0.554,
+    "finanzas-documentos": 0.7874,
+    "horeca-resenas": 0.46,
+    "jql-valor-educativo": 0.2239,
+    "usajobs-nivel": 0.2
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "knn-qwen-v8": {
+   "sistema": "knn-qwen-v8",
+   "macro": 0.4683,
+   "macro_sin_sinteticas": 0.3848,
+   "por_tarea": {
+    "cfpb-quejas": 0.572,
+    "congreso-eeuu-partido": 0.55,
+    "finanzas-documentos": 0.7809,
+    "horeca-resenas": 0.49,
+    "jql-valor-educativo": 0.2111,
+    "usajobs-nivel": 0.206
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "zs-e5": {
+   "sistema": "zs-e5",
+   "macro": 0.3321,
+   "macro_sin_sinteticas": 0.324,
+   "por_tarea": {
+    "cfpb-quejas": 0.49,
+    "congreso-eeuu-partido": 0.52,
+    "finanzas-documentos": 0.4143,
+    "horeca-resenas": 0.282,
+    "jql-valor-educativo": 0.1962,
+    "usajobs-nivel": 0.09
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "zs-qwen": {
+   "sistema": "zs-qwen",
+   "macro": 0.3393,
+   "macro_sin_sinteticas": 0.3212,
+   "por_tarea": {
+    "cfpb-quejas": 0.476,
+    "congreso-eeuu-partido": 0.502,
+    "finanzas-documentos": 0.3427,
+    "horeca-resenas": 0.408,
+    "jql-valor-educativo": 0.2068,
+    "usajobs-nivel": 0.1
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "rerank": {
+   "sistema": "rerank",
+   "macro": 0.3687,
+   "macro_sin_sinteticas": 0.2852,
+   "por_tarea": {
+    "cfpb-quejas": 0.342,
+    "congreso-eeuu-partido": 0.494,
+    "finanzas-documentos": 0.6074,
+    "horeca-resenas": 0.464,
+    "jql-valor-educativo": 0.2068,
+    "usajobs-nivel": 0.098
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "rerank-lsm": {
+   "sistema": "rerank-lsm",
+   "macro": 0.3466,
+   "macro_sin_sinteticas": 0.2864,
+   "por_tarea": {
+    "cfpb-quejas": 0.334,
+    "congreso-eeuu-partido": 0.5,
+    "finanzas-documentos": 0.6161,
+    "horeca-resenas": 0.318,
+    "jql-valor-educativo": 0.2217,
+    "usajobs-nivel": 0.09
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "rerank-mediana": {
+   "sistema": "rerank-mediana",
+   "macro": 0.3487,
+   "macro_sin_sinteticas": 0.2627,
+   "por_tarea": {
+    "cfpb-quejas": 0.342,
+    "congreso-eeuu-partido": 0.494,
+    "finanzas-documentos": 0.6074,
+    "horeca-resenas": 0.434,
+    "jql-valor-educativo": 0.1066,
+    "usajobs-nivel": 0.108
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  },
+  "rerank-topk-finanzas": {
+   "sistema": "rerank-topk-finanzas",
+   "macro": 0.3821,
+   "macro_sin_sinteticas": 0.2852,
+   "por_tarea": {
+    "cfpb-quejas": 0.342,
+    "congreso-eeuu-partido": 0.494,
+    "finanzas-documentos": 0.6876,
+    "horeca-resenas": 0.464,
+    "jql-valor-educativo": 0.2068,
+    "usajobs-nivel": 0.098
+   },
+   "cobertura": {
+    "cfpb-quejas": 1.0,
+    "congreso-eeuu-partido": 1.0,
+    "finanzas-documentos": 1.0,
+    "horeca-resenas": 1.0,
+    "jql-valor-educativo": 1.0,
+    "usajobs-nivel": 1.0
+   },
+   "cobertura_total": true
+  }
+ },
+ "reproduce_t3a": {
+  "cfpb-quejas": 1.0,
+  "congreso-eeuu-partido": 1.0,
+  "finanzas-documentos": 1.0,
+  "horeca-resenas": 1.0,
+  "jql-valor-educativo": 1.0,
+  "usajobs-nivel": 1.0
+ },
+ "veredicto": {
+  "A": {
+   "dif_macro": 0.0774,
+   "ic95": [
+    0.0573,
+    0.0981
+   ],
+   "estado": "PASA",
+   "informativo_v8": {
+    "dif_macro": 0.0255,
+    "ic95": [
+     0.005,
+     0.0465
+    ]
+   },
+   "informativo_zs": {
+    "dif_macro": 0.0072,
+    "ic95": [
+     -0.0127,
+     0.027
+    ]
+   },
+   "lat_emb_ms_p50": 38.01
+  },
+  "B": {
+   "dif_macro_vs_4b": -0.1092,
+   "ic95": [
+    -0.1301,
+    -0.0896
+   ],
+   "lat_ms_p50": 108.9,
+   "lat_4b_ms_p50": 104.5,
+   "veces_mas_rapido": 0.96,
+   "estado": "NO PASA",
+   "dif_macro_vs_l2zs": 0.1552,
+   "informativo_topk_finanzas": {
+    "dif_macro_vs_4b": -0.0958
+   }
+  },
+  "C": {
+   "estado": "no medido: licencia",
+   "motivo": "los pesos son Apache-2.0 sobre mmBERT-small (MIT), pero la tarjeta declara como datos de entrenamiento SNLI (CC BY-SA 4.0) y MultiNLI (con partes CC BY-SA 3.0); no es verificable como libre de -SA"
+  }
+ }
+}
