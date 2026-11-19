@@ -12,7 +12,7 @@ D=${CHISPA_DRY_DIR:-/tmp/chispa-w1ab-dryrun}; chmod -R u+w "$D" 2>/dev/null || t
 crit=$(git show "$sha:model/alt/crit-w1-fs8-e2e.json" | shasum -a 256 | cut -d' ' -f1)
 GO_SHA256=$(printf '0%.0s' $(seq 64)) CRIT_SHA256=$crit CHISPA_PERMITIR_CRIT_SIN_CONGELAR=1 CHISPA_UD_DIR="$D/ud" bash model/alt/aws/empaquetar_w1_fs8ab.sh "$sha" "$D/dev" "$D/s3" > "$D/empaquetar.log" 2>&1 || { cat "$D/empaquetar.log"; exit 1; }
 tail -4 "$D/empaquetar.log"
-mkdir -p "$D/s3a" "$D/s3b"; cp "$D/s3/codigo.tgz" "$D/s3/dev.tgz" "$D/s3a/"; cp "$D/s3/codigo.tgz" "$D/s3/dev.tgz" "$D/s3b/"
+for x in s3a s3b s3b0; do mkdir -p "$D/$x"; cp "$D/s3/codigo.tgz" "$D/s3/dev.tgz" "$D/$x/"; done
 uda=$(ls "$D"/ud/ud-w1-fs8a-*.sh); udb=$(ls "$D"/ud/ud-w1-fs8b-*.sh)
 # bancos fabricados con las mismas entradas que preparará A
 mkdir -p "$D/ent" && PYTHONPATH=$PWD "$PY" -m model.alt.w1_filas --dev "$D/dev" --salida "$D/ent" --n-por-tarea $(( ${CHISPA_N:-120} / 6 )) > /dev/null

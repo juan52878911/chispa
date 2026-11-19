@@ -64,7 +64,7 @@ fi
 echo "== 5. fase A $(date -u +%T) quedan $(quedan_min) min"
 T2=$(date +%s)
 s3cp "$S3A/faseA.json" "$BASE/in/faseA.json" && s3cp "$S3A/faseA.tar" "$BASE/in/faseA.tar" || { fallo "faseA: descarga"; estado faseA "FALLO descarga"; cierre; }
-mkdir -p "$FA"; tar -xf "$BASE/in/faseA.tar" -C "$FA" || { fallo "faseA.tar: no se extrae"; estado faseA "FALLO tar"; cierre; }
+mkdir -p "$FA"
 "$PY" - "$BASE/in/faseA.json" "$BASE/in/faseA.tar" "$FA" "$COD_SHA256" "$DEV_SHA256" "$CRIT_SHA" "$FASEA_SHA256" "$LOCAL" "$NPT" <<'PYEOF' || { fallo "faseA: sha256 o procedencia"; estado faseA "FALLO sha"; cierre; }
 import hashlib, json, os, sys
 js, tar, fa, cod, dev, crit, pin, local, npt = sys.argv[1:10]
@@ -80,6 +80,9 @@ def malo(m):
 if j.get("fase") != "A": malo("no es una fase A")
 if j["tar_sha256"] != sha(tar): malo("sha256 de faseA.tar distinto del de faseA.json")
 if not pin.startswith("__") and pin != "-" and pin != j["tar_sha256"]: malo("sha256 de faseA.tar distinto del fijado en el ud")
+import tarfile
+with tarfile.open(tar) as t:   # solo tras comprobar el sha256 del tar
+    t.extractall(fa, filter="data") if hasattr(tarfile, "data_filter") else t.extractall(fa)
 for k, v in (("codigo_sha256", cod), ("dev_sha256", dev), ("criterio_sha256", crit)):
     if j[k] != v: malo("%s de A (%s) no es el de B (%s)" % (k, j[k][:12], v[:12]))
 if local != "1" and not j["onnx_real"]: malo("A no exportó el ONNX real")
