@@ -48,7 +48,7 @@ fi
 echo "== 3. filas $(date -u +%T)"
 RUB=$REPO/model/alt/rubricas-r10-t3b.json; RUBSHA=$("$PY" -c "import json; print(json.load(open('$REPO/model/alt/crit-techo-local.json'))['sistemas']['rubricas_sha256'])")
 if [ "$LOCAL" = 1 ]; then RUB=${CHISPA_LOCAL_RUBRICAS:-mecanica}; else sha_ok "$RUBSHA" "$RUB" || { fallo "rúbrica distinta de la congelada"; estado entradas "FALLO rúbrica"; cierre; }; fi
-( cd "$REPO" && $PY -m model.alt.techo_local preparar --dev "$BASE/dev" --salida "$T" --rubricas "$RUB" ) > "$BASE/preparar.txt" 2>&1; CN=$(tail -1 "$BASE/preparar.txt")
+( cd "$REPO" && $PY -m model.alt.techo_local preparar --dev "$BASE/dev" --salida "$T" --rubricas "$RUB" --umbral-opciones "${CHISPA_TOPK_UMBRAL:-20}" ) > "$BASE/preparar.txt" 2>&1; CN=$(tail -1 "$BASE/preparar.txt")
 [ "$CN" = "tareas=6 test=$N_TEST soporte=$N_SOP" ] || { cat "$BASE/preparar.txt"; fallo "recuentos distintos: $CN"; estado entradas "FALLO recuentos"; cierre; }
 CHO=$(cat "$T/choice.txt"); SCO=$(cat "$T/score.txt"); TK=$(cat "$T/topk.txt")
 for p in test rub/test; do [ -d "$T/$p" ] && ( cd "$REPO" && $PY -m model.alt.techo_local dividir --origen "$T/$p" --destino-b "$T/${p}B" --destino-a "$T/${p}A" ) | sed "s#^#$p #"; done
