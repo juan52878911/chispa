@@ -13,6 +13,9 @@ Claves del lector (todas opcionales salvo `formato`, `ficheros`, `texto`, `etiqu
   prefijo_hasta: corta la etiqueta en ese carácter   etiqueta_par: {col, nombre} (arrays paralelos name/value)   cuantiles: n (niveles por cuantiles del pool)
   contar_patron: {col, patron, min, max}   pares: {bueno, malo, contexto}   etiqueta_desde_carpeta: bool   vacio_es: etiqueta para el valor vacío
   clases_max / min_por_clase: se quedan las clases más frecuentes y con al menos ese nº   muestra_por_clase: tope de lectura por clase (reservorio)
+  separador: delimitador del csv (p. ej. «|»)   umbral: {col, si, no} para yesno desde una nota numérica (>= si -> «si», <= no -> «no», lo demás se descarta)
+  lista: clave con la lista de registros dentro de cada JSON de un json_zip
+  formato xml: registro (etiqueta de cada registro) y campos ({nombre: ruta de etiquetas «A/B/C»}); formato mediawiki: categorias (conjunto cerrado) y ns
   codificacion: por defecto utf-8   pendiente: texto si todavía no hay lector (la tarea no se construye)
 """
 
@@ -77,12 +80,13 @@ CANDIDATAS = [
                                     "83": "pie", "88": "boca", "89": "cuello", "92": "oreja", "93": "dedo de la mano", "94": "dedo del pie"}),
          pregunta="¿Qué parte del cuerpo se lesionó?"),
     dict(nombre="nsf-direccion", tipo="choice", idioma="en", dominio="financiación de la ciencia", familia="nsf-awards",
-         fuente=dict(tipo="url", url="https://www.nsf.gov/awardsearch/download?DownloadFileName=2022&All=true", max_gb=1),
+         fuente=dict(tipo="url", url="https://www.nsf.gov/awardsearch/download?DownloadFileName=2022&All=true", max_gb=1, descomprimir=True),
          url_ficha="https://www.nsf.gov/awardsearch/download.jsp", url_ficha_confirmada=False, licencia_esperada="dominio-publico",
          licencia_regex_ficha=r"public domain|U\.S\. Government", sintetico=False, clases=8, confianza_id="baja", limpieza_esperada="media",
          no_solapa="resúmenes de proyectos de la NSF (EE. UU.); v2 tiene arxiv (artículos) pero no concesiones de financiación",
-         riesgos="PENDIENTE DE LECTOR: son XML por concesión (AbstractNarration y Organization/Directorate); no se construye hasta escribir el lector con el esquema real",
-         lector=dict(pendiente="XML por concesión: texto = AbstractNarration, etiqueta = Organization/Directorate/LongName (8 direcciones)"),
+         riesgos="lector XML escrito SIN ver el esquema real (tolerante): si no hay registros <Award> con AbstractNarration y Organization/Directorate/LongName queda fuera con las etiquetas vistas; muchos resúmenes terminan con el mismo párrafo estándar de la NSF",
+         lector=dict(formato="xml", ficheros=["**/*.xml"], registro="Award", campos=dict(texto="AbstractNarration", etiqueta="Organization/Directorate/LongName"),
+                     texto="texto", etiqueta="etiqueta", clases_max=8, min_por_clase=60),
          pregunta="¿Qué dirección de la NSF financia el proyecto?"),
     dict(nombre="wikinoticias-es-categoria", tipo="choice", idioma="es", dominio="noticias", familia="wikinoticias",
          fuente=dict(tipo="url", url="https://dumps.wikimedia.org/eswikinews/latest/eswikinews-latest-pages-articles.xml.bz2", max_gb=1),
@@ -90,9 +94,38 @@ CANDIDATAS = [
          licencia_regex_ficha=r"CC[ -]?BY[ -]?2\.5|Creative Commons Attribution 2\.5|Reconocimiento 2\.5", sintetico=False, clases=None, confianza_id="baja",
          limpieza_esperada="media",
          no_solapa="única fuente de noticias en español con licencia CC BY (Wikinoticias); v2 se quedó sin dominio de noticias por falta de licencia verificable",
-         riesgos="PENDIENTE DE LECTOR: volcado XML con wikitexto y categorías por limpiar; hay que decidir el conjunto cerrado de categorías; algunos artículos citan o copian prensa con otros derechos",
-         lector=dict(pendiente="XML de MediaWiki: texto limpio del artículo, etiqueta = categoría temática principal (conjunto cerrado a fijar viendo el volcado)"),
+         riesgos="lector de volcado MediaWiki escrito SIN ver el volcado: el conjunto cerrado de categorías es una suposición (las que no aparezcan o tengan < 40 artículos se descartan; con < 2 clases queda fuera) y solo se usan artículos con UNA categoría temática; algunos artículos citan o copian prensa con otros derechos",
+         lector=dict(formato="mediawiki", ficheros=["*.xml.bz2", "*.xml"], ns="0", texto="texto", etiqueta="etiqueta", min_por_clase=40,
+                     categorias=["Política", "Economía", "Deportes", "Cultura y entretenimiento", "Ciencia y tecnología", "Salud", "Sociedad", "Internacional", "Desastres y accidentes",
+                                 "Crimen y derecho", "Conflicto armado", "Medio ambiente", "Educación", "Religión"]),
          pregunta="¿De qué sección de noticias es el artículo?"),
+    # ----------------------------------------------------------------------------------------------------------- reemplazos (W3b)
+    # Tareas reales (no benchmarks de razonamiento) que sustituyen a las que pasan a `informativo`, para mantener >= 8 que cuenten por tipo. Todo de memoria, sin verificar:
+    # lo que no resuelva en fase 2 queda fuera con su motivo y, si un tipo baja de 8 que cuenten, se informa con «n bajo».
+    dict(nombre="unam-tesis-carrera", tipo="choice", idioma="es", dominio="tesis universitarias", familia="unam-tesis", reemplazo_de="mmmlu-asignatura-es",
+         fuente=dict(tipo="hf", repo="hackathon-pln-es/unam_tesis", patrones=["*.csv", "*.json", "*.jsonl", "*.parquet", "README.md"], max_gb=1),
+         url_ficha="https://huggingface.co/datasets/hackathon-pln-es/unam_tesis", licencia_esperada="apache-2.0", sintetico=False,
+         clases=5, confianza_id="baja", limpieza_esperada="media",
+         no_solapa="resúmenes de tesis de licenciatura de la UNAM (español de México); v2 y el entrenamiento no traen tesis ni exámenes",
+         riesgos="id, formato y columnas de memoria (puede ser csv o json y llamarse distinto); pocas carreras y pocos miles de filas; licencia de la tarjeta sin confirmar",
+         lector=dict(formato="csv", ficheros=["**/*.csv"], texto=["Título", "Resumen"], etiqueta="Carrera", min_por_clase=40),
+         pregunta="¿De qué carrera es la tesis?"),
+    dict(nombre="biotech-evento", tipo="choice", idioma="en", dominio="noticias de biotecnología", familia="biotech-eventos", reemplazo_de="mmmlu-asignatura-es",
+         fuente=dict(tipo="hf", repo="knowledgator/events_classification_biotech", patrones=["*.csv", "*.json", "*.jsonl", "*.parquet", "README.md"], max_gb=1),
+         url_ficha="https://huggingface.co/datasets/knowledgator/events_classification_biotech", licencia_esperada="apache-2.0", sintetico=False,
+         clases=12, confianza_id="baja", limpieza_esperada="media",
+         no_solapa="noticias de empresas de biotecnología etiquetadas por tipo de evento (fusión, ensayo, financiación…); sin equivalente en v2 ni en el entrenamiento",
+         riesgos="id y columnas de memoria (title, content, «label 1»…); es multietiqueta y aquí solo se usa la primera; las noticias vienen de prensa y comunicados de terceros",
+         lector=dict(formato="csv", ficheros=["**/*.csv"], texto=["title", "content"], etiqueta="label 1", clases_max=12, min_por_clase=40),
+         pregunta="¿Qué tipo de evento describe la noticia?"),
+    dict(nombre="cpsc-recall-peligro", tipo="choice", idioma="en", dominio="retiradas de productos", familia="cpsc-recalls", reemplazo_de="mmmlu-asignatura-es",
+         fuente=dict(tipo="url", url="https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=2015-01-01&RecallDateEnd=2024-12-31", max_gb=1),
+         url_ficha="https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information", url_ficha_confirmada=False, licencia_esperada="dominio-publico",
+         licencia_regex_ficha=r"public domain|U\.S\. Government|no restrictions", sintetico=False, clases=10, confianza_id="baja", limpieza_esperada="alta",
+         no_solapa="avisos de retirada de productos de consumo de la CPSC (EE. UU.); distinto de neiss (urgencias) aunque sea la misma agencia: otra fuente, otro texto y otra tarea",
+         riesgos="URL de la API y de su ficha de memoria; la API puede pedir parámetros o limitar filas; la etiqueta es Hazards[0].Name (nombres libres: se quedan las 10 más frecuentes)",
+         lector=dict(formato="jsonl", ficheros=["*"], texto=["Title", "Description"], etiqueta="Hazards.0.Name", clases_max=10, min_por_clase=40),
+         pregunta="¿Qué peligro motiva la retirada del producto?"),
     # ----------------------------------------------------------------------------------------------------------- yesno
     dict(nombre="blimp-aceptable", tipo="yesno", idioma="en", dominio="gramática", familia="blimp",
          fuente=dict(tipo="hf", repo="nyu-mll/blimp", patrones=["*.parquet", "README.md"], max_gb=1),
@@ -161,6 +194,23 @@ CANDIDATAS = [
          lector=dict(formato="jsonl", ficheros=["**/*.json", "**/*.jsonl"], texto="question", etiqueta="answer",
                      mapa_etiqueta={"True": "si", "true": "si", "False": "no", "false": "no"}, split_por_fichero=dict(train="train", test="test")),
          pregunta="¿Es cierta la afirmación implícita en la pregunta (sí o no)?"),
+    dict(nombre="fake-news-es", tipo="yesno", idioma="es", dominio="noticias falsas", familia="fake-news-es", reemplazo_de="pubmedqa-si-no, bbh-deportes, strategyqa-si-no",
+         fuente=dict(tipo="hf", repo="mariagrandury/fake_news_corpus_spanish", patrones=["*.csv", "*.json", "*.jsonl", "*.parquet", "README.md"], max_gb=1),
+         url_ficha="https://huggingface.co/datasets/mariagrandury/fake_news_corpus_spanish", licencia_esperada="cc-by-4.0", sintetico=False,
+         clases=2, confianza_id="baja", limpieza_esperada="media",
+         no_solapa="noticias en español verificadas o falsas (Spanish Fake News Corpus); v2 y el entrenamiento no traen verificación de noticias",
+         riesgos="id, formato, columnas y licencia de memoria; los textos son noticias de prensa de terceros (la tarjeta puede no cubrirlos: la comprobación automática decide); el corpus tiene pocas filas",
+         lector=dict(formato="csv", ficheros=["**/*.csv"], texto=["Titulo", "Descripcion"], etiqueta="Label", mapa_etiqueta={"Fake": "si", "FAKE": "si", "True": "no", "TRUE": "no"}),
+         pregunta="¿La noticia es falsa?"),
+    dict(nombre="civil-comments-toxico", tipo="yesno", idioma="en", dominio="comentarios de lectores", familia="civil-comments", reemplazo_de="pubmedqa-si-no, bbh-deportes, strategyqa-si-no",
+         fuente=dict(tipo="hf", repo="google/civil_comments", patrones=["*.parquet", "README.md"], max_gb=2),
+         url_ficha="https://huggingface.co/datasets/google/civil_comments", licencia_esperada="cc0-1.0", sintetico=False,
+         clases=2, confianza_id="media", limpieza_esperada="alta",
+         no_solapa="comentarios de lectores de webs de noticias (Civil Comments, CC0): otra fuente que rtp-toxicidad (v2) y hatecheck (v1), aunque el dominio de toxicidad es vecino",
+         riesgos="dominio vecino de toxicidad (v2 y v1); la nota es el promedio de anotadores: solo se usan >= 0,5 («si») y <= 0,1 («no»); el repo puede ser un script de carga sin parquet (quedaría fuera)",
+         lector=dict(formato="parquet", ficheros=["**/*.parquet"], texto="text", umbral=dict(col="toxicity", si=0.5, no=0.1), split_por_fichero=dict(train="train", test="test"),
+                     muestra_por_clase=20000),
+         pregunta="¿El comentario es tóxico?"),
     # ----------------------------------------------------------------------------------------------------------- score
     dict(nombre="ghsa-severidad", tipo="score", idioma="en", dominio="seguridad informática", familia="github-advisory",
          fuente=dict(tipo="url", url="https://github.com/github/advisory-database/archive/{rev}.zip", max_gb=1,
@@ -232,7 +282,33 @@ CANDIDATAS = [
          lector=dict(formato="json_zip", ficheros=["*.json", "**/*.json"], texto="protocolSection.descriptionModule.briefSummary",
                      etiqueta="protocolSection.designModule.phases", mapa_etiqueta=dict(PHASE1="1", PHASE2="2", PHASE3="3", PHASE4="4"), muestra_por_clase=3000),
          pregunta="¿En qué fase (1 a 4) está el ensayo?"),
+    dict(nombre="msha-gravedad", tipo="score", idioma="en", dominio="minería", familia="msha-accidents", reemplazo_de="math-nivel, gsm8k-pasos",
+         fuente=dict(tipo="url", url="https://arlweb.msha.gov/OpenGovernmentData/DataSets/Accidents.zip", descomprimir=True, max_gb=1),
+         url_ficha="https://arlweb.msha.gov/OpenGovernmentData/OGIMSHA.asp", url_ficha_confirmada=False, licencia_esperada="dominio-publico",
+         licencia_regex_ficha=r"public domain|U\.S\. Government|open government|no restrictions", sintetico=False, clases=5, confianza_id="baja", limpieza_esperada="media",
+         no_solapa="relatos de accidentes en minas (MSHA, EE. UU.); distinto de osha-hospitalizado (otra agencia y otra fuente), con etiqueta ordinal de gravedad en vez de sí/no",
+         riesgos="URL, delimitador «|» y nombres de columnas y de niveles de memoria (los niveles que no casen con el mapa se descartan); misma temática laboral que osha-hospitalizado",
+         lector=dict(formato="csv", separador="|", ficheros=["**/Accidents.txt", "**/accidents.txt"], texto="NARRATIVE", etiqueta="DEGREE_INJURY", codificacion="latin-1",
+                     mapa_etiqueta={"ACCIDENT ONLY": "1", "NO DAYS AWAY FROM WORK,NO RESTRCTD ACT": "1", "DAYS RESTRICTED ACTIVITY ONLY": "2", "DAYS AWAY FROM WORK ONLY": "3",
+                                    "DAYS AWAY FROM WORK & RESTRICTED ACTIVITY": "3", "PERM TOT OR PRTL DISABLTY": "4", "FATALITY": "5"}),
+         pregunta="¿Qué gravedad tuvo la lesión (1 = la menor, 5 = mortal)?"),
+    dict(nombre="fda-clase-retirada", tipo="score", idioma="en", dominio="retiradas de medicamentos", familia="openfda-enforcement", reemplazo_de="math-nivel, gsm8k-pasos",
+         fuente=dict(tipo="url", url="https://download.open.fda.gov/drug/enforcement/drug-enforcement-0001-of-0001.json.zip", max_gb=1),
+         url_ficha="https://open.fda.gov/terms/", url_ficha_confirmada=False, licencia_esperada="cc0-1.0",
+         licencia_regex_ficha=r"CC0|public domain", sintetico=False, clases=3, confianza_id="media", limpieza_esperada="alta",
+         no_solapa="motivos de retirada de medicamentos (openFDA, EE. UU.); distinto de vaers (eventos adversos) y ctgov (ensayos): otra fuente y otro texto",
+         riesgos="URL del volcado y claves (results, reason_for_recall, classification) de memoria; muchos motivos se repiten literalmente (se quitan los duplicados); las clases de la FDA dependen del criterio del regulador",
+         lector=dict(formato="json_zip", ficheros=["*.json"], lista="results", texto="reason_for_recall", etiqueta="classification",
+                     mapa_etiqueta={"Class III": "1", "Class II": "2", "Class I": "3"}),
+         pregunta="¿Qué clase de riesgo asigna la FDA a la retirada (1 = menor, 3 = mayor)?"),
 ]
+
+# Benchmarks públicos de razonamiento y examen: probable contaminación de L3. Se construyen y se sellan, pero NO cuentan en el agregado ni en las hipótesis selladas.
+INFORMATIVAS = ("mmmlu-asignatura-es", "bbh-deportes", "gsm8k-pasos", "math-nivel", "strategyqa-si-no", "pubmedqa-si-no")
+MOTIVO_INFORMATIVO = "benchmark público, probable contaminación de L3"
+for _c in CANDIDATAS:
+    if _c["nombre"] in INFORMATIVAS:
+        _c.update(bloque="informativo", motivo_bloque=MOTIVO_INFORMATIVO)
 
 DESCARTADAS = [  # (fuente, motivo); «de memoria» = no comprobado en este nodo
     ("fancyzhx/ag_news", "licencia solo de investigación no comercial y noticias con copyright"),

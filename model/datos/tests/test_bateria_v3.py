@@ -13,13 +13,16 @@ from model.datos.bateria_v3_candidatas import CANDIDATAS
 from model.datos.tests.fixtures_v3.generar import generar
 
 CLAVES_LECTOR = {"formato", "ficheros", "columnas", "texto", "etiqueta", "split_por_fichero", "split_col", "filtro", "mapa_etiqueta", "prefijo_hasta", "etiqueta_par", "cuantiles",
-                 "contar_patron", "pares", "etiqueta_desde_carpeta", "vacio_es", "clases_max", "min_por_clase", "muestra_por_clase", "codificacion", "pendiente"}
+                 "contar_patron", "pares", "etiqueta_desde_carpeta", "vacio_es", "clases_max", "min_por_clase", "muestra_por_clase", "codificacion", "pendiente",
+                 "separador", "umbral", "lista", "registro", "campos", "categorias", "ns"}
 
 
 # ----------------------------------------------------------------------------------------------------------------- registro de candidatas y manifiesto
 def test_candidatas_ocho_por_tipo_y_sin_duplicar_familia():
     por = {t: [c for c in CANDIDATAS if c["tipo"] == t] for t in b.TIPOS}
     assert all(len(v) >= 8 for v in por.values()), {k: len(v) for k, v in por.items()}
+    # tras pasar los benchmarks públicos a informativo, cada tipo conserva >= 7 candidatas que cuentan (el 8.º lo da lo que no caiga en fase 2; si no, «n bajo»)
+    assert all(sum(c.get("bloque", "cuentan") == "cuentan" for c in v) >= 7 for v in por.values())
     assert len({c["nombre"] for c in CANDIDATAS}) == len(CANDIDATAS)
     assert len({c["familia"] for c in CANDIDATAS}) == len(CANDIDATAS)
     assert {c["idioma"] for c in CANDIDATAS} == {"es", "en"}
@@ -160,11 +163,12 @@ def tarea(c, nombre):
 def test_estados_y_motivos(corrida):
     est = {t["nombre"]: t["estado"] for t in corrida["man"]["tareas"]}
     assert est == {"mini-choice": "construida", "mini-yesno": "construida", "mini-score": "construida", "mini-parquet": "construida", "mini-nc": "fuera", "mini-sa": "fuera",
-                   "mini-sinlic": "fuera", "mini-tuits": "fuera", "mini-url": "construida", "mini-zip": "construida", "mini-pendiente": "pendiente"}
+                   "mini-sinlic": "fuera", "mini-tuits": "fuera", "mini-url": "construida", "mini-zip": "construida", "mini-xml": "construida", "mini-wiki": "construida",
+                   "mini-pendiente": "pendiente"}
     assert "cc-by-nc" in tarea(corrida, "mini-nc")["motivo_fuera"] and "SA" in tarea(corrida, "mini-sa")["motivo_fuera"]
     assert "Twitter" in tarea(corrida, "mini-tuits")["motivo_fuera"] and "pendiente" in tarea(corrida, "mini-pendiente")["motivo_fuera"]
     r = corrida["man"]["resumen"]
-    assert r["por_tipo"]["choice"]["construidas"] == 2 and r["fuera"]["mini-nc"]
+    assert r["por_tipo"]["choice"]["construidas"] == 4 and r["fuera"]["mini-nc"]
 
 
 def test_licencias_guardadas_con_sha(corrida):
@@ -291,3 +295,81 @@ def test_auditar_log(corrida, tmp_path):
     sucio.write_text("algo %s\n" % primera, encoding="utf-8")
     assert b.auditar_log(corrida["salida"], sucio, registro=tmp_path / "ap.jsonl") >= 1
     assert len((tmp_path / "ap.jsonl").read_text(encoding="utf-8").splitlines()) >= 2 * len(list((corrida["salida"] / "sellada").glob("*.jsonl")))
+
+
+# ----------------------------------------------------------------------------------------------------------------- bloque informativo y recuento por idioma (W3b)
+def test_informativas_son_los_seis_benchmarks_y_no_cuentan():
+    inf = {c["nombre"] for c in CANDIDATAS if c.get("bloque") == "informativo"}
+    assert inf == {"mmmlu-asignatura-es", "bbh-deportes", "gsm8k-pasos", "math-nivel", "strategyqa-si-no", "pubmedqa-si-no"}
+    assert all(c["motivo_bloque"] == "benchmark público, probable contaminación de L3" for c in CANDIDATAS if c["nombre"] in inf)
+    m = json.loads((b.AQUI / "bateria-v3-manifiesto.json").read_text(encoding="utf-8"))
+    assert {t["nombre"] for t in m["tareas"] if t["bloque"] == "informativo"} == inf
+    reemp = [c for c in CANDIDATAS if c.get("reemplazo_de")]
+    assert reemp and all(c["nombre"] not in inf and c.get("bloque", "cuentan") == "cuentan" for c in reemp)
+    assert {c["idioma"] for c in reemp} == {"es", "en"}
+
+
+def test_resumen_separa_cuentan_e_informativo_y_marca_n_bajo(corrida):
+    r = corrida["man"]["resumen"]
+    y = r["por_tipo"]["yesno"]
+    assert y["construidas"] == 1 and y["cuentan"] == 0 and y["informativo"] == 1 and y["n_bajo"] is True          # mini-yesno es informativa
+    assert r["por_tipo"]["choice"]["cuentan"] == r["por_tipo"]["choice"]["construidas"] == 4 and r["por_tipo"]["choice"]["n_bajo"] is True
+    assert r["por_idioma"]["es"]["informativo"] == 1 and r["por_idioma"]["es"]["n_bajo"] is True and r["por_idioma"]["es"]["candidatas"] == 13
+    assert tarea(corrida, "mini-yesno")["bloque"] == "informativo" and tarea(corrida, "mini-choice")["bloque"] == "cuentan"
+
+
+# ----------------------------------------------------------------------------------------------------------------- lectores XML
+def test_lector_xml_es_tolerante_y_limpia_html(corrida):
+    t = tarea(corrida, "mini-xml")
+    assert t["clases"] == ["Dirección de Biología", "Dirección de Ingeniería", "Dirección de Matemáticas"]
+    soporte = [json.loads(l) for l in (corrida["salida"] / t["fichero_soporte"]).read_text(encoding="utf-8").splitlines()]
+    assert all("<" not in f["texto"] and "&lt;" not in f["texto"] and f["texto"].startswith("premio") for f in soporte)
+
+
+def test_lector_xml_sin_registros_da_motivo_con_etiquetas_vistas(tmp_path):
+    (tmp_path / "datos").mkdir()
+    (tmp_path / "datos" / "a.xml").write_text("<raiz><Otro><Cosa>x</Cosa></Otro></raiz>", encoding="utf-8")
+    t = dict(nombre="x", lector=dict(formato="xml", ficheros=["*.xml"], registro="Award", campos=dict(texto="AbstractNarration", etiqueta="Organization/Directorate/LongName"),
+                                     texto="texto", etiqueta="etiqueta"))
+    with pytest.raises(b.EsquemaError) as e:
+        b.extraer_items(t, tmp_path)
+    assert "ninguna fila utilizable" in str(e.value) and "Cosa=1" in str(e.value)
+
+
+def test_xml_con_entidades_propias_se_omite(tmp_path):
+    (tmp_path / "datos").mkdir()
+    (tmp_path / "datos" / "a.xml").write_text('<!DOCTYPE r [<!ENTITY a "aaaa">]><r><Award><AbstractNarration>&a;</AbstractNarration></Award></r>', encoding="utf-8")
+    t = dict(nombre="x", lector=dict(formato="xml", ficheros=["*.xml"], registro="Award", campos=dict(texto="AbstractNarration", etiqueta="AbstractNarration"), texto="texto", etiqueta="etiqueta"))
+    with pytest.raises(b.EsquemaError) as e:
+        b.extraer_items(t, tmp_path)
+    assert "_xml_con_entidades_omitido=1" in str(e.value)
+
+
+def test_lector_mediawiki_una_categoria_tematica_y_limpieza(corrida):
+    t = tarea(corrida, "mini-wiki")
+    assert t["cifras"]["filas_leidas"] == 240 and t["clases"] == ["Deportes", "Política", "Salud"]          # sin redirecciones ni ns 4; con dos categorías no hay etiqueta (216 etiquetables)
+    f = json.loads((corrida["salida"] / t["fichero_soporte"]).read_text(encoding="utf-8").splitlines()[0])
+    assert "{{" not in f["texto"] and "[[" not in f["texto"] and "Fuentes" not in f["texto"] and "example.invalid" not in f["texto"] and "<ref" not in f["texto"]
+
+
+def test_wikitexto_a_texto():
+    w = "{{plantilla|a={{anidada}}}}\n== Titular ==\n'''Hola''' [[mundo|planeta]] y [[otro]] [http://x.invalid enlace]<ref name=a>cita</ref><!-- nota -->\n[[Archivo:f.jpg|miniatura|[[a]] pie]]\n* punto\n== Referencias ==\n* algo"
+    assert b.wikitexto_a_texto(w) == "Titular Hola planeta y otro enlace punto"
+    assert b.limpiar_html("&lt;p&gt;Hola&lt;br/&gt; &amp;amp; adios&lt;/p&gt;") == "Hola & adios"
+
+
+def test_lector_umbral_lista_separador_e_indices(tmp_path):
+    d = tmp_path / "datos"
+    d.mkdir()
+    (d / "c.csv").write_text("texto|nota\n" + "".join("t%d|%s\n" % (i, v) for i, v in enumerate(["0.9", "0.05", "0.3", "x"])), encoding="utf-8")
+    t = dict(nombre="x", lector=dict(formato="csv", separador="|", ficheros=["*.csv"], texto="texto", umbral=dict(col="nota", si=0.5, no=0.1)))
+    items, _ = b.extraer_items(t, tmp_path)
+    assert sorted((i["texto"], i["etiqueta"]) for i in items) == [("t0", "si"), ("t1", "no")]               # 0,3 queda entre medias; «x» no es número
+    assert b._get({"a": [{"n": "z"}]}, "a.0.n") == "z" and b._get({"a": []}, "a.0.n") is None
+    import zipfile
+    (d / "c.csv").unlink()
+    with zipfile.ZipFile(d / "z.zip", "w") as z:
+        z.writestr("r.json", json.dumps({"results": [{"r": "motivo uno", "c": "Class II"}, {"r": "motivo dos", "c": "Class I"}]}))
+    t = dict(nombre="y", lector=dict(formato="json_zip", ficheros=["*.json"], lista="results", texto="r", etiqueta="c", mapa_etiqueta={"Class II": "2", "Class I": "3"}))
+    items, _ = b.extraer_items(t, tmp_path)
+    assert sorted((i["texto"], i["etiqueta"]) for i in items) == [("motivo dos", "3"), ("motivo uno", "2")]

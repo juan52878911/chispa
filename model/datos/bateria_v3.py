@@ -17,8 +17,10 @@ import argparse
 import csv
 import fnmatch
 import getpass
+import bz2
 import gzip
 import hashlib
+import html
 import io
 import json
 import os
@@ -28,6 +30,7 @@ import shutil
 import sys
 import time
 import urllib.request
+import xml.etree.ElementTree as ET
 import zipfile
 from bisect import bisect_right
 from collections import Counter, defaultdict
@@ -46,6 +49,8 @@ TOPE_TEST = 500
 SEMILLA = 20261119
 MIN_TEST_TAREA = 40          # una tarea con menos filas de test se queda fuera: no mide nada
 TIPOS = ("choice", "yesno", "score")
+N_BAJO = 8                   # menos de 8 tareas construidas que cuenten (por tipo, o en español en total): se informa con la marca «n bajo»
+BLOQUES = ("cuentan", "informativo")
 LICENCIA_PENDIENTE = "por verificar en fase 2"
 
 PROCEDIMIENTO_ABRIR_SELLADA = (
@@ -101,6 +106,7 @@ def entrada_inicial(c):
     e = dict(nombre=c["nombre"], estado="candidata", tipo=c["tipo"], idioma=c["idioma"], dominio=c["dominio"], familia=c["familia"],
              fuente={k: v for k, v in f.items()}, rev=None, url_ficha=c["url_ficha"], url_ficha_confirmada=c.get("url_ficha_confirmada", f["tipo"] == "hf"),
              licencia_esperada=c["licencia_esperada"], licencia_estado=LICENCIA_PENDIENTE, licencia=None, licencia_sha256="", licencia_motivo="",
+             bloque=c.get("bloque", "cuentan"), motivo_bloque=c.get("motivo_bloque", ""), reemplazo_de=c.get("reemplazo_de", ""),
              sintetico=c["sintetico"], clases_esperadas=c["clases"], confianza_id=c["confianza_id"], limpieza_esperada=c["limpieza_esperada"],
              no_solapa=c["no_solapa"], riesgos=c["riesgos"], pregunta=c["pregunta"], lector=c["lector"],
              fichero_soporte="soporte/%s.jsonl" % c["nombre"], fichero_test="sellada/%s.jsonl" % c["nombre"], sha256="", sha256_soporte="", ficheros_origen_sha256={},
@@ -109,6 +115,12 @@ def entrada_inicial(c):
         if k in c:
             e[k] = c[k]
     return e
+
+
+def solape_no_comprobado_inicial():
+    """Fuentes de entrenamiento cuyo solape NO se comprueba en el ud (no son públicas o no se bajan): se comprueba en la máquina de Juan, solo con hashes."""
+    from model.datos import bateria_v3_huellas as hue
+    return hue.clasificar_entrenamiento(hue.cargar_entrenamiento())["no_comprobado"]
 
 
 def manifiesto_inicial():
@@ -122,6 +134,10 @@ def manifiesto_inicial():
         solapes=dict(metodo="hash sha256 del texto normalizado + sketch bottom-%d de n-gramas de %d palabras (Jaccard estimado)" % (sol.K_SKETCH, sol.N_GRAMA),
                      umbral_descartar=sol.UMBRAL_DESCARTE, umbral_marcar=sol.UMBRAL_MARCA, contra=["v2 (dev y selladas)", "entrenamiento", "las demás tareas de v3"],
                      huellas_sha256={}),
+        bloques=dict(cuentan="entra en el agregado y en las hipótesis selladas",
+                     informativo="benchmark público, probable contaminación de L3: se construye y se sella igual, pero NO cuenta en el agregado ni en las hipótesis selladas",
+                     n_bajo="menos de %d tareas construidas que cuenten (por tipo y en español en total): se informa con la marca «n bajo»" % N_BAJO),
+        solape_no_comprobado=solape_no_comprobado_inicial(),
         procedimiento_abrir_sellada=PROCEDIMIENTO_ABRIR_SELLADA,
         aperturas="model/datos/bateria-v3-aperturas.jsonl",
         tareas=[entrada_inicial(c) for c in CANDIDATAS],
@@ -273,6 +289,8 @@ def _get(row, ruta):
     for p in ruta.split("."):
         if isinstance(v, dict) and p in v:
             v = v[p]
+        elif isinstance(v, list) and p.isdigit() and int(p) < len(v):
+            v = v[int(p)]
         else:
             return None
     return v
@@ -294,6 +312,123 @@ def _abrir_texto(ruta, codificacion):
     return open(ruta, "r", encoding=codificacion, errors="replace", newline="")
 
 
+# ---- lectores XML (tolerantes: el esquema real no se ha visto; la fase 2 lo valida y la tarea queda fuera con motivo si no encaja)
+ULTIMO_XML = {}          # etiquetas vistas por el último lector XML, para el motivo cuando no sale nada
+
+
+def _local(tag):
+    return tag.rsplit("}", 1)[-1] if isinstance(tag, str) else ""
+
+
+def _abrir_bin(ruta):
+    r = str(ruta)
+    if r.endswith(".bz2"):
+        return bz2.open(r, "rb")
+    if r.endswith(".gz"):
+        return gzip.open(r, "rb")
+    return open(r, "rb")
+
+
+def _buscar(elem, ruta):
+    """Primer descendiente de `elem` cuya cadena de etiquetas termina en `ruta` («A/B/C», sin distinguir mayúsculas ni espacios de nombres)."""
+    segs = [x.lower() for x in ruta.split("/") if x]
+    for e in elem.iter():
+        if _local(e.tag).lower() != segs[0]:
+            continue
+        cur = [e]
+        for sg in segs[1:]:
+            cur = [h for c in cur for h in c if _local(h.tag).lower() == sg][:1]
+            if not cur:
+                break
+        if cur:
+            return cur[0]
+    return None
+
+
+def limpiar_html(t):
+    """Texto de un campo XML que trae HTML escapado (p. ej. `&lt;br/&gt;`): sin etiquetas ni entidades."""
+    t = html.unescape(t or "")
+    t = re.sub(r"<[^>]{1,200}>", " ", t)
+    return re.sub(r"\s+", " ", html.unescape(t)).strip()
+
+
+def _xml_seguro(cabecera):
+    return b"<!ENTITY" not in cabecera
+
+
+def _registros_xml(flujo, tag):
+    """Elementos `tag` de un XML en flujo (iterparse); anota las etiquetas vistas. No se leen XML con entidades propias."""
+    for _ev, e in ET.iterparse(flujo, events=("end",)):
+        loc = _local(e.tag)
+        ULTIMO_XML[loc] = ULTIMO_XML.get(loc, 0) + 1
+        if loc.lower() == tag.lower():
+            yield e
+            e.clear()
+
+
+def _filas_xml(ruta, lector):
+    """Un registro XML -> una fila {campo: texto} con los `campos` del lector ({nombre: ruta de etiquetas}). Falta -> None."""
+    with _abrir_bin(ruta) as fh:
+        cab = fh.read(8192)
+    if not _xml_seguro(cab):
+        ULTIMO_XML["_xml_con_entidades_omitido"] = ULTIMO_XML.get("_xml_con_entidades_omitido", 0) + 1
+        return
+    try:
+        with _abrir_bin(ruta) as fh:
+            for e in _registros_xml(fh, lector["registro"]):
+                fila = {}
+                for nombre, ruta_et in lector["campos"].items():
+                    x = _buscar(e, ruta_et)
+                    fila[nombre] = limpiar_html("".join(x.itertext())) if x is not None else None
+                yield fila
+    except ET.ParseError:
+        ULTIMO_XML["_xml_mal_formado"] = ULTIMO_XML.get("_xml_mal_formado", 0) + 1
+
+
+_CAT = re.compile(r"\[\[\s*(?:categor[ií]a|category)\s*:\s*([^\]|]+?)\s*(?:\|[^\]]*)?\]\]", re.I)
+
+
+def wikitexto_a_texto(w):
+    """Wikitexto -> texto plano: sin plantillas, referencias, categorías, archivos, tablas, enlaces ni formato; corta en «Fuentes»/«Referencias»."""
+    w = re.sub(r"<!--.*?-->", " ", w, flags=re.S)
+    w = re.sub(r"<ref[^>/]*/>|<ref[^>]*>.*?</ref>", " ", w, flags=re.S | re.I)
+    for _ in range(6):                                                   # plantillas anidadas
+        w2 = re.sub(r"\{\{[^{}]*\}\}", " ", w)
+        if w2 == w:
+            break
+        w = w2
+    w = re.sub(r"\{\|.*?\|\}", " ", w, flags=re.S)
+    w = re.sub(r"\[\[\s*(?:archivo|file|imagen|image|categor[ií]a|category)\s*:(?:[^\[\]]|\[\[[^\]]*\]\])*\]\]", " ", w, flags=re.I)
+    m = re.search(r"^=+\s*(fuentes|referencias|enlaces externos|v[eé]ase tambi[eé]n|notas)\s*=+\s*$", w, re.I | re.M)
+    if m:
+        w = w[:m.start()]
+    w = re.sub(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]", r"\1", w)
+    w = re.sub(r"\[(?:https?:)?//\S+\s*([^\]]*)\]", r"\1", w)
+    w = re.sub(r"'{2,5}", "", w)
+    w = re.sub(r"^=+\s*(.*?)\s*=+\s*$", r"\1", w, flags=re.M)
+    w = re.sub(r"^[*#:;]+\s*", "", w, flags=re.M)
+    w = re.sub(r"<[^>]{1,200}>", " ", w)
+    return re.sub(r"\s+", " ", html.unescape(w)).strip()
+
+
+def _filas_mediawiki(ruta, lector):
+    """Volcado XML de MediaWiki -> filas {titulo, texto, etiqueta}. Etiqueta = la ÚNICA categoría del conjunto cerrado `categorias` que trae el artículo
+    (ninguna o varias -> etiqueta None: no es una fila etiquetable). Redirecciones y espacios de nombres distintos de `ns` se saltan."""
+    cerrado = {c.lower(): c for c in lector["categorias"]}
+    ns = str(lector.get("ns", "0"))
+    with _abrir_bin(ruta) as fh:
+        for e in _registros_xml(fh, "page"):
+            if (_buscar(e, "ns") is not None and (_buscar(e, "ns").text or "").strip() != ns) or _buscar(e, "redirect") is not None:
+                continue
+            tx = _buscar(e, "revision/text")
+            w = (tx.text or "") if tx is not None else ""
+            if re.match(r"\s*#(redirect|redirecci[oó]n)", w, re.I):
+                continue
+            cats = {cerrado[c.lower()] for c in _CAT.findall(w) if c.lower() in cerrado}
+            ti = _buscar(e, "title")
+            yield dict(titulo=(ti.text or "") if ti is not None else "", texto=wikitexto_a_texto(w), etiqueta=cats.pop() if len(cats) == 1 else None)
+
+
 def _filas_fichero(ruta, formato, lector):
     cod = lector.get("codificacion", "utf-8")
     if formato == "parquet":
@@ -304,6 +439,8 @@ def _filas_fichero(ruta, formato, lector):
     elif formato in ("csv", "tsv"):
         csv.field_size_limit(1 << 28)
         kw = dict(delimiter="\t", quoting=csv.QUOTE_NONE) if formato == "tsv" else {}
+        if lector.get("separador"):
+            kw["delimiter"] = lector["separador"]
         with _abrir_texto(ruta, cod) as fh:
             rd = csv.reader(fh, **kw)
             cols = lector.get("columnas")
@@ -327,20 +464,29 @@ def _filas_fichero(ruta, formato, lector):
                 for l in fh:
                     if l.strip():
                         yield json.loads(l)
+    elif formato == "xml":
+        yield from _filas_xml(ruta, lector)
+    elif formato == "mediawiki":
+        yield from _filas_mediawiki(ruta, lector)
     else:
         raise EsquemaError("formato de lector desconocido: %s" % formato)
 
 
-def _filas_zip(zpath, patrones):
+def _filas_zip(zpath, patrones, lista=None):
     with zipfile.ZipFile(zpath) as z:
         for n in z.namelist():
             if n.endswith("/") or not _cumple(n, patrones):
                 continue
             with z.open(n) as fh:
                 try:
-                    yield n, json.load(fh)
+                    d = json.load(fh)
                 except ValueError:
                     continue
+            if lista:                              # un fichero con muchos registros bajo la clave `lista`
+                for r in (_get(d, lista) or []):
+                    yield n, r
+            else:
+                yield n, d
 
 
 def _ficheros(carpeta, patrones):
@@ -396,11 +542,12 @@ def extraer_items(t, carpeta, semilla=SEMILLA):
     res = Reservorio(lector.get("muestra_por_clase"), rng)
     cif = Counter()
     formato = lector["formato"]
+    ULTIMO_XML.clear()
     if formato == "json_zip":
         zips = sorted(carpeta.rglob("*.zip"))
         if not zips:
             raise EsquemaError("sin zip en la descarga")
-        fuentes = ((n, f) for z in zips for n, f in _filas_zip(z, lector["ficheros"]))
+        fuentes = ((n, f) for z in zips for n, f in _filas_zip(z, lector["ficheros"], lector.get("lista")))
     else:
         fl = _ficheros(carpeta, lector["ficheros"])
         if not fl:
@@ -423,7 +570,10 @@ def extraer_items(t, carpeta, semilla=SEMILLA):
             res.añadir("_" if lector.get("cuantiles") else str(et), dict(texto=texto, etiqueta=et, split=split, grupo=grupo))
     items = res.todos()
     if not items:
-        raise EsquemaError("no salió ninguna fila utilizable (leídas %d, filtradas %d, sin texto o etiqueta %d)" % (cif["filas_leidas"], cif["filtradas"], cif["sin_texto_o_etiqueta"]))
+        extra = ""
+        if formato in ("xml", "mediawiki"):
+            extra = "; etiquetas XML vistas: %s" % ", ".join("%s=%d" % kv for kv in sorted(ULTIMO_XML.items(), key=lambda kv: -kv[1])[:15])
+        raise EsquemaError("no salió ninguna fila utilizable (leídas %d, filtradas %d, sin texto o etiqueta %d)%s" % (cif["filas_leidas"], cif["filtradas"], cif["sin_texto_o_etiqueta"], extra))
     if lector.get("cuantiles"):
         _a_cuantiles(items, int(lector["cuantiles"]))
     return items, dict(cif)
@@ -433,6 +583,8 @@ def _comprobar_columnas(lector, fila):
     pedidas = []
     for c in ([lector["texto"]] if isinstance(lector.get("texto"), str) else list(lector.get("texto") or [])):
         pedidas.append(c)
+    if lector.get("umbral"):
+        pedidas.append(lector["umbral"]["col"])
     for k in ("etiqueta",):
         if lector.get(k):
             pedidas.append(lector[k])
@@ -450,6 +602,13 @@ def _comprobar_columnas(lector, fila):
 
 
 def _etiqueta(lector, fila):
+    if lector.get("umbral"):
+        u = lector["umbral"]
+        try:
+            v = float(_get(fila, u["col"]))
+        except (TypeError, ValueError):
+            return None
+        return "si" if v >= u["si"] else "no" if v <= u["no"] else None
     if lector.get("contar_patron"):
         c = lector["contar_patron"]
         n = _a_texto(_get(fila, c["col"])).count(c["patron"])
@@ -735,6 +894,10 @@ def construir(manifiesto, trabajo, salida, huellas=None, solo=None, k=K, tope=TO
         for f in sorted(Path(huellas).glob("huellas-*.jsonl.gz")):
             resumen_h[f.name] = dict(sha256=sha256_fichero(f), huellas=ref.comparar(sol.leer_huellas(f), f.name.replace("huellas-", "").replace(".jsonl.gz", "")))
             log("HUELLAS %s: %d" % (f.name, resumen_h[f.name]["huellas"]))
+    est = Path(huellas or ".") / "estado-huellas.json"
+    if huellas and est.exists():                     # lo que dejó bateria_v3_huellas: qué se comprobó y qué queda «solape no comprobado»
+        man["solapes"]["estado_huellas"] = json.loads(est.read_text(encoding="utf-8"))
+        man["solape_no_comprobado"] = man["solapes"]["estado_huellas"].get("no_comprobado", man.get("solape_no_comprobado", []))
     man["solapes"]["huellas_sha256"] = {n: v["sha256"] for n, v in resumen_h.items()}
     man["solapes"]["huellas_leidas"] = {n: v["huellas"] for n, v in resumen_h.items()}
     man["solapes"]["huellas_usadas"] = bool(huellas)
@@ -794,11 +957,17 @@ def _cruzadas(ref):
 
 
 def resumen(man):
-    r = dict(por_estado=dict(Counter(t["estado"] for t in man["tareas"])), por_tipo={}, fuera={})
+    r = dict(por_estado=dict(Counter(t["estado"] for t in man["tareas"])), por_tipo={}, fuera={}, n_bajo_minimo=N_BAJO)
+    hechas = lambda ts, **kw: [t for t in ts if t["estado"] == "construida" and all(t[k] == v for k, v in kw.items())]    # noqa: E731
     for tp in TIPOS:
         ts = [t for t in man["tareas"] if t["tipo"] == tp]
-        r["por_tipo"][tp] = dict(candidatas=len(ts), construidas=sum(t["estado"] == "construida" for t in ts), es=sum(t["idioma"] == "es" and t["estado"] == "construida" for t in ts),
-                                 en=sum(t["idioma"] == "en" and t["estado"] == "construida" for t in ts))
+        cu = hechas(ts, bloque="cuentan")
+        r["por_tipo"][tp] = dict(candidatas=len(ts), construidas=len(hechas(ts)), cuentan=len(cu), informativo=len(hechas(ts, bloque="informativo")), n_bajo=len(cu) < N_BAJO,
+                                 es=len(hechas(ts, idioma="es", bloque="cuentan")), en=len(hechas(ts, idioma="en", bloque="cuentan")),
+                                 es_informativo=len(hechas(ts, idioma="es", bloque="informativo")), en_informativo=len(hechas(ts, idioma="en", bloque="informativo")))
+    r["por_idioma"] = {i: dict(cuentan=len(hechas(man["tareas"], idioma=i, bloque="cuentan")), informativo=len(hechas(man["tareas"], idioma=i, bloque="informativo")),
+                               candidatas=sum(t["idioma"] == i for t in man["tareas"])) for i in ("es", "en")}
+    r["por_idioma"]["es"]["n_bajo"] = r["por_idioma"]["es"]["cuentan"] < N_BAJO
     for t in man["tareas"]:
         if t["estado"] in ("fuera", "pendiente"):
             r["fuera"][t["nombre"]] = t["motivo_fuera"]
@@ -852,7 +1021,7 @@ def abrir_sellada(ruta, motivo, quien=None, registro=APERTURAS, manifiesto=None)
     return [json.loads(l) for l in open(ruta, encoding="utf-8")]
 
 
-def auditar_log(datos, log_ruta, registro=None):
+def auditar_log(datos, log_ruta, registro=None, textos_extra=()):
     """Comprueba que el log no contiene texto de test (los primeros 40 caracteres normalizados de cada fila). Abre las selladas con abrir_sellada y
     anota las aperturas en `registro` (aperturas de la máquina, no las del repo). Imprime solo recuentos. Devuelve el nº de filas cuyo texto aparece."""
     datos = Path(datos)
@@ -865,23 +1034,40 @@ def auditar_log(datos, log_ruta, registro=None):
             frag = norm(f["texto"])[:40]
             if len(frag) >= 20 and frag in contenido:
                 hallazgos += 1
-    log("AUDITORIA log=%s filas_de_test_revisadas=%d coincidencias=%d" % (Path(log_ruta).name, filas, hallazgos))
-    return hallazgos
+    extra = n_extra = 0
+    if textos_extra:                                  # textos de v2 (todos) y una muestra de cada fuente del entrenamiento: ni uno puede compartir 8 palabras seguidas con el log
+        from model.datos import bateria_v3_huellas as hue
+        n_extra, extra = hue.fugas_en_log(contenido, hue.textos_de_dirs(textos_extra))
+    log("AUDITORIA log=%s filas_de_test_revisadas=%d coincidencias=%d textos_v2_y_entrenamiento_revisados=%d coincidencias_v2_y_entrenamiento=%d" % (
+        Path(log_ruta).name, filas, hallazgos, n_extra, extra))
+    return hallazgos + extra
 
 
 def candidatas_md(man):
     L = ["# Batería v3: candidatas y descartadas (FASE 1, sin red)", "",
          "Generado por `python -m model.datos.bateria_v3 candidatas-md` a partir de `bateria_v3_candidatas.py`. **Nada de esto está verificado**: ids, columnas, URL y licencias vienen de memoria",
-         "y del repo; la licencia de cada una queda «por verificar en fase 2» y la comprueba el ud contra la lista admitida (CC0, CC BY, MIT, Apache-2.0, ODC-BY, CDLA-Permissive, dominio público).", ""]
+         "y del repo; la licencia de cada una queda «por verificar en fase 2» y la comprueba el ud contra la lista admitida (CC0, CC BY, MIT, Apache-2.0, ODC-BY, CDLA-Permissive, dominio público).",
+         "",
+         "**Dos bloques.** `cuentan` entra en el agregado y en las hipótesis selladas; `informativo` (benchmarks públicos, probable contaminación de L3) se construye y se sella igual pero NO cuenta.",
+         "Las candidatas con «reemplazo de» se añadieron para mantener ≥ %d que cuenten por tipo; lo que no resuelva en fase 2 queda fuera con su motivo y, si un tipo baja de %d, se informa con la marca «n bajo»." % (N_BAJO, N_BAJO), "",
+         "| tipo | candidatas | cuentan | informativo | reemplazos | cuentan en es | cuentan en en |", "|---|---|---|---|---|---|---|"]
+    for tp in TIPOS:
+        ts = [t for t in man["tareas"] if t["tipo"] == tp]
+        cu = [t for t in ts if t["bloque"] == "cuentan"]
+        L.append("| %s | %d | %d | %d | %d | %d | %d |" % (tp, len(ts), len(cu), len(ts) - len(cu), sum(bool(t["reemplazo_de"]) for t in ts),
+                                                         sum(t["idioma"] == "es" for t in cu), sum(t["idioma"] == "en" for t in cu)))
+    L.append("")
     for tp, nombre in (("choice", "choice (clases con nombre)"), ("yesno", "sí/no"), ("score", "score (niveles ordinales)")):
         ts = [t for t in man["tareas"] if t["tipo"] == tp]
-        L += ["## %s: %d candidatas (es %d, en %d)" % (nombre, len(ts), sum(t["idioma"] == "es" for t in ts), sum(t["idioma"] == "en" for t in ts)), "",
-              "| tarea | idioma | dominio | fuente (id o URL) | licencia esperada | ficha | clases | sintética | id | lector | por qué no solapa | riesgos |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+        L += ["## %s: %d candidatas (es %d, en %d; cuentan %d, informativo %d)" % (nombre, len(ts), sum(t["idioma"] == "es" for t in ts), sum(t["idioma"] == "en" for t in ts),
+                                                                               sum(t["bloque"] == "cuentan" for t in ts), sum(t["bloque"] == "informativo" for t in ts)), "",
+              "| tarea | bloque | idioma | dominio | fuente (id o URL) | licencia esperada | ficha | clases | sintética | id | lector | por qué no solapa | riesgos |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for t in ts:
             f = t["fuente"]
             src = f.get("repo") or f["url"]
-            L.append("| %s | %s | %s | `%s` (rev: se fija en fase 2) | %s (por verificar) | %s%s | %s | %s | %s | %s | %s | %s |" % (
-                t["nombre"], t["idioma"], t["dominio"], src, t["licencia_esperada"], t["url_ficha"], "" if t["url_ficha_confirmada"] else " (URL sin confirmar)", t["clases_esperadas"] or "?",
+            bl = t["bloque"] + (" (%s)" % t["motivo_bloque"] if t["motivo_bloque"] else "") + (" · reemplazo de: %s" % t["reemplazo_de"] if t["reemplazo_de"] else "")
+            L.append("| %s | %s | %s | %s | `%s` (rev: se fija en fase 2) | %s (por verificar) | %s%s | %s | %s | %s | %s | %s | %s |" % (
+                t["nombre"], bl, t["idioma"], t["dominio"], src, t["licencia_esperada"], t["url_ficha"], "" if t["url_ficha_confirmada"] else " (URL sin confirmar)", t["clases_esperadas"] or "?",
                 "sí: %s" % t["sintetico"] if t["sintetico"] else "no", t["confianza_id"], "PENDIENTE" if t["lector"].get("pendiente") else "listo (sin probar)", t["no_solapa"], t["riesgos"]))
         L.append("")
     L += ["## Descartadas (con motivo)", "", "| fuente | motivo |", "|---|---|"] + ["| %s | %s |" % (d["fuente"], d["motivo"]) for d in man["descartadas"]] + [""]
@@ -909,6 +1095,7 @@ def main(argv=None):
     e = sp.add_parser("auditar-log")
     e.add_argument("--datos", required=True)
     e.add_argument("--log", required=True)
+    e.add_argument("--textos-extra", nargs="*", default=[], help="carpetas con los jsonl de v2 y la muestra del entrenamiento: ningún texto suyo puede estar en el log")
     x = ap.parse_args(argv)
     if x.cmd == "manifiesto-inicial":
         guardar_json(x.salida, manifiesto_inicial())
@@ -921,7 +1108,7 @@ def main(argv=None):
     elif x.cmd == "reservas-v2":
         reservas_v2(x.manifiesto, x.trabajo, x.salida)
     else:
-        return 1 if auditar_log(x.datos, x.log) else 0
+        return 1 if auditar_log(x.datos, x.log, textos_extra=x.textos_extra) else 0
     return 0
 
 
