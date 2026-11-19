@@ -49,7 +49,7 @@ MODELALT="model/alt/techo_local model/alt/techo_local.py model/alt/techo_local_c
 export COPYFILE_DISABLE=1
 git archive --format=tar "$sha" -- model/__init__.py model/alt model/datos model/meta model/evaluacion model/l2/__init__.py model/l2/datos.py \
   model/l2/largos.py model/l2/modelo.py model/l2/evaluar.py model/l2/linea_base_knn_e5.py model/maestro/__init__.py model/maestro/blandas.py sdk/python \
-  ':(exclude)model/alt/resultados*' ':(exclude)model/alt/techo_local/lanzados' | tar -x -C "$t"
+  ':(exclude)model/alt/resultados*' ':(exclude)model/alt/techo_local/lanzados' ':(exclude)model/alt/aws/lanzados' | tar -x -C "$t"
 rm -f "$t/crit.json"; find "$t" -name '._*' -delete
 for f in $MODELALT; do [ -e "$t/$f" ] || { echo "el tgz no trae $f" >&2; exit 1; }; done
 ( cd "$t" && python3 -I -c "
