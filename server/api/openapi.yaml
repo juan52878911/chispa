@@ -239,6 +239,24 @@ components:
           type: string
           x-max-bytes: 256
           description: Clave de idempotencia opcional (max max_id BYTES UTF-8). No se guardan bajo ella las respuestas de peticiones canceladas o con alguna capa fallida.
+        examples:
+          type: array
+          maxItems: 256
+          description: "Opcional (no en multi). Ejemplos etiquetados de esta pregunta, hasta max_ejemplos (256) y max_ejemplo_texto (16 KiB) por text. Con el kNN activo sustituyen al banco fuera de linea de la pregunta (no se mezclan) y L3, si hace few-shot, los usa de demostraciones. Errores 400: invalid_example, invalid_example_label (label no es una de las opciones), too_many_examples; en knn.modo cpu, examples_required si la pregunta no los trae ni tiene banco. Sin este campo la respuesta es la de siempre."
+          items:
+            $ref: "#/components/schemas/Example"
+    Example:
+      type: object
+      additionalProperties: false
+      required: [text, label]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          description: Texto del ejemplo (max max_ejemplo_texto BYTES UTF-8).
+        label:
+          type: string
+          description: Id de una de las opciones de la pregunta.
     Option:
       type: object
       additionalProperties: false

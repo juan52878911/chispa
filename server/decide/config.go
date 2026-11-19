@@ -269,6 +269,9 @@ func (c Config) Validar() error {
 			return err
 		}
 	}
+	if c.KNN != nil && c.KNN.Modo == ModoKNNGPU && c.L3 == nil {
+		return fmt.Errorf("config: knn.modo = %q manda todo a L3 y exige la sección l3", ModoKNNGPU)
+	}
 	if c.ForzarL3 && c.L3 == nil {
 		return fmt.Errorf("config: forzar_l3 exige la sección l3")
 	}
