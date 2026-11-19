@@ -158,6 +158,8 @@ def hf_resolver(repo, rev=None, patrones=None, api=None):
         return rev or "espejo-" + repo.replace("/", "__"), n
     from huggingface_hub import HfApi
     info = (api or HfApi()).dataset_info(repo, revision=rev, files_metadata=True)
+    if getattr(info, "gated", False):
+        raise EsquemaError("acceso restringido (gated): no se baja")
     n = sum((s.size or 0) for s in info.siblings if not patrones or _cumple(s.rfilename, patrones))
     return info.sha, n
 
