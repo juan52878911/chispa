@@ -19,7 +19,7 @@ else
     && "$BASE/venv/bin/pip" install -q --no-cache-dir "transformers==$TRANSFORMERS" "onnx==$ONNX" "onnxruntime==$ORT_PY" numpy huggingface_hub safetensors || { fallo "pip install"; estado entorno "FALLO pip"; cierre; }
   PY=$BASE/venv/bin/python
 fi
-"$PY" -c "import model.alt.w1_filas, model.alt.w1_medir, model.alt.lineas_base_v2, model.alt.llm_logprobs, numpy" || { fallo "imports del codigo"; estado entorno "FALLO imports codigo"; cierre; }
+"$PY" -c "import model.alt.w1_filas, model.alt.w1_medir, model.alt.w1_demos, model.alt.lineas_base_v2, model.alt.lineas_base_v2_pred, model.alt.llm_logprobs, numpy" || { fallo "imports del codigo"; estado entorno "FALLO imports codigo"; cierre; }
 NPT=$N_POR_TAREA; [ -n "${CHISPA_N:-}" ] && NPT=$(( CHISPA_N / 6 ))   # CHISPA_N: solo en pruebas (nº total de filas)
 CN=$(cd "$CH" && "$PY" -m model.alt.w1_filas --dev "$BASE/dev" --salida "$ENT" --n-por-tarea "$NPT")
 case "$CN" in "tareas=6 soporte="*" test="*) ;; *) fallo "w1_filas: $CN"; estado entradas "FALLO filas"; cierre;; esac
@@ -83,7 +83,7 @@ for _ in $(seq 900); do [ -f "$BASE/preparar-go.rc" ] && break; sleep 1; done
 [ "$(cat "$BASE/preparar-go.rc" 2>/dev/null || echo 9)" = 0 ] || { tail -15 "$BASE/preparar-go.log"; fallo "servidor Go: preparar_go rc=$(cat "$BASE/preparar-go.rc" 2>/dev/null)"; estado servidor "FALLO"; cierre; }
 ORTLIB=$(cat "$BASE/ort-lib"); estado servidor "OK $(head -1 "$BASE/preparar-go.log"); ORT $ORT_VERSION (so sha256 ${ORT_SO_SHA256:0:12})"
 
-# --- 6. bancos con la herramienta Go (8 de oro por clase) y sus <banco>.ejemplos.jsonl (las 8 demostraciones fs8 de L3)
+# --- 6. bancos con la herramienta Go (8 de oro por clase) y sus <banco>.ejemplos.jsonl: el oro completo con `fila` (el soporte de las demostraciones por kNN) y las 8 fijas marcadas con `fs`
 echo "== 6. bancos $(date -u +%T) quedan $(quedan_min) min"
 T2=$(date +%s)
 if [ -n "${CHISPA_LOCAL_BANCOS:-}" ]; then cp -r "$CHISPA_LOCAL_BANCOS/." "$BAN/"   # prueba en seco: bancos fabricados (no hay ONNX de Qwen3-Embedding)
@@ -93,10 +93,11 @@ else
 fi
 for t in $("$PY" -c "import json;print(' '.join(sorted(json.load(open('$ENT/tareas.json')))))"); do
   [ -f "$BAN/banco-$t.ejemplos.jsonl" ] && [ -f "$BAN/banco-$t.npy" ] || { fallo "banco de $t sin .npy o .ejemplos.jsonl"; estado bancos "FALLO $t"; cierre; }
-  printf '%s\t%s\n' "$t" "$(wc -l < "$BAN/banco-$t.ejemplos.jsonl" | tr -d ' ')" >> "$OUT/ejemplos-por-tarea.tsv"
+  grep -q '"fila"' "$BAN/banco-$t.ejemplos.jsonl" || { fallo "banco de $t: .ejemplos.jsonl no está en formato pool (sin fila)"; estado bancos "FALLO pool $t"; cierre; }
+  printf '%s\t%s\t%s\n' "$t" "$(wc -l < "$BAN/banco-$t.ejemplos.jsonl" | tr -d ' ')" "$(grep -c '"fs"' "$BAN/banco-$t.ejemplos.jsonl")" >> "$OUT/ejemplos-por-tarea.tsv"
 done
 cp "$BAN/bancos.json" "$OUT/bancos.json" 2>/dev/null
-estado bancos "OK en $(( $(date +%s) - T2 )) s; ejemplos fs8 por tarea: $(tr '\t\n' '= ' < "$OUT/ejemplos-por-tarea.tsv")"
+estado bancos "OK en $(( $(date +%s) - T2 )) s; pool y fijas por tarea: $(awk '{printf "%s=%s/%s ", $1, $2, $3}' "$OUT/ejemplos-por-tarea.tsv")"
 
 # --- 7. vLLM listo
 if [ "$LOCAL" != 1 ]; then
@@ -117,17 +118,20 @@ c["knn"]["tareas"] = {t: {"banco": "%s/banco-%s" % (ban, t), "preguntas": v["pre
 if "qwen_onnx" in c["knn"]:
     c["knn"]["qwen_onnx"], c["knn"]["qwen_tok"] = onx + "/qwen3emb-fp32.onnx", onx + "/qwen3emb.chispa-bpe"
 c["l3"].update({"url": url + "/v1", "modelo": "qwen3-4b", "tau": 0.0, "top_k_knn": 0, "timeout": "60s", "timeout_fila": "60s"})
+c["l3"].pop("demos_fijas", None)   # las demostraciones son las 8 más cercanas por consulta (el valor por defecto del modo gpu)
 json.dump(c, open(salida, "w"), ensure_ascii=False, indent=1)
 print("cfg: modo %s, %d tareas, ejemplos %s, top_k_knn %s" % (c["knn"]["modo"], len(ts), c["l3"].get("ejemplos"), c["l3"]["top_k_knn"]))
 PYEOF
 [ -f "$BASE/cfg-w1.json" ] || { fallo "config del servidor"; estado servidor-gpu "FALLO config"; cierre; }
 [ -n "${CHISPA_LOCAL_BANCOS:-}" ] && "$PY" -c "
 import json;p='$BASE/cfg-w1.json';c=json.load(open(p));[c['knn'].pop(k,None) for k in ('qwen_onnx','qwen_tok','qwen_sesiones')];c['knn']['codificador']='e5-small';json.dump(c,open(p,'w'))"   # prueba en seco: sin codificador
-ARGS=(-addr 127.0.0.1:8090 -config "$BASE/cfg-w1.json" -timeout 120s); [ -n "$ORTLIB" ] && ARGS+=(-ort-lib "$ORTLIB")
+ARGS=(-addr 127.0.0.1:8090 -config "$BASE/cfg-w1.json" -timeout 120s -demos-log "$OUT/demos-log.jsonl"); [ -n "$ORTLIB" ] && ARGS+=(-ort-lib "$ORTLIB")
+[ -n "${CHISPA_LOCAL_BANCOS:-}" ] && ARGS+=(-pruebas -codificador-prueba 8)   # prueba en seco: vectores inventados por hash (los de w1_banco_falso)
 nohup "$BASE/chispa-server" "${ARGS[@]}" > "$BASE/servidor-w1.log" 2>&1 &
 SRVPID=$!
 for _ in $(seq 300); do curl -s -m 2 $SERV/healthz > /dev/null && break; kill -0 $SRVPID 2>/dev/null || break; sleep 1; done
 curl -s -m 2 $SERV/healthz > /dev/null || { tail -8 "$BASE/servidor-w1.log"; fallo "el servidor no arrancó"; estado servidor-gpu "FALLO"; cierre; }
+grep -q 'demostraciones fs8 por consulta' "$BASE/servidor-w1.log" || { grep -i 'fs8\|ejemplos' "$BASE/servidor-w1.log" | head -3; fallo "el servidor no usa demostraciones por consulta (kNN)"; estado servidor-gpu "FALLO demos kNN"; cierre; }
 grep -qi 'zero-shot' "$BASE/servidor-w1.log" && { grep -i 'zero-shot' "$BASE/servidor-w1.log" | head -3; fallo "alguna tarea sin ejemplos.jsonl: L3 sería zero-shot"; estado servidor-gpu "FALLO zero-shot"; cierre; }
 cli() { "$PY" "$CH/model/alt/aws/r10_t5_cliente.py" "$@" --url $SERV --filas "$ENT/consultas.jsonl" --salida "$OUT"; }
 
@@ -143,16 +147,31 @@ cli e2e --etiqueta w1 --clientes "$HILOS" --timeout-fila-ms 60000 --ref 0 > "$OU
   || { tail -3 "$OUT/e2e-w1.out"; fallo "e2e por el servidor"; estado e2e-servidor "FALLO"; }
 parar_servidor
 
-# --- 10. el fs8 de Python sobre las MISMAS filas y las mismas demostraciones (soporte de 8 por clase, semilla de siempre), contra el mismo vLLM
-echo "== 10. fs8 de Python $(date -u +%T) quedan $(quedan_min) min"
+# --- 10. selección de demostraciones: la de Python (demos_fila) sobre los vectores de una muestra de consultas, codificadas con la herramienta Go (la misma ruta que el servidor), frente al registro del servidor
+echo "== 10. selección de demostraciones $(date -u +%T) quedan $(quedan_min) min"
+T3=$(date +%s)
+( cd "$CH" && "$PY" -m model.alt.w1_demos muestra --consultas "$ENT/consultas.jsonl" --por-tarea 10 --salida "$ENT/muestra.jsonl" ) > "$BASE/muestra.out" 2>&1
+if [ "$LOCAL" = 1 ]; then CMP=(--hash-dim 8)
+else
+  mkdir -p "$BASE/vq" && "$BASE/chispa-banco-qwen" -onnx "$ONX/qwen3emb-fp32.onnx" -tok "$ONX/qwen3emb.chispa-bpe" -soporte "$ENT/muestra.jsonl" -salida "$BASE/vq" -k 0 -ort-lib "$ORTLIB" > "$BASE/vq.log" 2>&1 \
+    || { tail -3 "$BASE/vq.log"; fallo "vectores de la muestra"; }
+  CMP=(--vectores "$BASE/vq")
+fi
+( cd "$CH" && "$PY" -m model.alt.w1_demos comparar --log "$OUT/demos-log.jsonl" --muestra "$ENT/muestra.jsonl" --bancos "$BAN" "${CMP[@]}" -k 8 --salida "$OUT/seleccion.json" ) > "$OUT/seleccion.txt" 2>&1 \
+  && estado seleccion "$(cat "$OUT/seleccion.txt") en $(( $(date +%s) - T3 )) s" || { tail -3 "$OUT/seleccion.txt"; fallo "comparar selección"; estado seleccion "FALLO"; }
+
+# --- 11. el fs8-kNN de Python sobre las MISMAS filas y las mismas demostraciones que eligió el servidor (ids del registro; las 8 más cercanas por consulta), contra el mismo vLLM
+echo "== 11. fs8-kNN de Python $(date -u +%T) quedan $(quedan_min) min"
+( cd "$CH" && "$PY" -m model.alt.w1_demos escribir --log "$OUT/demos-log.jsonl" --test "$ENT/test" --salida "$OUT/demos" --salida-test "$OUT/test-demos" ) > "$BASE/escribir-demos.out" 2>&1 || fallo "demos del registro: $(tail -2 "$BASE/escribir-demos.out")"
 urls() { for _ in $(seq "$2"); do printf -- '--url %s ' "$1"; done; }
 T3=$(date +%s); NP=0
 for t in $("$PY" -c "import json;print(' '.join(sorted(json.load(open('$ENT/tareas.json')))))"); do
   hay_tiempo 2 || { fallo "sin tiempo para $t en Python"; continue; }
-  ( cd "$CH" && "$PY" -m model.alt.llm_logprobs --filas "$ENT/test/$t.jsonl" $(urls "$URL" "$HILOS") --modelo qwen3-4b --salida "$OUT/py/$t.jsonl" --timeout 600 --reintentos 1 \
-      --ejemplos "$ENT/soporte/$t.jsonl" --k 8 ) > "$BASE/py-$t.log" 2>&1 || { tail -3 "$BASE/py-$t.log"; fallo "llm_logprobs $t"; }
+  [ -s "$OUT/test-demos/$t.jsonl" ] || { fallo "$t: el servidor no registró ninguna fila"; continue; }
+  ( cd "$CH" && "$PY" -m model.alt.llm_logprobs --filas "$OUT/test-demos/$t.jsonl" $(urls "$URL" "$HILOS") --modelo qwen3-4b --salida "$OUT/py/$t.jsonl" --timeout 600 --reintentos 1 \
+      --ejemplos "$ENT/soporte/$t.jsonl" --demos "$OUT/demos/$t.jsonl" --k 8 ) > "$BASE/py-$t.log" 2>&1 || { tail -3 "$BASE/py-$t.log"; fallo "llm_logprobs $t"; }
   NP=$(( NP + $(wc -l < "$OUT/py/$t.jsonl" 2>/dev/null || echo 0) ))
 done
-estado fs8-python "$NP filas en $(( $(date +%s) - T3 )) s"
+estado fs8-knn-python "$NP filas en $(( $(date +%s) - T3 )) s"
 cierre
 }

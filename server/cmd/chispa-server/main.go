@@ -41,6 +41,8 @@ func main() {
 	adminAddr := flag.String("admin-addr", "", "dirección de escucha aparte para POST /v1/admin/recargar (p. ej. 127.0.0.1:8091); la pública deja de servirla (404). Vacío = comparte -addr")
 	plazoCuerpo := flag.Duration("plazo-cuerpo", 0, "plazo para recibir el cuerpo entero de /v1/decide (0 = 10 s; negativo = sin plazo)")
 	metricasProt := flag.Bool("metricas-protegidas", false, "/metrics exige Authorization: Bearer con una api_key válida (o el admin_token en claro)")
+	codPrueba := flag.Int("codificador-prueba", 0, "SOLO PARA PRUEBAS (exige -pruebas): sin codificador en la config, usa vectores inventados por hash de esta dimensión (prueba en seco del ud)")
+	demosLog := flag.String("demos-log", "", "diagnóstico: escribe una línea jsonl por pregunta con las demostraciones por kNN que eligió L2 ({id, tarea, demos: [ids]}); vacío = no")
 	hashClave := flag.Bool("hash-clave", false, "lee una clave de la entrada estándar, imprime su SHA-256 (hash_sha256 de api_keys) y sale")
 	flag.Parse()
 	if *hashClave {
@@ -62,6 +64,17 @@ func main() {
 		}
 	}
 	pruebasPermitidas = *pruebas
+	if *codPrueba > 0 && !*pruebas {
+		log.Fatal("FATAL: -codificador-prueba solo se admite con -pruebas")
+	}
+	codificadorPrueba = *codPrueba
+	if *demosLog != "" {
+		f, err := os.OpenFile(*demosLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err != nil {
+			log.Fatalf("FATAL: -demos-log: %v", err)
+		}
+		registroDemos = decide.NuevoRegistroDemos(f)
+	}
 	met := decide.NuevasMetricas()
 	// SIGHUP se registra antes de armar (tarda segundos): sin Notify, Go lo trataría como salida. Un HUP durante el arranque
 	// queda encolado y se atiende cuando el servidor está listo (el modelo recién armado ya es el de la config actual,
@@ -489,6 +502,12 @@ var rutaORT, origenORT string
 // pruebasPermitidas es el flag -pruebas: sin él, una config con opciones de prueba (forzar_l3) no arranca ni se recarga.
 var pruebasPermitidas bool
 
+// codificadorPrueba (-codificador-prueba) y registroDemos (-demos-log): ver los flags.
+var (
+	codificadorPrueba int
+	registroDemos     func(id, tarea string, demos []decide.EjemploFS)
+)
+
 // exigirPruebas rechaza las opciones solo-pruebas de la config si no se pasó -pruebas.
 func exigirPruebas(cfg decide.Config) error {
 	if cfg.ForzarL3 && !pruebasPermitidas {
@@ -609,6 +628,10 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 				return e
 			}
 		}
+		if cod == nil && codificadorPrueba > 0 {
+			cod = decide.CodificadorHash(codificadorPrueba)
+			log.Printf("AVISO: -codificador-prueba: vectores inventados de %d dimensiones (solo para pruebas)", codificadorPrueba)
+		}
 		k, err := decide.NuevoL2KNN(*cfg.KNN, cod)
 		if err != nil {
 			if cerrar != nil {
@@ -625,7 +648,10 @@ func armarModelo(met *decide.Metricas, cfgPath, modelo, rutaTok string) (*decide
 			}
 		}
 		k.ConTopK(cfg.TopKKNNActivo())
-		k.ConDemosKNN(cfg.DemosKNN())
+		k.ConDemosKNN(cfg.DemosKNN()).ConRegistroDemos(registroDemos)
+		if n := cfg.DemosKNN(); n > 0 {
+			log.Printf("l3: demostraciones fs8 por consulta: las %d más cercanas del soporte (kNN) en las tareas con pool de ejemplos y en las preguntas con examples", n)
+		}
 		capaL2 = k
 		if cfg.KNN.NombreCodificador() != decide.CodificadorQwen3Emb {
 			log.Printf("knn: L2 = kNN por tarea con %d bancos (%s); sin codificador e5 en el servidor: el vector de la consulta debe inyectarse", len(k.Tareas()), strings.Join(k.Tareas(), ", "))
