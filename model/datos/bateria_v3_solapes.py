@@ -111,8 +111,8 @@ def leer_huellas(ruta):
                 yield d
 
 
-def textos_de(ruta):
-    """Textos de un .jsonl(.gz) con el campo de texto de la batería v1/v2 o de los conjuntos de entrenamiento."""
+def textos_de(ruta, sin_texto=None):
+    """Textos de un .jsonl(.gz) con el campo de texto de la batería v1/v2 o de los conjuntos de entrenamiento. `sin_texto` (lista de 1 contador) cuenta las filas sin campo de texto."""
     ab = gzip.open if str(ruta).endswith(".gz") else open
     with ab(ruta, "rt", encoding="utf-8") as fh:
         for l in fh:
@@ -122,24 +122,27 @@ def textos_de(ruta):
                     if isinstance(d.get(c), str):
                         yield d[c]
                         break
+                else:
+                    if sin_texto is not None:
+                        sin_texto[0] += 1
 
 
 def escribir_huellas(entradas, salida, fuente):
-    """Escribe huellas (sin texto) de todos los .jsonl/.jsonl.gz de `entradas`. Devuelve el recuento."""
+    """Escribe huellas (sin texto) de todos los .jsonl/.jsonl.gz de `entradas`. Devuelve (huellas, ficheros, filas sin campo de texto)."""
     ficheros = []
     for e in entradas:
         e = Path(e)
         ficheros += sorted(p for p in e.rglob("*") if p.name.endswith((".jsonl", ".jsonl.gz"))) if e.is_dir() else [e]
-    n = 0
+    n, sin = 0, [0]
     with gzip.open(salida, "wt", encoding="utf-8") as out:
         for f in ficheros:
-            for t in textos_de(f):
+            for t in textos_de(f, sin):
                 if t.strip():
                     d = huella(t)
                     d["f"] = fuente
                     out.write(json.dumps(d) + "\n")
                     n += 1
-    return n, len(ficheros)
+    return n, len(ficheros), sin[0]
 
 
 def main(argv=None):
@@ -150,9 +153,9 @@ def main(argv=None):
     a.add_argument("--salida", required=True)
     a.add_argument("--fuente", required=True)
     x = ap.parse_args(argv)
-    n, nf = escribir_huellas(x.entrada, x.salida, x.fuente)
-    print("huellas=%d ficheros=%d salida=%s" % (n, nf, x.salida))
-    return 0
+    n, nf, sin = escribir_huellas(x.entrada, x.salida, x.fuente)
+    print("huellas=%d ficheros=%d filas_sin_campo_de_texto=%d salida=%s" % (n, nf, sin, x.salida))
+    return 1 if (not n or sin > 0.01 * (n + sin)) else 0
 
 
 if __name__ == "__main__":

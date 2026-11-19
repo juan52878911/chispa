@@ -112,8 +112,8 @@ def test_referencia_exacto_casi_marca_y_limpio():
 
 def test_las_huellas_no_llevan_texto(tmp_path):
     (tmp_path / "x.jsonl").write_text(json.dumps({"texto": "Hola mundo inventado de prueba"}) + "\n", encoding="utf-8")
-    n, _ = sol.escribir_huellas([tmp_path], tmp_path / "huellas-x.jsonl.gz", "x")
-    assert n == 1
+    n, _, sin = sol.escribir_huellas([tmp_path], tmp_path / "huellas-x.jsonl.gz", "x")
+    assert n == 1 and sin == 0
     import gzip
     assert "inventado" not in gzip.open(tmp_path / "huellas-x.jsonl.gz", "rt").read()
     malo = tmp_path / "huellas-malo.jsonl"
