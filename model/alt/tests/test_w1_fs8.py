@@ -78,17 +78,21 @@ def test_medir_lee_las_dos_con_top1_y_aplica_el_criterio(tmp_path):
     probs = {"1": 0.4, "2": 0.2, "3": 0.4}   # mediana 2 (acierta), argmax 1 (falla)
     go = [{"tarea": "t", "id": r["id"], "http": 200, "probs": probs, "answer": "1"} for r in ev]
     _escribir(tmp_path / "py" / "t.jsonl", [{"id": r["id"], "probs": probs, "valida": True} for r in ev])
-    out = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit)
+    sel = {"acuerdo": 1.0, "n": 60}
+    out = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit, sel)
     assert out["macro_go"] == out["macro_python"] == 1.0 and out["dif"] == 0 and out["pasa_todo"]
+    # sin selección medida, o con acuerdo < 0,97, no pasa aunque la exactitud coincida
+    assert not w1_medir.cifras(ev, go, str(tmp_path / "py"), crit)["pasa_todo"]
+    assert not w1_medir.cifras(ev, go, str(tmp_path / "py"), crit, {"acuerdo": 0.95, "n": 60})["condiciones"]["seleccion_demos"]["pasa"]
     assert out["informativo"]["macro_answer_del_servidor"] == 0.0   # la answer tal cual (argmax) no cuenta
     # un fallo de cobertura del servidor lo hace no pasar
     go[0]["http"] = 503
-    out = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit)
+    out = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit, sel)
     assert not out["condiciones"]["cobertura"]["pasa"] and not out["pasa_todo"]
     # una diferencia de macro > 0,005 también
     go[0]["http"] = 200
     go[1]["probs"] = {"1": 0.9, "2": 0.05, "3": 0.05}
-    out = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit)
+    out = w1_medir.cifras(ev, go, str(tmp_path / "py"), crit, sel)
     assert out["dif"] == -0.25 and not out["condiciones"]["dif_macro"]["pasa"]
 
 

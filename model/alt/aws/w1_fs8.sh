@@ -29,7 +29,7 @@ parar_servidor() { [ -n "$SRVPID" ] && { kill "$SRVPID" 2>/dev/null; for _ in $(
 subir_y_apagar() {
   trap - EXIT; parar_servidor; [ -n "${WPID:-}" ] && kill $WPID 2>/dev/null; [ -n "$VP" ] && kill "$VP" 2>/dev/null; [ -n "$FALLO" ] && echo "$FALLO" > "$OUT/FALLO"
   [ -f "$BASE/codigo/model/alt/w1_medir.py" ] && [ -f "$BASE/ent/consultas.jsonl" ] && [ -f "$OUT/e2e-w1-filas.jsonl" ] && [ -d "$OUT/py" ] && ( cd "$BASE/codigo" && PYTHONPATH=$BASE/codigo "${PY:-python3}" -m model.alt.w1_medir \
-      --filas "$BASE/ent/consultas.jsonl" --go "$OUT/e2e-w1-filas.jsonl" --py "$OUT/py" --crit "$BASE/codigo/model/alt/crit-w1-fs8-e2e.json" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null
+      --filas "$BASE/ent/consultas.jsonl" --go "$OUT/e2e-w1-filas.jsonl" --py "$OUT/py" --crit "$BASE/codigo/model/alt/crit-w1-fs8-e2e.json" --seleccion "$OUT/seleccion.json" --salida "$OUT/cifras.json" ) > "$OUT/medir.txt" 2>&1; cat "$OUT/medir.txt" 2>/dev/null
   cp "$BASE/log.txt" "$OUT/log.txt" 2>/dev/null
   for l in "$BASE"/servidor-*.log "$BASE"/vllm-*.log; do [ -f "$l" ] && tail -n 100 "$l" > "$OUT/$(basename "$l" .log)-cola.log"; done
   ( cd "$BASE" && tar -czf resultados.tgz res ) && s3cp "$BASE/resultados.tgz" "$CHISPA_S3/resultados.tgz" || echo "no se pudo subir resultados.tgz"

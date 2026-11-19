@@ -18,7 +18,7 @@ sha=${1:?SHA}; dev=${2:?DIR_DEV}; sal=${3:?DIR_SALIDA}
 [[ $CRIT_SHA256 =~ ^[0-9a-f]{64}$ ]] || { echo "CRIT_SHA256 no es un sha256 en hex" >&2; exit 1; }
 dev=$(cd "$dev" && pwd); mkdir -p "$sal"; sal=$(cd "$sal" && pwd)
 MODELALT="model/alt/__init__.py model/alt/crit-w1-fs8-e2e.json model/alt/exportar_qwen3emb_onnx.py model/alt/llm_logprobs.py model/alt/llm_jevbench.py model/alt/lineas_base_v2.py
-  model/alt/fusion_knn_l2.py model/alt/w1_filas.py model/alt/w1_medir.py model/alt/aws/r10_t5_cliente.py model/alt/aws/r10_cliente.py model/alt/aws/w1_fs8.sh model/alt/aws/w1_fs8_fases.sh"
+  model/alt/fusion_knn_l2.py model/alt/w1_filas.py model/alt/w1_medir.py model/alt/w1_demos.py model/alt/lineas_base_v2_pred.py model/alt/w1_banco_falso.py model/alt/aws/r10_t5_cliente.py model/alt/aws/r10_cliente.py model/alt/aws/w1_fs8.sh model/alt/aws/w1_fs8_fases.sh"
 for f in $MODELALT model/__init__.py runtime/tok/exportar_bpe.py server/cmd/chispa-banco-qwen/main.go server/deploy/config.modo-gpu.json; do
   git cat-file -e "$sha:$f" || { echo "$sha no trae $f" >&2; exit 1; }
 done

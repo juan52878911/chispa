@@ -2,8 +2,15 @@ package decide
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"io"
+	"math"
 	"sort"
+	"strconv"
+	"sync"
 )
 
 // Demostraciones fs8 por consulta (modo gpu): las k del soporte más parecidas a ESTA consulta, como `lineas_base_v2_pred.demos_fila` (la elección de
@@ -160,4 +167,47 @@ func conDemosDeL2(ctx context.Context, previas Previas) context.Context {
 		return context.WithValue(ctx, claveDemosKNN{}, r.Demos)
 	}
 	return ctx
+}
+
+// ConRegistroDemos llama a f con las demostraciones elegidas de cada pregunta (diagnóstico: flag -demos-log del servidor); nil = nada.
+func (k *L2KNN) ConRegistroDemos(f func(id, tarea string, demos []EjemploFS)) *L2KNN {
+	k.regDemos = f
+	return k
+}
+
+// NuevoRegistroDemos escribe cada selección como una línea jsonl {id, tarea, demos: [ids de los ejemplos, en el orden del prompt]} en w.
+func NuevoRegistroDemos(w io.Writer) func(id, tarea string, demos []EjemploFS) {
+	var mu sync.Mutex
+	return func(id, tarea string, demos []EjemploFS) {
+		ids := make([]string, len(demos))
+		for i, d := range demos {
+			ids[i] = d.ID
+		}
+		b, _ := json.Marshal(map[string]any{"id": id, "tarea": tarea, "demos": ids})
+		mu.Lock()
+		w.Write(append(b, '\n'))
+		mu.Unlock()
+	}
+}
+
+// CodificadorHash es un codificador inventado (vector de la dimensión dim sacado del sha256 del texto, norma 1): SOLO PARA PRUEBAS en seco; no codifica nada real.
+func CodificadorHash(dim int) Codificador { return codHashPrueba(dim) }
+
+type codHashPrueba int
+
+func (c codHashPrueba) Codificar(_ context.Context, t string) ([]float32, error) {
+	v := make([]float32, int(c))
+	var n float64
+	for i := range v {
+		h := sha256.Sum256([]byte(t + "\x00" + strconv.Itoa(i)))
+		v[i] = float32(int32(binary.LittleEndian.Uint32(h[:4]))) / (1 << 31)
+		n += float64(v[i]) * float64(v[i])
+	}
+	if n == 0 {
+		n = 1
+	}
+	for i := range v {
+		v[i] /= float32(math.Sqrt(n))
+	}
+	return v, nil
 }
