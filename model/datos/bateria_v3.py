@@ -691,7 +691,7 @@ def _resolver_lector(lector, muestra):
     """(lector con los nombres de columna resueltos contra el primer registro de `muestra`, faltan). Nombres exactos o normalizados; «a||b» = alternativas; `auto` fija texto y etiqueta."""
     fila, l, falta = muestra[0], dict(lector), []
     elegido = None
-    if lector.get("auto"):
+    if lector.get("auto") is not None:
         tx, et, elegido = _auto_columnas(lector["auto"], muestra)
         l.update(texto=tx, etiqueta=et)
 
@@ -828,7 +828,7 @@ def extraer_items(t, carpeta, semilla=SEMILLA):
                 omitidos[r] = "formato no reconocido"
                 continue
             it = _filas_fichero(p, fm, lector)
-            muestra = list(islice(it, 2000 if lector.get("auto") else 1))
+            muestra = list(islice(it, 2000 if lector.get("auto") is not None else 1))
             if not muestra:
                 continue
             if fm in ("xml", "mediawiki"):
