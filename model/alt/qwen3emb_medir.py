@@ -99,7 +99,13 @@ def cifras(res, dev, crit, completo=True):
             out["informativo"][n] = v
     req = [out["condiciones"][k]["pasa"] for k in out["condiciones"] if k in ("tokens", "coseno") or k.startswith("e2e-fp32")]
     out["pasa_todo"] = bool(req) and all(x is True for x in req)
-    out["completo"] = all(out["condiciones"]["e2e-%s-v%d" % (m, v)].get("pasa") is not None for m in ("fp32", "int8") for v in (32, 8))
+    nv = leer_json(res / "int8-no-viable.json")
+    if nv is not None:
+        out["informativo"]["int8"] = nv
+        for v in (32, 8):
+            out["condiciones"]["e2e-int8-v%d" % v] = {"pasa": None, "motivo": "int8 no viable"}
+    modos = ("fp32",) if nv is not None else ("fp32", "int8")
+    out["completo"] = all(out["condiciones"]["e2e-%s-v%d" % (m, v)].get("pasa") is not None for m in modos for v in (32, 8))
     return out
 
 

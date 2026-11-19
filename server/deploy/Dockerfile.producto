@@ -1,6 +1,6 @@
 # Imagen de PRODUCTO: el servidor con ONNX Runtime (el de deploy/Dockerfile) + el codificador e5 + la config de ejemplo. Un cliente trae entre 8 y 32 ejemplos
 # de oro por clase -> kNN (L2) con margen -> si el margen es bajo, 4B por logprobs con 8 demostraciones en el prompt (L3 fs8).
-#   1. docker build -f server/deploy/Dockerfile -t chispa-server --build-arg GO_DIGEST=... --build-arg ORT_SHA256_X64=... .      (imagen base)
+#   1. docker build -f server/deploy/Dockerfile -t chispa-server --build-arg GO_DIGEST=... --build-arg ORT_NUPKG_SHA256=... .      (imagen base)
 #   2. contexto de esta imagen = un directorio con:  modelos/e5.onnx  modelos/e5.chispa-tok  bancos/banco-<tarea>.{npy,jsonl,ejemplos.jsonl}  config.json
 #      (e5.onnx: model/alt/exportar_e5_onnx.py; e5.chispa-tok: runtime/tok/exportar.py; bancos: model/alt/generar_banco.py; config.json: server/deploy/config.ejemplo.json editada)
 #   3. docker build -f server/deploy/Dockerfile.producto -t chispa-producto ctx/

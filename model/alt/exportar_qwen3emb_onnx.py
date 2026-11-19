@@ -128,9 +128,16 @@ def main(argv=None):
     if not a.sin_int8:
         from onnxruntime.quantization import QuantType, quantize_dynamic
         r8 = sal / "qwen3emb-int8.onnx"
-        quantize_dynamic(str(fp32), str(r8), weight_type=QuantType.QInt8, use_external_data_format=True)
+        # Segundo y último intento (el primero, por tensor y con todo cuantizado, dio coseno mínimo 0,494): por canal, solo MatMul (no la tabla
+        # de embeddings), y fuera las down_proj del MLP, cuyas activaciones de entrada traen los valores atípicos que rompen la escala dinámica.
+        import onnx as _onnx
+        g = _onnx.load(str(fp32), load_external_data=False).graph
+        fuera = sorted(n.name for n in g.node if n.op_type == "MatMul" and "down_proj" in n.name)
+        quantize_dynamic(str(fp32), str(r8), weight_type=QuantType.QInt8, per_channel=True, op_types_to_quantize=["MatMul"], nodes_to_exclude=fuera,
+                         use_external_data_format=True)
         poner_metadatos(r8, a.revision, a.opset)
-        info["ficheros"][r8.name] = {"bytes": r8.stat().st_size, "sha256": sha256(r8), "cuantizacion": "onnxruntime.quantization.quantize_dynamic, QInt8, pesos int8 y activaciones dinámicas"}
+        info["ficheros"][r8.name] = {"bytes": r8.stat().st_size, "sha256": sha256(r8), "cuantizacion": "onnxruntime.quantization.quantize_dynamic, QInt8, por canal, solo MatMul, "
+                                     "sin las %d down_proj; activaciones dinámicas" % len(fuera), "excluidos": len(fuera)}
         if Path(str(r8) + ".data").exists():
             info["ficheros"][r8.name + ".data"] = {"bytes": Path(str(r8) + ".data").stat().st_size, "sha256": sha256(str(r8) + ".data")}
     if a.comprobar:
