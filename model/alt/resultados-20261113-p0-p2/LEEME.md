@@ -2184,3 +2184,39 @@ Por tarea, exactitud del zs → final:
 Las selladas quedan abiertas: no se vuelven a usar como medida ciega.
 
 **Las selladas de la batería v2 quedan gastadas** (apertura única del 2026-11-16, registrada en `bateria-v2-aperturas.jsonl`). Ya no sirven como medida ciega. Cualquier afirmación futura de uso general necesita una **batería v3 sellada nueva**, con sus tareas, licencias y partición fijadas antes de mirar ningún resultado.
+
+## 18. Tanda R11: alternativas nuevas en v2-dev (rama `r11-alternativas`, sin push)
+
+Orden de Juan (vía la sesión madre): medir tres alternativas que no habíamos probado en las 6 tareas de desarrollo de la batería v2. Las selladas no se tocan. Todo «pasa» es indicativo: confirmarlo exige la batería v3.
+
+### 18.1 Preparado (código en esta rama; criterio congelado antes de medir)
+
+**Criterio:** `model/alt/crit-r11.json`, sha256 `6d48047802a67b6ebf6ba54964d6f15ad4e3a337cf9acab684503ce9bdcec8c7`. El ud lo comprueba antes de medir.
+- Mismo test entero, mismas filas y misma métrica que T3, T3a y T3b. La macro es la media de las 6 exactitudes.
+- IC95 por bootstrap pareado: filas remuestreadas dentro de cada tarea, 2 000 remuestreos, semilla 0.
+
+| | modelo | qué se mide | pasa si |
+|---|---|---|---|
+| A | Qwen/Qwen3-Embedding-0.6B @ 97b0c614 (Apache-2.0) | kNN con 8 de oro por clase, 32 vecinos (principal) y 8 (informativo); zero-shot por descripción (informativo); referencia e5 en la misma máquina | kNN Qwen − kNN e5 ≥ +2,0 y el límite inferior del IC > 0 |
+| B | Qwen/Qwen3-Reranker-0.6B @ e61197ed (Apache-2.0) | sí/no por etiqueta, logit de «yes»; score por esperanza ordinal; todas las opciones (finanzas: 59) | supera al 4B zs, o queda a ≤ 2,0 puntos con latencia ≥ 5 veces menor |
+| C | Horizon-Labs/multilingual-zeroshot-small @ 17af5f8a | **no medido: licencia** | — |
+
+**Por qué C no se mide.** Los pesos son Apache-2.0 sobre mmBERT-small (MIT). Pero la tarjeta declara como datos de entrenamiento SNLI (CC BY-SA 4.0) y MultiNLI (con partes CC BY-SA 3.0). No es verificable como libre de -SA. El ud no lo baja.
+
+**Referencias** (en `ref.tgz`: solo id y probabilidades, sin textos), recalculadas con `medir`:
+- 4B zs: 0,478. Sale de T3 en 5 tareas y de zs-topk de T3b en finanzas, como en E.
+- L2-zs (T3a): 0,214.
+- kNN-e5 de T3a: 0,390.
+- Latencia del 4B: p50 104,5 ms por consulta. Es la de lat1-4b-zs de T3: vLLM en g5, 90 filas, las 15 primeras de test de cada tarea.
+- La latencia de B se mide en esas mismas 90 filas, de una en una, con todas sus etiquetas en un lote.
+- **Informativos:** B con finanzas restringida a las 10 candidatas del 4B; y la cascada de E (`cascada_sin_fondo`, su criterio) con el kNN de Qwen como L2.
+
+**Instancia:** una g5.xlarge con `shutdown -h +90`. El tope de 90 min sale a ≈ 1,5 USD (≤ 3 USD). Se estiman 25–35 min.
+- Entorno: el python de la DLAMI (torch CUDA) más transformers 5.22.2. Los imports, el criterio, los recuentos y las referencias se comprueban antes de bajar modelos.
+- La referencia e5 corre en CPU en paralelo, con el código de T3a.
+
+**Prueba en seco en el i7** (LOCAL, 10 filas por tarea, modelos Qwen3 diminutos con pesos aleatorios y el tokenizador real): pasó en 333 s.
+- El kNN-e5 de esta máquina reproduce T3a: 60 de 60 filas idénticas.
+- La cascada de E corre con vectores Qwen completos.
+- Los ids de «yes» y «no» (9693 y 2152) coinciden con la configuración del reranker.
+- **Riesgos sin probar:** los pesos reales en CUDA y la memoria del reranker con lotes de 64 secuencias de hasta ≈ 1 000 tokens. Se usa `logits_to_keep=1`.
