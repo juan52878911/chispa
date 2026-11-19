@@ -192,6 +192,7 @@ type L2KNN struct {
 	met      *Metricas
 	cfg      ConfigKNN
 	cacheVec *cacheVectores // vectores de los examples de la petición
+	sinTopK  bool           // L3 no usa el top-k del kNN (l3.top_k_knn = 0 o l3.top_k explícito): en modo gpu el kNN no tiene nada que hacer
 	Avisos   []string       // cosas dudosas al cargar (tareas con oro y sin ejemplos fs)
 }
 
@@ -287,6 +288,12 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 
 func (k *L2KNN) Nombre() string { return "L2" }
 
+// ConTopK dice si L3 usará el top-k del kNN; sin él, con knn.modo = gpu el kNN no codifica la consulta (la lo hace main con Config.TopKKNNActivo).
+func (k *L2KNN) ConTopK(activo bool) *L2KNN {
+	k.sinTopK = !activo
+	return k
+}
+
 // UsaMetricas conecta L2KNN con /metrics (chispa_knn_*); lo hace NuevaCascada.
 func (k *L2KNN) UsaMetricas(m *Metricas) { k.met = m }
 
@@ -369,7 +376,7 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 		nombre = nombreTareaPeticion
 	}
 	// knn.modo = gpu: todo va a L3; el vector de la consulta solo hace falta para el top-k de L3 (choice con más de L3TopKKNNDesde opciones).
-	if k.cfg.Modo == ModoKNNGPU && !(p.Kind == KindChoice && len(ops) > L3TopKKNNDesde) {
+	if k.cfg.Modo == ModoKNNGPU && (k.sinTopK || !(p.Kind == KindChoice && len(ops) > L3TopKKNNDesde)) {
 		k.met.knnFila(nombre, MotivoKNNSiempre)
 		return Respuesta{Tarea: nombre, MotivoKNN: MotivoKNNSiempre}, nil
 	}
