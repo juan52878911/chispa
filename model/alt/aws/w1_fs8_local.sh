@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prueba en seco local de W1-fs8 (sin AWS, GPU ni Qwen3-Embedding): empaqueta SHA (por defecto HEAD) con empaquetar_w1_fs8.sh sobre un dev INVENTADO (model/alt/tests/dev_sintetico_qwen.py),
-# arranca un vLLM falso (r10_t3_vllm_falso.py) y corre w1_fs8.sh con CHISPA_LOCAL=1: compila servidor y herramienta de bancos desde gomod-proxy/, usa bancos fabricados
+# arranca un vLLM falso (w1_vllm_falso.py: hash de toda la conversación) y corre w1_fs8.sh con CHISPA_LOCAL=1: compila servidor y herramienta de bancos desde gomod-proxy/, usa bancos fabricados
 # (w1_banco_falso.py), pasa las filas por el servidor en modo gpu, corre el fs8 de Python contra el mismo vLLM falso y calcula cifras.json. Como el falso contesta por hash del
 # prompt, un prompt de Go distinto del de Python (demostraciones, orden, formato) se vería como diferencia de macro. Resultados en $D/base/res.
 # Uso: bash model/alt/aws/w1_fs8_local.sh [SHA]       (CHISPA_PY=python con numpy; CHISPA_N filas en total, por defecto 120)
@@ -16,7 +16,7 @@ ud=$(ls "$D"/ud/ud-w1-fs8-*.sh); grep -n '__[A-Z0-9_]*__' "$ud" | grep -v 'S3_LO
 # bancos fabricados con las mismas entradas que preparará el ud
 mkdir -p "$D/ent" && PYTHONPATH=$PWD "$PY" -m model.alt.w1_filas --dev "$D/dev" --salida "$D/ent" --n-por-tarea 20 > /dev/null
 PYTHONPATH=$PWD "$PY" -m model.alt.w1_banco_falso --soporte "$D/ent/soporte.jsonl" --salida "$D/bancos" > /dev/null
-"$PY" model/alt/aws/r10_t3_vllm_falso.py 8766 & FALSO=$!
+( cd model/alt/aws && "$PY" w1_vllm_falso.py 8766 ) & FALSO=$!
 trap 'kill $FALSO 2>/dev/null' EXIT
 sleep 1
 export GOPROXY="file://$D/base/codigo/gomod-proxy" GOSUMDB=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local GOCACHE=${GOCACHE:-$D/gocache} GOPATH=${GOPATH:-$D/gopath}
