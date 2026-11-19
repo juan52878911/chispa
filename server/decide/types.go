@@ -60,6 +60,8 @@ type Respuesta struct {
 	// RankKNN: solo L2KNN y solo con más de L3TopKKNNDesde opciones: la similitud de la consulta al centroide de oro de cada opción (0 si la clase no tiene oro),
 	// el desempate del ranking de la preselección top-k de L3. Interno.
 	RankKNN map[string]float64
+	// Demos: solo L2KNN con knn.modo = gpu y demostraciones por kNN: las k del soporte más parecidas a ESTA consulta, en el orden del prompt. Interno.
+	Demos []EjemploFS
 }
 
 // Decisor es una capa de la cascada.

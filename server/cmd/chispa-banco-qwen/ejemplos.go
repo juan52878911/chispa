@@ -6,6 +6,7 @@ package main
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -194,4 +195,13 @@ func lineaEjemplo(f fila) string {
 	}
 	b.WriteString(`], "etiqueta": ` + jsonPy(f.Etiqueta) + "}\n")
 	return b.String()
+}
+
+// lineaPool es la línea del formato pool: la de lineaEjemplo más `fila` (índice de su vector en el .npy) y, si es de las fijas, `fs` (su posición desde 1).
+func lineaPool(f fila, i, pos int) string {
+	l := strings.TrimSuffix(lineaEjemplo(f), "}\n") + `, "fila": ` + strconv.Itoa(i)
+	if pos > 0 {
+		l += `, "fs": ` + strconv.Itoa(pos)
+	}
+	return l + "}\n"
 }

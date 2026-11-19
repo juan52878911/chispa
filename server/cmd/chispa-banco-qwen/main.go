@@ -51,17 +51,18 @@ func main() {
 	ses := flag.Int("sesiones", 1, "sesiones ORT")
 	k := flag.Int("k", -1, "ejemplos del few-shot de L3 en <banco>.ejemplos.jsonl (como generar_banco.py --k); 0 = sin fichero; -1 = 8 si las filas traen id, tipo y opciones y, si no, sin fichero (con aviso)")
 	semilla := flag.Uint64("semilla", semillaPorDefecto, "semilla de la elección de ejemplos (la de generar_banco.py)")
+	viejo := flag.Bool("ejemplos-fijos", false, "escribe <banco>.ejemplos.jsonl solo con los k fijos (formato viejo, sin demostraciones por kNN); por defecto, el oro completo (pool) con los k fijos marcados")
 	flag.Parse()
 	if *onnx == "" || *rutaTok == "" || *soporte == "" || *salida == "" {
 		flag.Usage()
 		os.Exit(2)
 	}
-	if err := ejecutar(*onnx, *rutaTok, *soporte, *salida, *lib, *ses, *k, *semilla); err != nil {
+	if err := ejecutar(*onnx, *rutaTok, *soporte, *salida, *lib, *ses, *k, *semilla, !*viejo); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func ejecutar(onnx, rutaTok, soporte, salida, lib string, ses, k int, semilla uint64) error {
+func ejecutar(onnx, rutaTok, soporte, salida, lib string, ses, k int, semilla uint64, pool bool) error {
 	filas, err := leerFilas(soporte)
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func ejecutar(onnx, rutaTok, soporte, salida, lib string, ses, k int, semilla ui
 		if err := escribirBanco(base, fs, vs); err != nil {
 			return err
 		}
-		nej, err := escribirEjemplos(base, fs, k, semilla)
+		nej, err := escribirEjemplosFmt(base, fs, k, semilla, pool)
 		if err != nil {
 			return fmt.Errorf("tarea %q: %w", n, err)
 		}
@@ -176,6 +177,12 @@ func escribirBanco(base string, fs []fila, vs [][]float32) error {
 
 // escribirEjemplos escribe <base>.ejemplos.jsonl con la elección de generar_banco.py y devuelve cuántos ejemplos lleva (0 = no escribe fichero).
 func escribirEjemplos(base string, fs []fila, k int, semilla uint64) (int, error) {
+	return escribirEjemplosFmt(base, fs, k, semilla, false)
+}
+
+// escribirEjemplosFmt: pool = true escribe el oro completo con `fila` y las k fijas marcadas con `fs` (el formato por defecto: soporte de las demostraciones por kNN);
+// false, solo las k fijas (el formato viejo).
+func escribirEjemplosFmt(base string, fs []fila, k int, semilla uint64, pool bool) (int, error) {
 	if k == 0 {
 		return 0, nil
 	}
@@ -207,11 +214,23 @@ func escribirEjemplos(base string, fs []fila, k int, semilla uint64) (int, error
 	}
 	var b strings.Builder
 	idx := elegirEjemplos(fs, k, semilla)
-	for _, i := range idx {
-		b.WriteString(lineaEjemplo(fs[i]))
-	}
 	if len(idx) == 0 {
 		return 0, nil
+	}
+	if pool {
+		pos := map[int]int{}
+		for p, i := range idx {
+			pos[i] = p + 1
+		}
+		for i, f := range fs {
+			if f.Split == "" || f.Split == "train" {
+				b.WriteString(lineaPool(f, i, pos[i]))
+			}
+		}
+	} else {
+		for _, i := range idx {
+			b.WriteString(lineaEjemplo(fs[i]))
+		}
 	}
 	return len(idx), os.WriteFile(base+".ejemplos.jsonl", []byte(b.String()), 0o644)
 }

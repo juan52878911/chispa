@@ -177,7 +177,8 @@ const (
 
 type tareaKNNViva struct {
 	umbrales *UmbralesScore // score calibrado; nil = sin calibrar
-	ejemplos []EjemploFS    // few-shot de L3 (<banco>.ejemplos.jsonl); nil = la tarea contesta zero-shot
+	ejemplos []EjemploFS    // few-shot FIJO de L3 (<banco>.ejemplos.jsonl; en formato pool, las marcadas fs); nil = la tarea contesta zero-shot
+	pool     []EjemploFS    // formato pool: todo el oro con su `fila` del .npy, soporte de las demostraciones por kNN; nil = formato viejo
 	banco    *BancoKNN
 	umbral   float64
 	siempre  bool
@@ -192,6 +193,7 @@ type L2KNN struct {
 	met      *Metricas
 	cfg      ConfigKNN
 	cacheVec *cacheVectores // vectores de los examples de la petición
+	demosK   int            // > 0: demostraciones por consulta (kNN sobre el soporte), ver l3_demos_knn.go
 	sinTopK  bool           // L3 no usa el top-k del kNN (l3.top_k_knn = 0 o l3.top_k explícito): en modo gpu el kNN no tiene nada que hacer
 	Avisos   []string       // cosas dudosas al cargar (tareas con oro y sin ejemplos fs)
 }
@@ -262,7 +264,16 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 		if ej != nil && b.NOro == 0 {
 			ej = nil // sin oro no hay few-shot: L3 contesta zero-shot
 		}
-		if b.NOro > 0 && ej == nil {
+		pool, err := poolDeBanco(ej, b)
+		if err != nil {
+			return nil, fmt.Errorf("knn: tarea %q: %w", n, err)
+		}
+		if pool != nil {
+			if ej = fijasDePool(pool); len(ej) == 0 {
+				ej = nil
+			}
+		}
+		if b.NOro > 0 && ej == nil && pool == nil {
 			k.Avisos = append(k.Avisos, fmt.Sprintf("tarea %q: tiene oro pero no %s.ejemplos.jsonl: L3 contestará zero-shot", n, t.Banco))
 		}
 		var umb *UmbralesScore
@@ -278,7 +289,7 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 		if t.Umbral != nil {
 			u = *t.Umbral
 		}
-		k.tareas[n] = &tareaKNNViva{umbrales: umb, ejemplos: ej, banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
+		k.tareas[n] = &tareaKNNViva{umbrales: umb, ejemplos: ej, pool: pool, banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
 		for _, q := range t.Preguntas {
 			k.porPreg[q] = n
 		}
@@ -376,7 +387,8 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 		nombre = nombreTareaPeticion
 	}
 	// knn.modo = gpu: todo va a L3; el vector de la consulta solo hace falta para el top-k de L3 (choice con más de L3TopKKNNDesde opciones).
-	if k.cfg.Modo == ModoKNNGPU && (k.sinTopK || !(p.Kind == KindChoice && len(ops) > L3TopKKNNDesde)) {
+	conDemos := k.demosK > 0 && k.cfg.Modo == ModoKNNGPU && (conEj || (enConfig && len(k.tareas[tarea].pool) > 0))
+	if k.cfg.Modo == ModoKNNGPU && !conDemos && (k.sinTopK || !(p.Kind == KindChoice && len(ops) > L3TopKKNNDesde)) {
 		k.met.knnFila(nombre, MotivoKNNSiempre)
 		return Respuesta{Tarea: nombre, MotivoKNN: MotivoKNNSiempre}, nil
 	}
@@ -444,6 +456,13 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 		tau = 0 // sin escalado: contesta L2 aunque el margen sea mínimo
 	}
 	r := Respuesta{Answer: d.Answer, Probs: probs, Conf: math.Max(d.Sen.Margen, 1e-9), TauPropio: &tau, Tarea: nombre, MotivoKNN: d.Motivo}
+	if conDemos {
+		if conEj {
+			r.Demos = k.demosDePeticionKNN(p, banco, q)
+		} else {
+			r.Demos = k.demosDeTarea(tv, q)
+		}
+	}
 	if d.Escala && p.Kind == KindChoice && len(ops) > L3TopKKNNDesde { // desempate de la preselección top-k de L3
 		if c, err := banco.SimCentroides(q, ops); err == nil {
 			r.RankKNN = make(map[string]float64, len(ops))

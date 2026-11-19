@@ -65,6 +65,9 @@ type ConfigL3 struct {
 	// Ejemplos: few-shot de L3 (fs8). nil = L3EjemplosPorDefecto (8) en las tareas con banco de oro y fichero <banco>.ejemplos.jsonl; 0 = apagado; N > 0 exige que el
 	// fichero traiga N ejemplos (los elige model/alt/generar_banco.py --k N). Ver l3_ejemplos.go.
 	Ejemplos *int `json:"ejemplos,omitempty"`
+	// DemosFijas: con knn.modo = gpu las demostraciones son por defecto las `ejemplos` más cercanas a cada consulta (kNN sobre el soporte, l3_demos_knn.go); true las
+	// deja fijas por tarea (las del fichero marcadas "fs", o una vuelta por clase en los examples). Solo cuenta con knn.modo = gpu.
+	DemosFijas bool `json:"demos_fijas,omitempty"`
 	// Modo: "" o "json" (por defecto: se pide un JSON de probabilidades) o "logprobs" (una etiqueta por opción y se lee la
 	// distribución de su primer token; ver l3_logprobs.go). Los campos siguientes solo cuentan en modo logprobs.
 	Modo           string   `json:"modo,omitempty"`
@@ -184,6 +187,17 @@ func (c Config) CapasEfectivas() []Capa {
 		}
 	}
 	return out
+}
+
+// DemosKNN es el nº de demostraciones por consulta (kNN sobre el soporte) de L3: l3.ejemplos con knn.modo = gpu, salvo l3.demos_fijas; 0 = demostraciones fijas.
+func (c Config) DemosKNN() int {
+	if c.KNN == nil || c.L3 == nil || c.KNN.Modo != ModoKNNGPU || c.L3.DemosFijas || c.L3.Modo != L3ModoLogprobs {
+		return 0
+	}
+	if c.L3.Ejemplos != nil {
+		return *c.L3.Ejemplos
+	}
+	return L3EjemplosPorDefecto
 }
 
 // TopKKNNActivo dice si L3 recibe solo las k mejores opciones del kNN en las preguntas con más de 20 (l3.top_k_knn sin apagar y sin l3.top_k explícito).
@@ -369,6 +383,7 @@ var errL3Estado = errors.New("L3: el endpoint respondió con un estado no 2xx")
 // DecidirCon: en choice con más de top_k opciones, L3 decide solo entre las top_k de la última capa anterior que dio probabilidades
 // (L2, L1, L0) y las demás salen con p = 0. Sin ninguna, o en los otros tipos, ve todas las opciones como antes.
 func (l *L3LLM) DecidirCon(ctx context.Context, p Pregunta, previas Previas) (Respuesta, error) {
+	ctx = conDemosDeL2(ctx, previas)
 	if r, ok, err := l.decidirTopKKNN(ctx, p, previas); ok {
 		return r, err
 	}

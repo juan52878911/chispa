@@ -145,12 +145,27 @@ func (k *L2KNN) bancoDePeticion(ctx context.Context, p Pregunta) (*BancoKNN, err
 	return b, nil
 }
 
-// DemosDePeticion elige hasta k ejemplos de la petición para el few-shot de L3: una vuelta por clase (en el orden en que aparecen) tomando el primer
-// ejemplo aún no usado de cada una, hasta k; sin azar, así que la misma petición da siempre el mismo prompt. Con k ≤ 0 no hay demostraciones.
+// ejemplosDePeticion son todos los examples de la petición como ejemplos fs, en su orden.
+func ejemplosDePeticion(p Pregunta) []EjemploFS {
+	ops := make([]string, len(p.Opciones))
+	for i, o := range p.Opciones {
+		ops[i] = o.ID
+	}
+	out := make([]EjemploFS, len(p.Ejemplos))
+	for i, e := range p.Ejemplos {
+		out[i] = EjemploFS{ID: "peticion-" + strconv.Itoa(i+1), Pregunta: p.Texto, Tipo: p.Kind, Texto: e.Texto, Opciones: ops, Etiqueta: e.Etiqueta}
+	}
+	return out
+}
+
+// DemosDePeticion elige hasta k ejemplos de la petición para el few-shot FIJO de L3 (sin kNN: modo cpu no lo usa, y en modo gpu solo con l3.demos_fijas o sin codificador):
+// una vuelta por clase (en el orden en que aparecen) tomando el primer ejemplo aún no usado de cada una, hasta k; sin azar, así que la misma petición da siempre el mismo prompt.
+// Con k ≤ 0 no hay demostraciones.
 func DemosDePeticion(p Pregunta, k int) []EjemploFS {
 	if k <= 0 || len(p.Ejemplos) == 0 {
 		return nil
 	}
+	todos := ejemplosDePeticion(p)
 	var clases []string
 	por := map[string][]int{}
 	for i, e := range p.Ejemplos {
@@ -159,17 +174,14 @@ func DemosDePeticion(p Pregunta, k int) []EjemploFS {
 		}
 		por[e.Etiqueta] = append(por[e.Etiqueta], i)
 	}
-	ops := make([]string, len(p.Opciones))
-	for i, o := range p.Opciones {
-		ops[i] = o.ID
-	}
 	var out []EjemploFS
 	for ronda := 0; len(out) < k; ronda++ {
 		hubo := false
 		for _, c := range clases {
 			if ronda < len(por[c]) && len(out) < k {
-				e := p.Ejemplos[por[c][ronda]]
-				out = append(out, EjemploFS{ID: "peticion-" + strconv.Itoa(len(out)+1), Pregunta: p.Texto, Tipo: p.Kind, Texto: e.Texto, Opciones: ops, Etiqueta: e.Etiqueta})
+				e := todos[por[c][ronda]]
+				e.ID = "peticion-" + strconv.Itoa(len(out)+1)
+				out = append(out, e)
 				hubo = true
 			}
 		}
