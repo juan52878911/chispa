@@ -37,6 +37,10 @@ type EjemploFS struct {
 	Texto    string   `json:"texto"`
 	Opciones []string `json:"opciones"`
 	Etiqueta string   `json:"etiqueta"`
+	// Formato pool (kNN por fila): Fila es el índice de la fila de oro en el .npy del banco y Fs la posición de las que eligió el generador para el modo fijo. Sin Fila el
+	// fichero es el formato viejo: solo las ejemplos fijas.
+	Fila *int `json:"fila,omitempty"`
+	Fs   int  `json:"fs,omitempty"` // posición (desde 1) en la elección fija del generador; 0 = no es de las fijas
 }
 
 // CargarEjemplosFS lee `<base>.ejemplos.jsonl`; (nil, nil) si no existe.

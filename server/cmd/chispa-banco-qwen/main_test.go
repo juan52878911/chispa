@@ -34,7 +34,7 @@ func TestEjecutarErroresClaros(t *testing.T) {
 	d := t.TempDir()
 	sop := filepath.Join(d, "s.jsonl")
 	os.WriteFile(sop, []byte(`{"tarea":"t","etiqueta":"a","pregunta":"p","texto":"x"}`+"\n"), 0o644)
-	if err := ejecutar("/no/existe.onnx", "/no/existe.bpe", sop, d, "", 1, -1, semillaPorDefecto); err == nil {
+	if err := ejecutar("/no/existe.onnx", "/no/existe.bpe", sop, d, "", 1, -1, semillaPorDefecto, true); err == nil {
 		t.Fatal("debía fallar")
 	}
 	os.WriteFile(sop, []byte(`{"tarea":"","etiqueta":"a"}`+"\n"), 0o644)
@@ -137,5 +137,56 @@ func TestEjemplosAvisosYErrores(t *testing.T) {
 	// etiqueta que no es una opción
 	if _, err := escribirEjemplos(base, []fila{{ID: "1", Tipo: "choice", Etiqueta: "z", Opciones: []string{"a", "b"}}}, 8, 1); err == nil {
 		t.Fatal("etiqueta fuera de opciones")
+	}
+}
+
+// El formato pool lleva todo el oro con su `fila` y marca las k fijas con su posición: quitando esas columnas, las fijas son las del formato viejo y en su orden.
+func TestEjemplosFormatoPool(t *testing.T) {
+	b, err := os.ReadFile("testdata/soporte.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fs []fila
+	for _, l := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		var f fila
+		if err := json.Unmarshal([]byte(l), &f); err != nil {
+			t.Fatal(err)
+		}
+		fs = append(fs, f)
+	}
+	base := filepath.Join(t.TempDir(), "banco-t")
+	if _, err := escribirEjemplosFmt(base, fs, 8, semillaPorDefecto, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := escribirEjemplos(base+"v", fs, 8, semillaPorDefecto); err != nil {
+		t.Fatal(err)
+	}
+	viejo, _ := decide.CargarEjemplosFS(base + "v")
+	pool, err := decide.CargarEjemplosFS(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oro := 0
+	for _, f := range fs {
+		if f.Split == "" || f.Split == "train" {
+			oro++
+		}
+	}
+	if len(pool) != oro || len(viejo) != 8 {
+		t.Fatalf("pool %d (oro %d), fijas %d", len(pool), oro, len(viejo))
+	}
+	fijas := make([]string, 8)
+	for _, e := range pool {
+		if e.Fila == nil || fs[*e.Fila].ID != e.ID || fs[*e.Fila].Etiqueta != e.Etiqueta {
+			t.Fatalf("fila mal: %+v", e)
+		}
+		if e.Fs > 0 {
+			fijas[e.Fs-1] = e.ID
+		}
+	}
+	for i, e := range viejo {
+		if fijas[i] != e.ID {
+			t.Fatalf("la fija %d es %q y en el formato viejo %q", i+1, fijas[i], e.ID)
+		}
 	}
 }
