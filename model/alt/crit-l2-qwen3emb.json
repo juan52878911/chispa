@@ -1,0 +1,39 @@
+{
+  "id": "crit-l2-qwen3emb",
+  "congelado_antes_de_medir": true,
+  "fecha": "2026-11-19",
+  "objeto": "Codificador L2 del servidor Go intercambiable por config: e5-small (por defecto y vuelta atrás) o qwen3-emb (Qwen3-Embedding-0.6B en ONNX con ORT y tokenizador BPE en Go)",
+  "modelo": {
+    "nombre": "Qwen/Qwen3-Embedding-0.6B",
+    "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "licencia": "Apache-2.0",
+    "pooling": "último token con relleno a la izquierda, normalizado L2",
+    "max_tok": 320,
+    "consulta": "Instruct: Classify the text to answer this question: <pregunta>\\nQuery:<texto> (soporte y test)",
+    "descripciones_de_etiqueta": "sin instrucción"
+  },
+  "knn": {"oro_por_clase": 8, "temperatura": 0.05, "vecinos_medidos": [32, 8], "vecinos_por_defecto": "el de mayor macro e2e en dev; empate → 32"},
+  "referencia_python": {
+    "fuente": "R11 (model/alt/resultados-20261113-p0-p2/r11-alternativas-ba463e8.json), GPU bf16, transformers 5.22.2",
+    "macro_dev_knn_qwen": {"v32": 0.4675, "v8": 0.4683},
+    "paridad": "transformers 5.22.2, AutoTokenizer(padding_side='left') y AutoModel fp32 en CPU, misma revisión"
+  },
+  "fixture_paridad": "200 textos inventados o de dev con licencia libre (es/en, acentos, emojis, textos largos que pasan de 320 tokens), con la instrucción de consulta; nada de PQRS ni de selladas",
+  "criterio": {
+    "condiciones_todas": [
+      {"nombre": "tokens", "regla": "los ids del tokenizador Go son idénticos a los de transformers 5.22.2 en los 200 textos del fixture (200/200)"},
+      {"nombre": "coseno", "regla": "coseno (vector Go fp32, vector transformers fp32) >= 0.999 en cada uno de los 200 textos (mínimo >= 0.999)"},
+      {"nombre": "e2e", "regla": "macro por tarea del kNN servido por HTTP (cliente r10_t5_cliente.py) en las 6 tareas dev de la batería v2, con 100 % de cobertura, a <= 0.5 puntos del Python de R11 con los mismos vecinos (|macro_go - ref| <= 0.005)"}
+    ]
+  },
+  "reglas_de_eleccion": {
+    "int8": "int8 dinámico de ORT se usa solo si su macro e2e queda a <= 0.5 puntos del fp32 con los mismos vecinos; si no, fp32",
+    "latencia": "si la p50 por consulta en CPU (c7i.xlarge, 4 hilos) del modo elegido pasa de 150 ms, se integra igual y PRODUCTO.md lo marca «recomendado con GPU o cuando la latencia no importe», con las cifras"
+  },
+  "informativo_no_cuenta": [
+    "latencia p50 y p95 por consulta en CPU, fp32 e int8",
+    "RAM (RSS) del servidor y tamaño de la imagen y de los modelos frente a e5",
+    "diferencia de macro por tarea frente a R11"
+  ],
+  "limites": {"aws_usd": 2.0, "instancias": "c7i.xlarge (una g5 solo si hace falta la referencia), autoapagado", "selladas": "no se abren"}
+}
