@@ -14,7 +14,7 @@
     "qwen_onnx": "/modelos/qwen3emb-fp32.onnx",
     "qwen_tok": "/modelos/qwen3emb.chispa-bpe",
     "qwen_sesiones": 1,
-    "vecinos": 32,
+    "vecinos": 8,
     "tareas": {
       "mi-tarea": {
         "banco": "/bancos/banco-mi-tarea",

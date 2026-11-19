@@ -23,8 +23,10 @@ import (
 
 const (
 	KNNVecinosPorDefecto = 32
-	KNNTempPorDefecto    = 0.05
-	KNNSOroPorDefecto    = 0.90
+	// KNNVecinosQwen3Emb: vecinos por defecto con el codificador qwen3-emb (ver ConfigKNN.VecinosEfectivos).
+	KNNVecinosQwen3Emb = 8
+	KNNTempPorDefecto  = 0.05
+	KNNSOroPorDefecto  = 0.90
 )
 
 // BancoKNN es el banco de una tarea. Formato en disco (el del exportador `model/alt/exportar_banco.py`): `<base>.npy` con la matriz

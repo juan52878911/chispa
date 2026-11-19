@@ -229,7 +229,7 @@ func TestConfigVieja_E5SinCambios(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if q.KNN.NombreCodificador() != CodificadorQwen3Emb || q.KNN.QwenONNX == "" || q.KNN.QwenTok == "" || q.KNN.E5ONNX != "" || q.KNN.Vecinos != 32 {
+	if q.KNN.NombreCodificador() != CodificadorQwen3Emb || q.KNN.QwenONNX == "" || q.KNN.QwenTok == "" || q.KNN.E5ONNX != "" || q.KNN.Vecinos != 8 {
 		t.Fatalf("ejemplo qwen3-emb: %+v", q.KNN)
 	}
 }
@@ -277,5 +277,23 @@ func TestL2KNNComprobarDim(t *testing.T) {
 	k, _ = NuevoL2KNN(cfg, nil)
 	if err := k.ComprobarDim(context.Background()); err != nil {
 		t.Fatal("sin codificador no hay nada que comprobar")
+	}
+}
+
+func TestVecinosPorDefectoSegunCodificador(t *testing.T) {
+	casos := []struct {
+		cfg  ConfigKNN
+		want int
+	}{
+		{ConfigKNN{}, 32},
+		{ConfigKNN{Codificador: CodificadorE5Small}, 32},
+		{ConfigKNN{Codificador: CodificadorQwen3Emb}, 8},
+		{ConfigKNN{Codificador: CodificadorQwen3Emb, Vecinos: 32}, 32},
+		{ConfigKNN{Vecinos: 5}, 5},
+	}
+	for _, c := range casos {
+		if got := c.cfg.VecinosEfectivos(); got != c.want {
+			t.Errorf("%+v: vecinos %d, quería %d", c.cfg, got, c.want)
+		}
 	}
 }

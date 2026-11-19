@@ -27,7 +27,7 @@ type ConfigKNN struct {
 	// Siempre: tareas que escalan siempre a L3 (en Python, las de AUROC del margen < 0,55 en calibración). Las que no tienen oro escalan
 	// siempre aunque no estén aquí (motivo «sin_oro»).
 	Siempre     []string `json:"siempre,omitempty"`
-	Vecinos     int      `json:"vecinos,omitempty"`     // 0 = 32
+	Vecinos     int      `json:"vecinos,omitempty"`     // 0 = 32 con e5-small y 8 con qwen3-emb (VecinosEfectivos)
 	Temperatura float64  `json:"temperatura,omitempty"` // 0 = 0,05
 	SOro        float64  `json:"s_oro,omitempty"`       // 0 = 0,90: con el oro más cercano ≥ s_oro, vota solo el oro
 	// ConservarL0L1: por defecto, con `knn` la cascada es L2(kNN)→L3 como en Python (L0 y L1 se saltan); con true se conservan.
@@ -49,6 +49,18 @@ type ConfigKNN struct {
 }
 
 // NombreCodificador es el codificador efectivo: e5-small si la config no dice nada (las configs anteriores a qwen3-emb arrancan igual que antes).
+// VecinosEfectivos son los vecinos del kNN: los de la config o, con 0, el valor por defecto del codificador (32 con e5-small; 8 con
+// qwen3-emb, el ganador en dev de L2-qwen3emb: macro e2e 0,4700 con 8 frente a 0,4686 con 32).
+func (c ConfigKNN) VecinosEfectivos() int {
+	if c.Vecinos > 0 {
+		return c.Vecinos
+	}
+	if c.NombreCodificador() == CodificadorQwen3Emb {
+		return KNNVecinosQwen3Emb
+	}
+	return KNNVecinosPorDefecto
+}
+
 func (c ConfigKNN) NombreCodificador() string {
 	if c.Codificador == "" {
 		return CodificadorE5Small
@@ -209,7 +221,7 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 	if err := cfg.validar(); err != nil {
 		return nil, err
 	}
-	k := &L2KNN{p: ParamsKNN{Vecinos: cfg.Vecinos, Temp: cfg.Temperatura, SOro: cfg.SOro}.conDefectos(), tareas: map[string]*tareaKNNViva{}, porPreg: map[string]string{}, cod: cod, cfg: cfg}
+	k := &L2KNN{p: ParamsKNN{Vecinos: cfg.VecinosEfectivos(), Temp: cfg.Temperatura, SOro: cfg.SOro}.conDefectos(), tareas: map[string]*tareaKNNViva{}, porPreg: map[string]string{}, cod: cod, cfg: cfg}
 	siempre := map[string]bool{}
 	for _, s := range cfg.Siempre {
 		siempre[s] = true

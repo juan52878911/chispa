@@ -22,8 +22,5 @@ func montarCodificadorQwen(k *decide.ConfigKNN) (*decide.CodificadorQwen, error)
 
 // vecinosKNN son los vecinos efectivos del kNN (0 en la config = el valor por defecto).
 func vecinosKNN(k *decide.ConfigKNN) int {
-	if k.Vecinos <= 0 {
-		return decide.KNNVecinosPorDefecto
-	}
-	return k.Vecinos
+	return k.VecinosEfectivos()
 }
