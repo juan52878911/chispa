@@ -2272,7 +2272,7 @@ Macro de las 6 tareas de dev (entre paréntesis, sin las sintéticas):
 
 **Lectura:** Qwen3-Embedding-0.6B es la primera palanca barata que mueve el kNN de verdad: +2,6 en la comparación justa y +7,7 frente a la configuración de T3a. Casi iguala al 4B zs sin LLM, con 38 ms por consulta. El reranker no sirve como clasificador: es peor que el 4B y no es más rápido. Todo es dev, así que es indicativo; confirmarlo exige la batería v3.
 
-## 19. L2-qwen3emb: Qwen3-Embedding-0.6B como codificador del kNN del servidor Go (rama `delega/20261119-014643-69817`, sin push)
+## 19. L2-qwen3emb: Qwen3-Embedding-0.6B como codificador del kNN del servidor Go (rama `l2-qwen3emb`, sin push; trabajo en `delega/20261119-014643-69817`)
 
 ### 19.1 Preparado (criterio congelado antes de medir: `crit-l2-qwen3emb.json`, sha256 58a62d61…ade0b)
 - Servidor: `knn.codificador` = `e5-small` (por defecto y vuelta atrás; una config vieja arranca igual) o `qwen3-emb` (`qwen_onnx`, `qwen_tok`, `qwen_sesiones`, `vecinos`); ver `server/PRODUCTO.md`.
@@ -2280,5 +2280,27 @@ Macro de las 6 tareas de dev (entre paréntesis, sin las sintéticas):
 - ud preparado y NO lanzado: `aws/l2qwen3emb.sh` (+ `l2qwen3emb_fases.sh`, `empaquetar_l2qwen3emb.sh`); c7i.xlarge, CPU, 4 hilos.
 - Verificado sin el modelo real (Qwen3 en miniatura, arquitectura real, pesos aleatorios): tokens 1700/1700 y coseno 1,0 frente a transformers 5.22.0, y las probabilidades del servidor por HTTP iguales a las del Python de R11 (máx. 1e-6, 60 filas × v32/v8 × 6 tareas).
 
-### 19.2 Resultado de la corrida en c7i.xlarge: **PENDIENTE DE MEDIR**
-Tokens 200/200 con el vocabulario real, coseno del fixture (≥ 0,999), macro e2e por HTTP en v32 y v8 × fp32 e int8 (referencia R11: 0,4675 y 0,4683; tolerancia 0,5 puntos), latencia p50/p95, RSS, tamaños de binario, ONNX e imagen.
+### 19.2 Primera corrida (EC2 inst-05, c7i.xlarge; arranque del ud 07:31:04 UTC → `listo` 07:38:02, `verificado` 07:39; ≈ 9 min ≈ 0,03 USD; ud `ud-l2-qwen3emb-0524ac5.sh`): **FALLÓ por entorno**
+- Pasó entorno, modelo (rev. 97b0c614), exportación del tokenizador, referencia de transformers 5.22.2 (200 textos, 20 truncados a 320) y el ONNX fp32 (coseno 1,0 frente a torch).
+- Cayó en `preparar_go` (rc=3): la descarga de onnxruntime 1.31.1 desde las releases de GitHub devolvió 404. Sin cifras de Go.
+- El int8 de esa exportación (dinámico, por tensor, todo cuantizado) dio coseno mínimo 0,494 frente a torch.
+- Arreglo (5d9e86c): ORT desde NuGet (`Microsoft.ML.OnnxRuntime` 1.31.1) con sha256 del nupkg (6871ccbc…) y de `libonnxruntime.so` (a96f132e…); y un único y último intento de int8 (por canal, solo MatMul, sin las 28 `down_proj`): si su coseno no llega a 0,99 queda «int8 no viable» y solo se mide fp32. El criterio no cambia.
+
+### 19.3 Segunda corrida (EC2 inst-15, c7i.xlarge, us-east-1f; LaunchTime 07:44:30 UTC → `listo` 09:20:43, `verificado` 09:21; ≈ 97 min ≈ 0,29 USD; ud `ud-l2-qwen3emb-5d9e86c.sh`; `l2-qwen3emb-5d9e86c.json`): **PASA** (pasa_todo=True)
+- Entorno: Xeon Platinum 8488C, 4 vCPU, 7 GB; python 3.11, torch 2.15.0+cpu, transformers 5.22.2, onnxruntime 1.31.1 (NuGet, .so comprobada), Go 1.27.1.
+- **Tokens**: 200/200 iguales a transformers 5.22.2 con el vocabulario real (151 643 + 26 añadidos; plantilla: secuencia + `<|endoftext|>`, que también es el relleno).
+- **Coseno** Go/ORT fp32 frente a transformers: mínimo 1,000000 (0 textos bajo 0,999).
+- **int8 no viable**: coseno mínimo 0,980 < 0,99 en la comprobación del exportador (máx. dif. 5,9). Solo se midió fp32; los e2e int8 constan como «int8 no viable».
+- **e2e por HTTP** (cliente T5b, 2930 filas de dev, 6 tareas, cobertura 100 %, todo L2, L3 apagado):
+
+| condición | macro | R11 (Python, bf16 GPU) | dif. | pasa |
+|---|---|---|---|---|
+| fp32, 32 vecinos | 0,4686 | 0,4675 | +0,0011 | sí |
+| fp32, 8 vecinos | **0,4700** | 0,4683 | +0,0017 | sí |
+
+  Por tarea (v8): cfpb 0,578 · congreso 0,552 · finanzas 0,777 · horeca 0,496 · jql 0,218 · usajobs 0,200. **Gana v8** en dev: queda por defecto con `qwen3-emb` (`ConfigKNN.VecinosEfectivos`; con e5 siguen 32).
+- **Latencia** (c7i.xlarge, 4 hilos, 1 cliente, 1 sesión ORT): total p50 1000 ms, p95 1026 ms (v8); el codificador es casi todo (p50 999 ms; el kNN 0,07 ms). Depende de la longitud: medianas por tarea 242 ms (horeca), 730 ms (cfpb) y ≈ 1000 ms en congreso, finanzas, jql y usajobs, que llegan al tope de 320 tokens. En el banco de paridad (textos cortos del fixture) p50 212 ms, p95 998 ms. p50 > 150 ms → nota «recomendado con GPU o cuando la latencia no importe».
+- **Memoria y tamaños**: RSS del servidor 2,2 GB (VmHWM 2 228 636 kB) frente a ≈ 0,5 GB por sesión con e5; ONNX fp32 2,38 GB (+ grafo 1,3 MB), tokenizador 3,9 MB, ORT 29 MB, servidor 12,9 MB, bancos 3,0 MB. Imagen estimada 2,4 GB (suma de lo que copia `Dockerfile.producto`, sin la capa base; no hay docker en el nodo) frente a ≈ 0,5 GB con e5.
+- **Discrepancia del cliente explicada**: `e2e-fp32-v8-resumen.json` da `macro_sin_hatecheck` 0,4609 y `cifras.json` 0,4700. El cliente cuenta aciertos con el `answer` del servidor, que es el argmax de las probabilidades en todas las tareas (0 filas con `answer` ≠ argmax); `qwen3emb_medir.py` lee las `probs` como R11 (`lineas_base_v2.top1`): argmax en choice y mediana CORAL en las score. Solo cambian las tres score (horeca 0,458 → 0,496, jql 0,205 → 0,218, usajobs 0,196 → 0,200); las choice coinciden. Recalculado con `top1(…, "argmax")` sale 0,4609 (v8) y 0,4603 (v32), igual que el cliente. La referencia R11 usa la mediana, así que la comparación del criterio es la buena. **Consecuencia para producto**: el `answer` que devuelve hoy el servidor en las score no es el de la regla medida (también con e5): queda como seguimiento.
+- **Gasto de las dos corridas**: ≈ 0,32 USD (106 min de c7i.xlarge a 0,1785 USD/h; EBS despreciable). La hora de lanzamiento de la primera es aproximada (la instancia ya no aparece en EC2; sin permiso de CloudTrail): se toma 1 min antes del arranque del ud.
+- **Sin medir** (palanca para Juan): bajar `max_len` a 128 o 192 recortaría la latencia de las tareas largas, pero cambia la precisión y habría que medirla.

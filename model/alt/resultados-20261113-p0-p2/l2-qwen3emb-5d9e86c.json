@@ -1,0 +1,178 @@
+{
+ "criterio": "crit-l2-qwen3emb",
+ "condiciones": {
+  "tokens": {
+   "pasa": true,
+   "iguales": 200,
+   "n": 200
+  },
+  "coseno": {
+   "pasa": true,
+   "min": 0.9999999999911933,
+   "n_bajo_0.999": 0
+  },
+  "e2e-fp32-v32": {
+   "macro": 0.4686,
+   "referencia_r11": 0.4675,
+   "dif": 0.0011,
+   "cobertura": 1.0,
+   "n": 2930,
+   "por_tarea": {
+    "cfpb-quejas": 0.584,
+    "congreso-eeuu-partido": 0.56,
+    "finanzas-documentos": 0.7918,
+    "horeca-resenas": 0.456,
+    "jql-valor-educativo": 0.2217,
+    "usajobs-nivel": 0.198
+   },
+   "pasa": true,
+   "latencia_ms": {
+    "total_cliente": {
+     "p50": 999.657,
+     "p95": 1019.583,
+     "n": 2930
+    },
+    "codificador": {
+     "p50": 998.57,
+     "p95": 1018.179,
+     "n": 2930
+    },
+    "knn": {
+     "p50": 0.077,
+     "p95": 0.415,
+     "n": 2930
+    }
+   }
+  },
+  "e2e-fp32-v8": {
+   "macro": 0.47,
+   "referencia_r11": 0.4683,
+   "dif": 0.0017,
+   "cobertura": 1.0,
+   "n": 2930,
+   "por_tarea": {
+    "cfpb-quejas": 0.578,
+    "congreso-eeuu-partido": 0.552,
+    "finanzas-documentos": 0.7766,
+    "horeca-resenas": 0.496,
+    "jql-valor-educativo": 0.2175,
+    "usajobs-nivel": 0.2
+   },
+   "pasa": true,
+   "latencia_ms": {
+    "total_cliente": {
+     "p50": 999.76,
+     "p95": 1026.283,
+     "n": 2930
+    },
+    "codificador": {
+     "p50": 998.821,
+     "p95": 1024.647,
+     "n": 2930
+    },
+    "knn": {
+     "p50": 0.072,
+     "p95": 0.428,
+     "n": 2930
+    }
+   }
+  },
+  "e2e-int8-v32": {
+   "pasa": null,
+   "motivo": "int8 no viable"
+  },
+  "e2e-int8-v8": {
+   "pasa": null,
+   "motivo": "int8 no viable"
+  },
+  "int8_vs_fp32": {
+   "v32": null,
+   "v8": null,
+   "regla": "|macro_int8 − macro_fp32| ≤ 0,005 con los mismos vecinos"
+  }
+ },
+ "informativo": {
+  "rss": {
+   "fp32-v32": {
+    "VmHWM_kB": 2225488,
+    "VmRSS_kB": 2222012
+   },
+   "fp32-v8": {
+    "VmHWM_kB": 2228636,
+    "VmRSS_kB": 2226688
+   }
+  },
+  "tamanos": {
+   "servidor_bytes": 12851864,
+   "banco_qwen_bytes": 7576288,
+   "libonnxruntime_bytes": 29345384,
+   "tokenizador_bytes": 3910314,
+   "onnx_fp32_bytes": 2384373380,
+   "onnx_int8_bytes": 1329661798,
+   "bancos_fp32_bytes": 3016045,
+   "bancos_int8_bytes": null,
+   "e5_onnx_fp32_bytes_segun_server_README": 470000000,
+   "imagen_estimada_bytes": {
+    "fp32": 2433496987,
+    "int8": 1375769360
+   },
+   "nota_imagen": "estimacion: no hay docker en el nodo; suma de lo que copia server/deploy/Dockerfile.producto (servidor, libonnxruntime, ONNX, tokenizador, bancos) SIN la capa base"
+  },
+  "onnx": {
+   "modelo": "Qwen/Qwen3-Embedding-0.6B",
+   "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+   "licencia": "Apache-2.0",
+   "opset": 17,
+   "max_len": 320,
+   "pooling": "last_token",
+   "versiones": {
+    "torch": "2.15.0",
+    "transformers": "5.22.2",
+    "onnx": "1.23.2",
+    "onnxruntime": "1.31.1"
+   },
+   "ficheros": {
+    "qwen3emb-fp32.onnx": {
+     "bytes": 1296004,
+     "sha256": "9851e69e4c99a37ed774277a77dd55747375fa2e35743602c1cc96144966b3ca"
+    },
+    "qwen3emb-fp32.onnx.data": {
+     "bytes": 2383077376,
+     "sha256": "7c7569e58783ee0ad8c5fb797d7944aa4f5928af53fb4c1f626f71885af22969"
+    },
+    "qwen3emb-int8.onnx": {
+     "bytes": 3549030,
+     "sha256": "646c9a939c53a34a39a30431cfdfdfa57c96c1e3fabd90be8978b7e2ead4554c",
+     "cuantizacion": "onnxruntime.quantization.quantize_dynamic, QInt8, por canal, solo MatMul, sin las 28 down_proj; activaciones dinámicas",
+     "excluidos": 28
+    },
+    "qwen3emb-int8.onnx.data": {
+     "bytes": 1326112768,
+     "sha256": "b7f6cac78890a371da04c44650aa8cc78d86b56d473b393a42ad1af2f8a31a24"
+    }
+   },
+   "comprobacion": {
+    "qwen3emb-fp32.onnx": {
+     "max_abs_dif_ultimo_token_vs_torch": 2.47955322265625e-05,
+     "coseno_min_ultimo_token": 1.0
+    },
+    "qwen3emb-int8.onnx": {
+     "max_abs_dif_ultimo_token_vs_torch": 5.882356643676758,
+     "coseno_min_ultimo_token": 0.9803078770637512
+    }
+   }
+  },
+  "int8": {
+   "viable": false,
+   "motivo": "coseno minimo del ultimo token frente a torch < 0,99 en la comprobacion del exportador"
+  }
+ },
+ "eleccion": {
+  "vecinos": 8,
+  "modo": "fp32",
+  "p50_ms": 999.76,
+  "nota_producto": "recomendado con GPU o cuando la latencia no importe"
+ },
+ "pasa_todo": true,
+ "completo": true
+}
