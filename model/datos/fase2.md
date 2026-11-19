@@ -68,10 +68,10 @@ Propuestas: (a) aceptar el parcial y cerrar lo que falta en la máquina de Juan,
 ```bash
 # 1. Empaquetar (no sube nada; el commit SHA debe contener model/datos/bateria_v3*, aws/bateria_v3*.sh y model/alt/manifiesto-entrenamiento.json). Ya no hay DIR_HUELLAS ni huellas.tgz
 bash model/datos/aws/empaquetar_bateria_v3.sh SHA DIR_SALIDA
-#    escribe DIR_SALIDA/codigo.tgz y model/datos/aws/lanzados/ud-bateria-v3-SHA.sh (sin placeholders; falla si el ud pasa de 15 500 bytes)
+#    escribe DIR_SALIDA/codigo.tgz y model/datos/aws/lanzados/ud-bateria-v3-SHA.sh (sin placeholders; falla si el ud pasa de 15 500 bytes) y deja al lado una copia, lanzados/codigo-bateria-v3-SHA.tgz: el tgz no sale igual byte a byte en cada empaquetado y el ud lleva el sha256 del suyo, así que se sube ESE
 
 # 2. Subir codigo.tgz por nombre exacto (dev.tgz y selladas.tgz de v2 ya están subidos y sus sha256 van fijos en el ud)
-aws s3 cp DIR_SALIDA/codigo.tgz s3://chispa-pruebas-cuenta-aws/bateria-v3-SHA/codigo.tgz
+aws s3 cp model/datos/aws/lanzados/codigo-bateria-v3-SHA.tgz s3://chispa-pruebas-cuenta-aws/bateria-v3-SHA/codigo.tgz
 
 # 3. Lanzar (primero con --dry-run: debe dar DryRunOperation). Misma red, perfil y AMI que LEEME §13.4; volumen de 80 GB. El rol del perfil debe poder leer los 3 objetos por nombre exacto
 aws ec2 run-instances --region us-east-1 --image-id ami-ejemplo --instance-type c7i.xlarge --count 1 \
