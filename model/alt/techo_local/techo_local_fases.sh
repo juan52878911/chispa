@@ -28,21 +28,28 @@ bajar() {   # bajar REPO REV DIR PATRONES... (los pesos de la revisión fijada; 
 
 # --- 2. entorno: se comprueba que importa todo ANTES de bajar nada
 echo "== 2. entorno $(date -u +%T)"
-if [ "$LOCAL" = 1 ]; then PY=${CHISPA_PY:-python3}; VPY=$PY; NPY=$PY; MAX=(); NB=${CHISPA_LOCAL_N:-20}; NBS=4
+if [ "$LOCAL" = 1 ]; then PY=${CHISPA_PY:-python3}; VPY=$PY; NPY=${CHISPA_NPY:-$PY}; MAX=(); NB=${CHISPA_LOCAL_N:-20}; NBS=4
 else
   NB=240; NBS=20; MAX=()
   LIBRES=$(df -BG --output=avail "$BASE" | tail -1 | tr -dc 0-9)
   [ "${LIBRES:-0}" -ge 120 ] || { fallo "volumen pequeno: ${LIBRES:-?} GB libres (hacen falta >= 120)"; estado entorno "FALLO disco"; cierre; }
   PY=""; for c in /opt/pytorch/bin/python /opt/conda/envs/pytorch/bin/python /usr/bin/python3; do [ -x "$c" ] && "$c" -c "import torch, numpy" 2>/dev/null && { PY=$c; break; }; done
   [ -n "$PY" ] && "$PY" -c "import torch; assert torch.cuda.is_available()" || { fallo "sin torch o sin GPU"; estado entorno "FALLO"; cierre; }
+  # NPY = el propio python de la DLAMI (/opt/pytorch): ya trae torch+numpy y vLLM vive en su venv aparte (/opt/vllm), asi que anadir transformers aqui no choca con nada; un .pth
+  # desde un venv de NLP exigiria un venv que ve torch solo por el .pth y duplicaria site-packages
+  NPY=$PY; ( "$PY" -m pip install -q --no-cache-dir "transformers==$TRANSFORMERS" sentencepiece protobuf tiktoken jinja2 > "$BASE/pip-nlp.log" 2>&1 ) & PIPN=$!
   "$PY" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir "vllm==$VLLM" huggingface_hub || { fallo "pip install vllm==$VLLM"; estado entorno "FALLO pip"; cierre; }
-  VPY=/opt/vllm/bin/python; NPY=/opt/nlp/bin/python
-  ( "$PY" -m venv --system-site-packages /opt/nlp && /opt/nlp/bin/pip install -q --no-cache-dir "transformers==$TRANSFORMERS" sentencepiece protobuf tiktoken huggingface_hub numpy > "$BASE/pip-nlp.log" 2>&1 && echo ok > "$BASE/nlp.ok" ) &
+  VPY=/opt/vllm/bin/python
+  wait $PIPN || { tail -5 "$BASE/pip-nlp.log"; fallo "pip install de transformers en $PY"; estado entorno "FALLO pip nlp"; cierre; }
   GPU=$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null)
   estado entorno "OK vllm $($VPY -c 'import vllm; print(vllm.__version__)' 2>/dev/null); $GPU; $LIBRES GB libres"
 fi
+# cada python que usa el ud importa lo suyo ANTES de gastar GPU (el 1.er intento fallo por un NPY sin torch ni jinja2)
+VERT=; VERV=; [ "$LOCAL" = 1 ] || { VERT=", sentencepiece, tiktoken, google.protobuf, huggingface_hub; assert transformers.__version__=='$TRANSFORMERS', transformers.__version__"; VERV="vllm, numpy, huggingface_hub, "; }
+"$NPY" -c "import torch, transformers, jinja2, numpy$VERT" 2>"$BASE/chk-npy.txt" || { tail -2 "$BASE/chk-npy.txt"; fallo "imports de NPY ($NPY)"; estado entorno "FALLO imports NPY $NPY: $(tail -1 "$BASE/chk-npy.txt")"; cierre; }
+"$NPY" -c "import model.alt.lineas_base_v2_pred, model.alt.techo_local_cliente" || { fallo "imports de NPY (codigo)"; estado entorno "FALLO imports NPY codigo"; cierre; }
 "$PY" -c "import numpy, model.alt.techo_local, model.alt.lineas_base_v2_pred, model.alt.lineas_base_v2b, model.alt.auditoria" || { fallo "imports del codigo"; estado entorno "FALLO imports codigo"; cierre; }
-"$VPY" -c "import model.alt.techo_local_cliente, model.alt.llm_logprobs" || { fallo "imports del cliente"; estado entorno "FALLO imports cliente"; cierre; }
+"$VPY" -c "import ${VERV}model.alt.techo_local_cliente, model.alt.llm_logprobs" || { fallo "imports del cliente"; estado entorno "FALLO imports cliente"; cierre; }
 
 # --- 3. entradas: recuentos, rúbrica de T3b (sha256 del criterio), filas, partición A/B
 echo "== 3. filas $(date -u +%T)"
@@ -87,8 +94,6 @@ done
 
 # --- 5. CPU en segundo plano mientras se baja y arranca el primer modelo: preselección top-k, vectores de e5, demostraciones por fila y partición A/B de lo que depende de ellas
 presel() {
-  [ "$LOCAL" = 1 ] || for _ in $(seq 120); do [ -f "$BASE/nlp.ok" ] && break; sleep 5; done
-  [ "$LOCAL" = 1 ] || [ -f "$BASE/nlp.ok" ] || { echo "sin venv de transformers"; return 1; }
   if [ "$LOCAL" = 1 ]; then export CHISPA_E5=${CHISPA_LOCAL_E5:?}; else bajar intfloat/multilingual-e5-small $E5_REV "$BASE/e5" '*.json' '*.safetensors' '*.txt' '*.model' 'tokenizer*' 'LICENSE*' || return 1; export CHISPA_E5=$BASE/e5; fi
   export HF_HUB_OFFLINE=1; local TV P t; TV=$("$NPY" -c "import transformers; print(transformers.__version__)"); [ "$LOCAL" = 1 ] || [ "$TV" = "$TRANSFORMERS" ] || { echo "transformers $TV"; return 1; }
   P="$NPY -m model.alt.lineas_base_v2_pred"; cd "$REPO" || return 1
