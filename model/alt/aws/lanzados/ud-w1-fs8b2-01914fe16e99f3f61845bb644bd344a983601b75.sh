@@ -12,7 +12,7 @@ S3B=${CHISPA_S3B_LOCAL:-s3://chispa-pruebas-cuenta-aws/w1-fs8b-ad2b70e}      # d
 # Lee por nombre exacto $CHISPA_S3/codigo.tgz, $S3B/resultados.tgz y $S3A/{faseA.tar,faseA.json} (sha256 abajo). Fases: w1_fs8b2_fases.sh (en codigo.tgz).
 MIN=${CHISPA_MIN:-45}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-4}; VLLM=${CHISPA_VLLM:-0.33.0}
 REV4=cdbee75f17c01a7cc42f958dc650907174af0554
-CRIT_SHA=343365bd36b7d31e363f53d02c85222595e2a24e21addcc7b2d64e694ba498e2; COD_SHA256=0512550cb2d851135d94424f38c569f01ee5b476a451a72bc104ea6155494f62; RESB_SHA256=b95e87a310e733029feb4925c61377292fa73509247bbe302cdce759f666a6d9; FASEA_SHA256=c0e7d2275bf9cb9841cb0d95ef85bcb81dd188e817601fddb96ad9ee7d5c3ad6
+CRIT_SHA=343365bd36b7d31e363f53d02c85222595e2a24e21addcc7b2d64e694ba498e2; COD_SHA256=9356267bcb445b8a0de6eb45165307da9a10af5126719e8bcfa23717d907a1ba; RESB_SHA256=b95e87a310e733029feb4925c61377292fa73509247bbe302cdce759f666a6d9; FASEA_SHA256=c0e7d2275bf9cb9841cb0d95ef85bcb81dd188e817601fddb96ad9ee7d5c3ad6
 LOCAL=${CHISPA_LOCAL:-0}
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-w1-s3b2; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
 set -uo pipefail
