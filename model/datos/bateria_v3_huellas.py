@@ -27,6 +27,11 @@ PATRONES_DATOS = ["*.parquet", "*.csv", "*.csv.gz", "*.tsv", "*.json", "*.jsonl"
 IGNORAR = ("dataset_infos.json", "dataset_info.json", "config.json", "state.json", "package.json")
 TOPE_GB_DEFECTO = 8
 TOPES_GB = {"tasksource/tasksource-jev-typed-decisions": 14}
+# Fuentes enormes (tsjev: 134,5 GB): no caben en el disco ni en el tiempo de una sola vez. Se baja, se huella y se BORRA fichero a fichero (el disco aguanta el fichero más grande, no la
+# suma); sin tope de tamaño total: manda el tope de tiempo de las huellas y los ficheros que no den tiempo cuentan como «sin tiempo» (fuente «parcial», que va a solape_no_comprobado).
+POR_FICHEROS = {"tasksource/tasksource-jev-typed-decisions"}
+TOPE_FICHERO_GB = 40
+MAX_HUELLAS_POR_FICHEROS = 4_000_000     # cupo de huellas de una fuente enorme (memoria y tamaño del fichero de huellas); lo que falte cuenta como «sin tiempo»
 FORMATO = {".parquet": "parquet", ".csv": "csv", ".tsv": "tsv", ".json": "jsonl", ".jsonl": "jsonl"}
 RUTA_ENTRENAMIENTO = b.AQUI.parent / "alt" / "manifiesto-entrenamiento.json"
 ANONIMO = re.compile(r"@\w+")
@@ -204,21 +209,30 @@ def huellas_entrenamiento(manifiesto, trabajo, salida, muestra, tope_min=40):
                 if time.time() - t0 > tope_min * 60:
                     raise TimeoutError("sin tiempo (tope de %d min para las huellas del entrenamiento)" % tope_min)
                 sha, nbytes = b.hf_resolver(c["repo"], c["rev"], PATRONES_DATOS)
+                por_ficheros = c["repo"] in POR_FICHEROS
                 tope = TOPES_GB.get(c["repo"], TOPE_GB_DEFECTO) * (1 << 30)
-                if nbytes > tope:
+                if nbytes > tope and not por_ficheros:
                     raise b.EsquemaError("la descarga previsible (%.1f GB) pasa del tope (%.1f GB)" % (nbytes / 2 ** 30, tope / 2 ** 30))
                 if not nbytes:
                     raise b.EsquemaError("sin ficheros de datos (¿solo script de carga?)")
-                b.hf_bajar(c["repo"], sha, PATRONES_DATOS, carp)
-                ficheros = [p for p in sorted(carp.rglob("*")) if p.is_file() and _formato(p) and p.name not in IGNORAR and ".cache" not in p.parts]
+                if por_ficheros:
+                    lista = [(r, tam) for r, tam in b.hf_listar(c["repo"], sha, PATRONES_DATOS) if _formato(Path(r)) and Path(r).name not in IGNORAR]
+                    if any(tam > TOPE_FICHERO_GB * (1 << 30) for _, tam in lista):
+                        raise b.EsquemaError("hay un fichero de más de %d GB: no cabe en el disco" % TOPE_FICHERO_GB)
+                    ficheros = [carp / r for r, _ in lista]
+                else:
+                    b.hf_bajar(c["repo"], sha, PATRONES_DATOS, carp)
+                    ficheros = [p for p in sorted(carp.rglob("*")) if p.is_file() and _formato(p) and p.name not in IGNORAR and ".cache" not in p.parts]
                 n = leidos = ilegibles = 0
                 vistos, mues = set(), []
                 sin_tiempo = 0
                 for p in ficheros:
-                    if time.time() - t0 > tope_min * 60:           # tope global: lo que falta queda como parcial, no tira la corrida
+                    if time.time() - t0 > tope_min * 60 or (por_ficheros and n >= MAX_HUELLAS_POR_FICHEROS):    # tope global (o cupo): lo que falta queda como parcial, no tira la corrida
                         sin_tiempo += 1
                         continue
                     try:
+                        if por_ficheros:
+                            b.hf_bajar(c["repo"], sha, [str(p.relative_to(carp))], carp)
                         for t in textos_de_fichero(p):
                             for tt in ((t, ANONIMO.sub("@usuario", t)) if "@" in t and c["nombre"] == "ciberacoso" else (t,)):   # ciberacoso se entrenó con @menciones anonimizadas
                                 h = sol.huella(tt)
@@ -234,6 +248,9 @@ def huellas_entrenamiento(manifiesto, trabajo, salida, muestra, tope_min=40):
                     except Exception as e:                      # noqa: BLE001 - un fichero ilegible se cuenta; si no se lee ninguno la fuente queda sin comprobar
                         ilegibles += 1
                         b.log("HUELLAS entrenamiento %s: fichero ilegible (%s)" % (c["nombre"], type(e).__name__))
+                    finally:
+                        if por_ficheros:
+                            p.unlink(missing_ok=True)              # libera el disco antes del siguiente fichero
                 if not leidos or not n:
                     raise b.EsquemaError("ningún fichero legible con texto (ficheros %d, ilegibles %d)" % (len(ficheros), ilegibles))
                 if ilegibles or sin_tiempo:

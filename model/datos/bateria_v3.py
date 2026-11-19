@@ -29,11 +29,14 @@ import re
 import shutil
 import sys
 import time
+import unicodedata
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from bisect import bisect_right
 from collections import Counter, defaultdict
+from itertools import chain, islice
 from pathlib import Path
 
 from model.datos import bateria_v3_licencias as lic
@@ -52,6 +55,7 @@ TIPOS = ("choice", "yesno", "score")
 N_BAJO = 8                   # menos de 8 tareas construidas que cuenten (por tipo, o en español en total): se informa con la marca «n bajo»
 BLOQUES = ("cuentan", "informativo")
 LICENCIA_PENDIENTE = "por verificar en fase 2"
+CKAN_DEFECTO = "https://catalog.data.gov"
 
 PROCEDIMIENTO_ABRIR_SELLADA = (
     "Los ficheros de sellada/ solo se leen con model.datos.bateria_v3.abrir_sellada(ruta, motivo, manifiesto=...). La función anota ANTES de leer una línea en "
@@ -180,6 +184,16 @@ def hf_resolver(repo, rev=None, patrones=None, api=None):
     return info.sha, n
 
 
+def hf_listar(repo, rev, patrones):
+    """[(ruta relativa, bytes)] de los ficheros del repo que casan con los patrones (para bajar fuentes enormes de uno en uno)."""
+    if _espejo():
+        d = Path(_espejo()) / "hf" / repo.replace("/", "__")
+        return [(str(p.relative_to(d)), p.stat().st_size) for p in sorted(d.rglob("*")) if p.is_file() and _cumple(str(p.relative_to(d)), patrones)]
+    from huggingface_hub import HfApi
+    info = HfApi().dataset_info(repo, revision=rev, files_metadata=True)
+    return sorted((s.rfilename, s.size or 0) for s in info.siblings if _cumple(s.rfilename, patrones))
+
+
 def hf_bajar(repo, rev, patrones, destino):
     destino = Path(destino)
     destino.mkdir(parents=True, exist_ok=True)
@@ -231,11 +245,97 @@ def url_resolver(f):
     return url, rev
 
 
+def ckan_api(f, accion, **params):
+    """Llamada a la API CKAN del catálogo oficial de la fuente (por defecto catalog.data.gov) -> `result`. En pruebas en seco lee <espejo>/ckan/<id>.json (o _busqueda.json)."""
+    if _espejo():
+        ruta = Path(_espejo()) / "ckan" / (re.sub(r"[^\w.\-]", "_", params["id"]) if accion == "package_show" else "_busqueda")
+        ruta = ruta.with_name(ruta.name + ".json")
+        if not ruta.exists():
+            raise FileNotFoundError("el espejo no trae %s" % ruta.name)
+        return json.loads(ruta.read_text(encoding="utf-8"))["result"]
+    url = "%s/api/3/action/%s?%s" % (f.get("catalogo", CKAN_DEFECTO).rstrip("/"), accion, urllib.parse.urlencode(params))
+    j = json.loads(url_leer(url, tope=1 << 25).decode("utf-8"))
+    if not j.get("success"):
+        raise EsquemaError("la API del catálogo no devolvió resultado (%s)" % accion)
+    return j["result"]
+
+
+def ckan_recurso(pkg, f):
+    """Recurso descargable del paquete: de los `resources` con URL http(s) cuya URL casa con `recurso_regex`, el primero del catálogo (o el último por URL con `elegir`=«ultimo»)."""
+    rx = re.compile(f.get("recurso_regex") or ".", re.I)
+    rs = [r for r in pkg.get("resources") or [] if str(r.get("url") or "").startswith(("http://", "https://", "file://")) and rx.search(r["url"])]
+    if rs and f.get("elegir") == "ultimo":
+        rs = sorted(rs, key=lambda r: r["url"])[-1:]
+    return rs[0] if rs else None
+
+
+def ckan_paquete(f):
+    """Paquete del catálogo: por nombre (`paquete`) y, si no existe o no tiene recurso que case, por búsqueda (`busqueda`, el primero por relevancia cuyo título case con `titulo_regex`
+    y que tenga recurso). Lanza EsquemaError (motivo de la tarea fuera) si no hay paquete o recurso descargable."""
+    motivos, pkg = [], None
+    if f.get("paquete"):
+        try:
+            pkg = ckan_api(f, "package_show", id=f["paquete"])
+            if not ckan_recurso(pkg, f):
+                motivos.append("el paquete %s no trae recurso que case con /%s/" % (f["paquete"], f.get("recurso_regex")))
+                pkg = None
+        except Exception as e:                                # noqa: BLE001 - paquete que no existe: se prueba la búsqueda
+            motivos.append("package_show %s: %s: %s" % (f["paquete"], type(e).__name__, str(e)[:100]))
+    if pkg is None and f.get("busqueda"):
+        try:
+            rt = re.compile(f.get("titulo_regex") or ".", re.I)
+            for p in ckan_api(f, "package_search", q=f["busqueda"], rows=20).get("results") or []:
+                if rt.search(p.get("title") or "") and ckan_recurso(p, f):
+                    pkg = p
+                    break
+            if pkg is None:
+                motivos.append("package_search «%s»: ningún paquete con título /%s/ y recurso /%s/" % (f["busqueda"], f.get("titulo_regex"), f.get("recurso_regex")))
+        except Exception as e:                                # noqa: BLE001
+            motivos.append("package_search: %s: %s" % (type(e).__name__, str(e)[:100]))
+    if pkg is None:
+        raise EsquemaError("catálogo: " + "; ".join(motivos))
+    return pkg
+
+
+def ckan_descarga(pkg, rec, f):
+    """URL de descarga: la del recurso del catálogo; si el recurso es un directorio (`indice` + `patron`) se resuelve el fichero que casa; si el recurso es una API o una página y la fuente
+    trae `descarga`, se usa esa URL solo si es del MISMO dominio que algún recurso del catálogo (la agencia que lo publica)."""
+    base = f.get("descarga") or rec["url"]
+    if f.get("descarga"):
+        dominios = {urllib.parse.urlparse(r.get("url") or "").netloc for r in pkg.get("resources") or []}
+        if urllib.parse.urlparse(base).netloc not in dominios:
+            raise EsquemaError("la URL de descarga %s no es de un dominio de los recursos del catálogo %s" % (base, sorted(dominios)))
+    return url_resolver(dict(url=base, indice=True, patron=f["patron"]))[0] if f.get("indice") else base
+
+
+def ckan_ficha(pkg, rec, f, descarga):
+    ex = {e.get("key"): e.get("value") for e in pkg.get("extras") or [] if e.get("key") in ("accessLevel", "rights", "license", "licenseUrl")}
+    return dict(catalogo=f.get("catalogo", CKAN_DEFECTO), paquete=pkg.get("name"), id=pkg.get("id"), titulo=pkg.get("title"), organizacion=(pkg.get("organization") or {}).get("title"),
+                license_id=pkg.get("license_id"), license_title=pkg.get("license_title"), license_url=pkg.get("license_url"), metadata_modified=pkg.get("metadata_modified"),
+                extras=ex, recurso=dict(url=rec["url"], formato=rec.get("format"), nombre=rec.get("name")), descarga=descarga)
+
+
 def bajar_ficha(t, carpeta):
     """Baja solo la ficha de licencia de la tarea (README.md o página) y devuelve su texto; no descarga datos."""
     carpeta = Path(carpeta)
     carpeta.mkdir(parents=True, exist_ok=True)
     f = t["fuente"]
+    if f["tipo"] == "ckan":                       # licencia y descarga salen del registro oficial del catálogo (no de la web de la agencia)
+        try:
+            pkg = ckan_paquete(f)
+        except EsquemaError as e:
+            t["_error_ficha"] = str(e)
+            return ""
+        rec = ckan_recurso(pkg, f)
+        try:
+            t["recurso_url"] = ckan_descarga(pkg, rec, f)
+        except Exception as e:                                # noqa: BLE001 - sin URL de descarga: la tarea queda fuera con su motivo
+            t["_error_ficha"] = "catálogo: sin URL de descarga (%s: %s)" % (type(e).__name__, str(e)[:150])
+            return ""
+        txt = json.dumps(ckan_ficha(pkg, rec, f, t["recurso_url"]), ensure_ascii=False, indent=1, sort_keys=True)
+        (carpeta / "ficha").mkdir(exist_ok=True)
+        (carpeta / "ficha" / "ficha.json").write_text(txt, encoding="utf-8")
+        return txt
     if f["tipo"] == "hf":
         sha, _ = hf_resolver(f["repo"], t.get("rev"), ["README.md"])
         t["rev"] = t.get("rev") or sha
@@ -263,7 +363,7 @@ def bajar_datos(t, carpeta):
         hf_bajar(f["repo"], t["rev"], f["patrones"], carpeta)
     else:
         carpeta.mkdir(parents=True, exist_ok=True)
-        url, rev = url_resolver(f)
+        url, rev = (t["recurso_url"], None) if f["tipo"] == "ckan" else url_resolver(f)
         destino = carpeta / (re.sub(r"[^\w.\-]", "_", url.split("/")[-1].split("?")[-1]) or "descarga.bin")
         if destino.suffix == "" and not destino.name.endswith(".zip"):
             destino = destino.with_name(destino.name + ".bin")
@@ -299,8 +399,13 @@ def _get(row, ruta):
 def _a_texto(v):
     if v is None:
         return ""
+    if isinstance(v, dict):                          # un mensaje de chat ({"role", "content"}) o similar: solo su texto
+        for k in ("content", "text", "texto"):
+            if k in v:
+                return _a_texto(v[k])
+        return ""
     if isinstance(v, (list, tuple)):
-        return " ".join(_a_texto(x) for x in v)
+        return " ".join(x for x in (_a_texto(x) for x in v) if x)
     if isinstance(v, float) and v == int(v):
         return str(int(v))
     return str(v)
@@ -313,6 +418,7 @@ def _abrir_texto(ruta, codificacion):
 
 
 # ---- lectores XML (tolerantes: el esquema real no se ha visto; la fase 2 lo valida y la tarea queda fuera con motivo si no encaja)
+ULTIMO_SIN_MAPA = Counter()   # valores de etiqueta que el `mapa_etiqueta` no cubre (solo etiquetas cortas: nunca texto), para el motivo cuando no sale nada
 ULTIMO_XML = {}          # etiquetas vistas por el último lector XML, para el motivo cuando no sale nada
 
 
@@ -437,39 +543,191 @@ def _filas_fichero(ruta, formato, lector):
             for r in b.to_pylist():
                 yield r
     elif formato in ("csv", "tsv"):
-        csv.field_size_limit(1 << 28)
-        kw = dict(delimiter="\t", quoting=csv.QUOTE_NONE) if formato == "tsv" else {}
-        if lector.get("separador"):
-            kw["delimiter"] = lector["separador"]
-        with _abrir_texto(ruta, cod) as fh:
-            rd = csv.reader(fh, **kw)
-            cols = lector.get("columnas")
-            if isinstance(cols, dict):                       # sin cabecera: nombre -> posición
-                for fila in rd:
-                    yield {k: (fila[i] if i < len(fila) else None) for k, i in cols.items()}
-            else:
-                cab = next(rd, None)
-                if cab is None:
-                    return
-                for fila in rd:
-                    yield dict(zip(cab, fila))
+        yield from _filas_csv(ruta, formato, lector, cod)
     elif formato == "jsonl":
-        with _abrir_texto(ruta, cod) as fh:
-            primero = fh.read(1)
-            fh.seek(0)
-            if primero == "[":                               # un .json con una lista
-                for r in json.load(fh):
-                    yield r
-            else:
-                for l in fh:
-                    if l.strip():
-                        yield json.loads(l)
+        yield from _filas_json(ruta, cod)
     elif formato == "xml":
         yield from _filas_xml(ruta, lector)
     elif formato == "mediawiki":
         yield from _filas_mediawiki(ruta, lector)
     else:
         raise EsquemaError("formato de lector desconocido: %s" % formato)
+
+
+def _filas_csv(ruta, formato, lector, cod):
+    """csv/tsv con cabecera. Regla escrita del delimitador: el `separador` del lector si lo hay; si no, «,» (csv) o tabulador (tsv) y, si con eso la cabecera sale en UNA sola
+    columna que contiene tabulador, «|» o «;», se vuelve a leer con el primero de ellos (un tsv guardado como .csv, un csv con «|»)."""
+    csv.field_size_limit(1 << 28)
+    d = lector.get("separador") or ("\t" if formato == "tsv" else ",")
+    cols = lector.get("columnas")
+    for intento in (0, 1):
+        kw = dict(delimiter=d, quoting=csv.QUOTE_NONE) if d == "\t" else dict(delimiter=d)
+        with _abrir_texto(ruta, cod) as fh:
+            rd = csv.reader(fh, **kw)
+            if isinstance(cols, dict):                       # sin cabecera: nombre -> posición
+                for fila in rd:
+                    yield {k: (fila[i] if i < len(fila) else None) for k, i in cols.items()}
+                return
+            cab = next(rd, None)
+            if cab is None:
+                return
+            otro = [x for x in ("\t", "|", ";") if x in cab[0] and x != d] if len(cab) == 1 and not lector.get("separador") else []
+            if otro and intento == 0:
+                d = otro[0]
+                continue                                    # cabecera de una sola columna con otro delimitador dentro: se reintenta
+            for fila in rd:
+                yield dict(zip(cab, fila))
+            return
+
+
+def _expandir_json(v):
+    """Un JSON de un solo valor: lista de registros, o un objeto que contiene la(s) lista(s) de registros ({"data": [...]}, {"train": [...]}) o registros por clave; si no, el propio objeto."""
+    if isinstance(v, list):
+        for x in v:
+            if isinstance(x, dict):
+                yield x
+    elif isinstance(v, dict):
+        listas = [x for x in v.values() if isinstance(x, list) and x and all(isinstance(e, dict) for e in x)]
+        if listas:
+            for l in listas:
+                yield from l
+        elif v and all(isinstance(x, dict) for x in v.values()):
+            yield from v.values()
+        else:
+            yield v
+
+
+def _valores_json(texto):
+    dec, i, n = json.JSONDecoder(), 0, len(texto)
+    while True:
+        while i < n and texto[i] in " \t\r\n,\ufeff":
+            i += 1
+        if i >= n:
+            return
+        v, i = dec.raw_decode(texto, i)
+        yield v
+
+
+def _filas_json(ruta, cod):
+    """json/jsonl tolerante: un registro por línea (jsonl); o todo el fichero (lista, objeto con listas, objetos de varias líneas uno tras otro)."""
+    with _abrir_texto(ruta, cod) as fh:
+        lineas = (l for l in fh if l.strip())
+        l1 = next(lineas, None)
+        if l1 is None:
+            return
+        try:
+            v1 = json.loads(l1)
+        except ValueError:
+            v1 = None
+        if v1 is not None and not isinstance(v1, list):
+            l2 = next(lineas, None)
+            if l2 is None:                                   # un fichero de una sola línea: puede ser {"data": [...]}
+                yield from _expandir_json(v1)
+                return
+            yield v1
+            yield json.loads(l2)
+            for l in lineas:
+                yield json.loads(l)
+            return
+        valores = _valores_json(l1 + "".join(lineas))        # lista o objetos de varias líneas
+        v1 = next(valores, None)
+        v2 = next(valores, None)
+        if v2 is None:
+            yield from _expandir_json(v1)
+            return
+        for v in chain([v1, v2], valores):
+            yield from (_expandir_json(v) if isinstance(v, list) else [v])
+
+
+def _nn(s):
+    """Nombre de columna normalizado: sin mayúsculas, acentos ni signos («Label 1» = «label_1» = «label1»)."""
+    return re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKD", str(s).lower()).encode("ascii", "ignore").decode())
+
+
+def _tipo(v):
+    return type(v).__name__ if v is not None else "None"
+
+
+def _clave_real(nombre, fila):
+    """Nombre de columna (con la ruta tras el primer punto intacta) que existe en `fila`: exacto o, si no, normalizado. Alternativas con «||»: gana la primera que exista. None si ninguna."""
+    for alt in str(nombre).split("||"):
+        seg, _, resto = alt.partition(".")
+        real = seg if seg in fila else next((k for k in fila if _nn(k) == _nn(seg)), None)
+        if real is not None:
+            return real + ("." + resto if resto else "")
+    return None
+
+
+def _auto_columnas(auto, muestra):
+    """Regla escrita para fijar texto y etiqueta cuando no se conoce el esquema: la ETIQUETA es la primera columna (en el orden del fichero) cuyo nombre casa con `etiqueta_regex`,
+    no es un identificador/idioma/fecha/enlace y trae entre 2 y `max_clases` valores distintos cortos en la muestra; el TEXTO son las columnas de cadena (máx. 2, en el orden del fichero) cuya
+    longitud media >= 30 caracteres y >= la mitad de la mayor (o las que casen con `texto_regex`). Devuelve (texto, etiqueta, resumen) o lanza EsquemaError con nombres y tipos."""
+    fila = muestra[0]
+    ni = re.compile(r"^(id|idx|index|ids|split|lang|language|idioma|url|link|date|fecha|source|fuente|author|autor|title|titulo|text|texto)\d*$")
+    er = re.compile(auto.get("etiqueta_regex") or r"label|categor|class|clase|target|sentiment|sentimiento|sector|topic|tema|tipo|type|severity|score|rating|nota|capitulo|chapter|genre|genero|winner|stance")
+    et = None
+    for k in fila:
+        if not er.search(_nn(k)) or (ni.match(_nn(k)) and not auto.get("etiqueta_regex")):
+            continue
+        vals = [_a_texto(r.get(k)).strip() for r in muestra if r.get(k) is not None and not isinstance(r.get(k), (dict, list))]
+        d = set(vals)
+        if 2 <= len(d) <= int(auto.get("max_clases", 30)) and max(len(x) for x in d) <= 40 and len(vals) >= 0.9 * len(muestra):
+            et = k
+            break
+    if et is None:
+        raise EsquemaError("auto: ninguna columna de etiqueta (2-%s valores cortos) entre %s" % (auto.get("max_clases", 30), {k: _tipo(v) for k, v in list(fila.items())[:30]}))
+    if auto.get("texto_regex"):
+        tx = [k for k in fila if k != et and re.search(auto["texto_regex"], _nn(k))][:2]
+    else:
+        med = {k: sum(len(_a_texto(r.get(k))) for r in muestra) / len(muestra) for k in fila if k != et and isinstance(fila[k], (str, list, dict))}
+        top = max(med.values(), default=0)
+        tx = [k for k, m in med.items() if m >= 30 and m >= top / 2][:2]
+    if not tx:
+        raise EsquemaError("auto: ninguna columna de texto (media >= 30 caracteres) entre %s" % {k: _tipo(v) for k, v in list(fila.items())[:30]})
+    return tx, et, dict(texto=tx, etiqueta=et, valores_etiqueta=len({_a_texto(r.get(et)).strip() for r in muestra}))
+
+
+def _resolver_lector(lector, muestra):
+    """(lector con los nombres de columna resueltos contra el primer registro de `muestra`, faltan). Nombres exactos o normalizados; «a||b» = alternativas; `auto` fija texto y etiqueta."""
+    fila, l, falta = muestra[0], dict(lector), []
+    elegido = None
+    if lector.get("auto"):
+        tx, et, elegido = _auto_columnas(lector["auto"], muestra)
+        l.update(texto=tx, etiqueta=et)
+
+    def r(n):
+        real = _clave_real(n, fila)
+        if real is None:
+            falta.append(str(n).split("||")[0])
+        return real or n
+
+    if isinstance(l.get("texto"), str):
+        l["texto"] = r(l["texto"])
+    elif l.get("texto"):
+        l["texto"] = [r(c) for c in l["texto"]]
+    for k in ("etiqueta", "split_col"):
+        if l.get(k) and not (k == "split_col" and _clave_real(l[k], fila) is None):
+            l[k] = r(l[k])
+    for k in ("umbral", "contar_patron", "etiqueta_par"):
+        if l.get(k):
+            l[k] = dict(l[k], col=r(l[k]["col"]))
+    if l.get("pares"):
+        p = dict(l["pares"])
+        p["bueno"], p["malo"] = r(p["bueno"]), r(p["malo"])
+        p["contexto"] = [r(c) for c in p.get("contexto") or []]
+        l["pares"] = p
+    if l.get("filtro"):
+        l["filtro"] = {r(c): v for c, v in l["filtro"].items()}
+    return l, sorted(set(falta)), elegido
+
+
+def _formato_de(ruta):
+    n = str(ruta).lower()
+    for suf in (".gz", ".bz2"):
+        if n.endswith(suf):
+            n = n[:-len(suf)]
+    return {"parquet": "parquet", "csv": "csv", "tsv": "tsv", "txt": "csv", "json": "jsonl", "jsonl": "jsonl", "ndjson": "jsonl"}.get(n.rsplit(".", 1)[-1])
+
 
 
 def _filas_zip(zpath, patrones, lista=None):
@@ -543,62 +801,78 @@ def extraer_items(t, carpeta, semilla=SEMILLA):
     cif = Counter()
     formato = lector["formato"]
     ULTIMO_XML.clear()
-    if formato == "json_zip":
+    ULTIMO_SIN_MAPA.clear()
+    omitidos = {}                    # fichero -> columnas y tipos (nunca texto) de los ficheros que no traen el esquema pedido
+
+    def fuentes_zip():
         zips = sorted(carpeta.rglob("*.zip"))
         if not zips:
             raise EsquemaError("sin zip en la descarga")
-        fuentes = ((n, f) for z in zips for n, f in _filas_zip(z, lector["ficheros"], lector.get("lista")))
-    else:
+        it = ((n, f) for z in zips for n, f in _filas_zip(z, lector["ficheros"], lector.get("lista")))
+        primero = next(it, None)
+        if primero is not None:
+            lec, falta, elegido = _resolver_lector(lector, [primero[1]])
+            if falta:
+                omitidos[primero[0]] = {k: _tipo(v) for k, v in list(primero[1].items())[:40]}
+            else:
+                t["esquema_elegido"] = elegido
+                yield lec, primero[0], chain([primero[1]], (f for _, f in it))
+
+    def fuentes_ficheros():
         fl = _ficheros(carpeta, lector["ficheros"])
         if not fl:
             raise EsquemaError("ningún fichero casa con %s" % lector["ficheros"])
-        fuentes = ((r, fila) for r, p in fl for fila in _filas_fichero(p, formato, lector))
-    cols_vistas = None
-    for nombre, fila in fuentes:
-        if cols_vistas is None:
-            cols_vistas = set(fila)
-            _comprobar_columnas(lector, fila)
-        cif["filas_leidas"] += 1
-        if any(_a_texto(_get(fila, col)).strip() not in vals for col, vals in (lector.get("filtro") or {}).items()):
-            cif["filtradas"] += 1
-            continue
-        split = _split_de(nombre, fila, lector)
-        for texto, et, grupo in _items_de_fila(lector, fila, cif, nombre):
-            if et is None or not (texto or "").strip():
-                cif["sin_texto_o_etiqueta"] += 1
+        for r, p in fl:
+            fm = _formato_de(p) if formato == "auto" else formato
+            if fm is None:
+                omitidos[r] = "formato no reconocido"
                 continue
-            res.añadir("_" if lector.get("cuantiles") else str(et), dict(texto=texto, etiqueta=et, split=split, grupo=grupo))
+            it = _filas_fichero(p, fm, lector)
+            muestra = list(islice(it, 2000 if lector.get("auto") else 1))
+            if not muestra:
+                continue
+            if fm in ("xml", "mediawiki"):
+                lec, falta, elegido = lector, [], None
+            else:
+                try:
+                    lec, falta, elegido = _resolver_lector(lector, muestra)
+                except EsquemaError as e:
+                    omitidos[r] = str(e)
+                    continue
+            if falta:
+                omitidos[r] = {k: _tipo(v) for k, v in list(muestra[0].items())[:40]}
+                continue
+            if elegido:
+                t.setdefault("esquema_elegido", {})[r] = elegido
+            yield lec, r, chain(muestra, it)
+
+    for lec, nombre, filas in (fuentes_zip() if formato == "json_zip" else fuentes_ficheros()):
+        for fila in filas:
+            cif["filas_leidas"] += 1
+            if any(_a_texto(_get(fila, col)).strip().lower() not in [str(v).lower() for v in vals] for col, vals in (lec.get("filtro") or {}).items()):
+                cif["filtradas"] += 1
+                continue
+            split = _split_de(nombre, fila, lec)
+            for texto, et, grupo in _items_de_fila(lec, fila, cif, nombre):
+                if et is None or not (texto or "").strip():
+                    cif["sin_texto_o_etiqueta"] += 1
+                    continue
+                res.añadir("_" if lec.get("cuantiles") else str(et), dict(texto=texto, etiqueta=et, split=split, grupo=grupo))
+    if omitidos and not res.vistos:
+        raise EsquemaError("faltan columnas esperadas en todos los ficheros; columnas y tipos que traen (primeros %d): %s" % (min(len(omitidos), 6), dict(list(omitidos.items())[:6])))
+    if omitidos:
+        cif["ficheros_omitidos_por_esquema"] = len(omitidos)
     items = res.todos()
     if not items:
         extra = ""
         if formato in ("xml", "mediawiki"):
             extra = "; etiquetas XML vistas: %s" % ", ".join("%s=%d" % kv for kv in sorted(ULTIMO_XML.items(), key=lambda kv: -kv[1])[:15])
+        if ULTIMO_SIN_MAPA:
+            extra += "; valores de etiqueta sin mapa (más frecuentes): %s" % ", ".join("%r=%d" % kv for kv in ULTIMO_SIN_MAPA.most_common(8))
         raise EsquemaError("no salió ninguna fila utilizable (leídas %d, filtradas %d, sin texto o etiqueta %d)%s" % (cif["filas_leidas"], cif["filtradas"], cif["sin_texto_o_etiqueta"], extra))
     if lector.get("cuantiles"):
         _a_cuantiles(items, int(lector["cuantiles"]))
     return items, dict(cif)
-
-
-def _comprobar_columnas(lector, fila):
-    pedidas = []
-    for c in ([lector["texto"]] if isinstance(lector.get("texto"), str) else list(lector.get("texto") or [])):
-        pedidas.append(c)
-    if lector.get("umbral"):
-        pedidas.append(lector["umbral"]["col"])
-    for k in ("etiqueta",):
-        if lector.get(k):
-            pedidas.append(lector[k])
-    if lector.get("etiqueta_par"):
-        pedidas.append(lector["etiqueta_par"]["col"])
-    if lector.get("contar_patron"):
-        pedidas.append(lector["contar_patron"]["col"])
-    if lector.get("pares"):
-        p = lector["pares"]
-        pedidas += [p["bueno"], p["malo"]] + list(p.get("contexto") or [])
-    pedidas += list((lector.get("filtro") or {}).keys())
-    falta = [c for c in pedidas if _get(fila, c) is None and c.split(".")[0] not in fila]
-    if falta:
-        raise EsquemaError("faltan columnas esperadas %s; la fila trae %s" % (sorted(set(falta)), sorted(fila)[:40]))
 
 
 def _etiqueta(lector, fila):
@@ -644,7 +918,12 @@ def _etiqueta(lector, fila):
         v = v.split(lector["prefijo_hasta"])[0].strip()
     m = lector.get("mapa_etiqueta")
     if m is not None:
-        return m.get(v)
+        r = m.get(v)
+        if r is None:                                    # tolerante a mayúsculas y signos: «Fake» = «fake»
+            r = next((x for k, x in m.items() if _nn(k) == _nn(v) and _nn(v)), None)
+        if r is None and len(v) <= 40 and len(ULTIMO_SIN_MAPA) < 200:
+            ULTIMO_SIN_MAPA[v] += 1
+        return r
     return v or None
 
 
@@ -824,8 +1103,14 @@ def _fuera(t, motivo, **extra):
 
 def evaluar_licencia_tarea(t, texto_ficha, trabajo):
     f = t["fuente"]
-    origen = t.get("no_solapa", "")
-    if f["tipo"] == "hf":
+    if f["tipo"] == "ckan":
+        if t.get("_error_ficha"):
+            return dict(estado="fuera", licencia="", motivo=t["_error_ficha"], avisos=[], sha256_texto="")
+        r = lic.evaluar_ckan(json.loads(texto_ficha))
+        if r["estado"] == "admitida":
+            r["avisos"].append("licencia tomada del registro de %s (license_id %s)" % (f.get("catalogo", CKAN_DEFECTO), json.loads(texto_ficha)["license_id"]))
+            t["ckan_license_id"] = json.loads(texto_ficha)["license_id"]
+    elif f["tipo"] == "hf":
         r = lic.evaluar_tarjeta(texto_ficha, esperada=t["licencia_esperada"])
     else:
         if t.get("_error_ficha"):
@@ -913,7 +1198,7 @@ def construir(manifiesto, trabajo, salida, huellas=None, solo=None, k=K, tope=TO
             _fuera(t, "tras limpiar y medir solapes quedan %d filas de test y %d clases (mínimo %d y 2)" % (len(ev), len(cif["clases"]), MIN_TEST_TAREA), cifras=cif)
             continue
         t["_clases"] = cif["clases"]
-        repo = t["fuente"].get("repo") or t["fuente"]["url"].split("{rev}")[0]
+        repo = t["fuente"].get("repo") or (t.get("recurso_url") if t["fuente"]["tipo"] == "ckan" else t["fuente"]["url"].split("{rev}")[0])
         filas_s = [a_fila(t, i, "train", n, t["licencia"], repo) for n, i in enumerate(sop)]
         filas_t = [a_fila(t, i, "test", n, t["licencia"], repo) for n, i in enumerate(ev)]
         t["sha256_soporte"] = escribir_jsonl(salida / t["fichero_soporte"], filas_s)
@@ -1064,7 +1349,7 @@ def candidatas_md(man):
               "| tarea | bloque | idioma | dominio | fuente (id o URL) | licencia esperada | ficha | clases | sintética | id | lector | por qué no solapa | riesgos |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for t in ts:
             f = t["fuente"]
-            src = f.get("repo") or f["url"]
+            src = f.get("repo") or f.get("url") or "catalogo %s: %s" % (f.get("catalogo", CKAN_DEFECTO), f.get("paquete") or f.get("busqueda"))
             bl = t["bloque"] + (" (%s)" % t["motivo_bloque"] if t["motivo_bloque"] else "") + (" · reemplazo de: %s" % t["reemplazo_de"] if t["reemplazo_de"] else "")
             L.append("| %s | %s | %s | %s | `%s` (rev: se fija en fase 2) | %s (por verificar) | %s%s | %s | %s | %s | %s | %s | %s |" % (
                 t["nombre"], bl, t["idioma"], t["dominio"], src, t["licencia_esperada"], t["url_ficha"], "" if t["url_ficha_confirmada"] else " (URL sin confirmar)", t["clases_esperadas"] or "?",

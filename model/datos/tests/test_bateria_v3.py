@@ -14,7 +14,7 @@ from model.datos.tests.fixtures_v3.generar import generar
 
 CLAVES_LECTOR = {"formato", "ficheros", "columnas", "texto", "etiqueta", "split_por_fichero", "split_col", "filtro", "mapa_etiqueta", "prefijo_hasta", "etiqueta_par", "cuantiles",
                  "contar_patron", "pares", "etiqueta_desde_carpeta", "vacio_es", "clases_max", "min_por_clase", "muestra_por_clase", "codificacion", "pendiente",
-                 "separador", "umbral", "lista", "registro", "campos", "categorias", "ns"}
+                 "separador", "umbral", "lista", "registro", "campos", "categorias", "ns", "auto"}
 
 
 # ----------------------------------------------------------------------------------------------------------------- registro de candidatas y manifiesto
@@ -31,12 +31,15 @@ def test_candidatas_ocho_por_tipo_y_sin_duplicar_familia():
 def test_candidatas_bien_formadas():
     for c in CANDIDATAS:
         assert set(c["lector"]) <= CLAVES_LECTOR, c["nombre"]
-        assert c["fuente"]["tipo"] in ("hf", "url") and c["pregunta"] and c["no_solapa"] and c["riesgos"]
+        assert c["fuente"]["tipo"] in ("hf", "url", "ckan") and c["pregunta"] and c["no_solapa"] and c["riesgos"]
         if not c["lector"].get("pendiente"):
             assert c["lector"]["formato"] and c["lector"]["ficheros"]
-            assert c["lector"].get("texto") or c["lector"].get("pares")
+            assert c["lector"].get("texto") or c["lector"].get("pares") or c["lector"].get("auto")
         if c["fuente"]["tipo"] == "url":
             assert c.get("licencia_regex_ficha"), c["nombre"]       # sin regex no hay forma automática de admitir una fuente por URL
+        if c["fuente"]["tipo"] == "ckan":
+            assert c["fuente"].get("busqueda") or c["fuente"].get("paquete"), c["nombre"]
+            assert c["fuente"].get("recurso_regex") and c["licencia_esperada"] == "dominio-publico", c["nombre"]
         assert lic.normalizar(c["licencia_esperada"]) in lic.ADMITIDAS, c["nombre"]
 
 
