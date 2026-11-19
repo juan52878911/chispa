@@ -1,0 +1,72 @@
+[
+ {
+  "nombre": "promise-requisitos",
+  "tarjeta": {
+   "estado": "admitida",
+   "licencia": "cc-by-4.0",
+   "motivo": "",
+   "avisos": [],
+   "sha256": "48c4e097adde9464b555e620df27a8167ea7b01e4a5ff3011435256c3c8e2d5c"
+  },
+  "origen": {
+   "url": "http://promise.site.uottawa.ca/SERepository/datasets-page.html",
+   "sha256": "89f8c88d82a14d60a78cbf6595e821e936f66bc1adc3cf08a5883bcf547fd425",
+   "bytes": 12513,
+   "menciona": false,
+   "patron": "CC[ -]?BY|Creative Commons|public domain|licen[cs]e"
+  }
+ },
+ {
+  "nombre": "ropa-resenas",
+  "tarjeta": {
+   "estado": "admitida",
+   "licencia": "cc0-1.0",
+   "motivo": "",
+   "avisos": [],
+   "sha256": "0602055cc54d87ea91124d20b3ffdb4820c40cfdea83393b12961a7c5d1e6093"
+  },
+  "origen": {
+   "url": "https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews",
+   "sha256": "8c85789fa3c549f2010a7e4ff01c18ae5a5af01c68f32455e1b463e907bbdc78",
+   "bytes": 11755,
+   "menciona": true,
+   "patron": "CC0|public domain"
+  }
+ },
+ {
+  "nombre": "rtp-toxicidad",
+  "tarjeta": {
+   "estado": "fuera",
+   "licencia": "apache-2.0",
+   "motivo": "la tarjeta o el origen declarado menciona Reddit: términos de la plataforma",
+   "avisos": [],
+   "sha256": "fb7bf74dc725781e026ac9b500204dcc0e72452c20a7cdc4662ec595db511cf6"
+  },
+  "origen": {
+   "url": "https://github.com/allenai/real-toxicity-prompts",
+   "sha256": "cc221ea6196385e00f757addabf033fdcdc2ca56610f65b915bbe75bcc2e5752",
+   "bytes": 225498,
+   "menciona": true,
+   "patron": "Apache License"
+  }
+ },
+ {
+  "nombre": "cfpb-quejas",
+  "tarjeta": {
+   "estado": "admitida",
+   "licencia": "cc0-1.0",
+   "motivo": "",
+   "avisos": [
+    "origen https://www.consumerfinance.gov/data-research/consumer-complaints/ no descargable: HTTPError"
+   ],
+   "sha256": "0bdd43302540a7d452ea5dc42fd5db4b6948a4fde766d94399fbe47df99abe40"
+  },
+  "origen": {
+   "url": "https://www.consumerfinance.gov/data-research/consumer-complaints/",
+   "sha256": "",
+   "bytes": 0,
+   "menciona": false,
+   "patron": "public domain|open government|data use|terms"
+  }
+ }
+]
