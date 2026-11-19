@@ -25,7 +25,7 @@ Si los ids de `score` no son enteros o las probabilidades suman 0, el servidor s
 
 ## Ejemplos en la petición (`examples[]`)
 Cada pregunta puede traer `"examples": [{"text": "…", "label": "<id de una opción>"}, …]` (no en `multi`). Validación (400, `question_id` y la posición del ejemplo en el mensaje): `invalid_example` (texto vacío, sin etiqueta),
-`invalid_example_label` (la etiqueta no es una opción), `too_many_examples` (por defecto 256 por pregunta; `limites.max_ejemplos`) y `field_too_long` (16 KiB por `text`; `limites.max_ejemplo_texto`).
+`invalid_example_label` (la etiqueta no es una opción), `too_many_examples` (por defecto 256 por pregunta y 1 024 por petición; `limites.max_ejemplos` y `limites.max_ejemplos_peticion`: cada ejemplo sin caché es una codificación) y `field_too_long` (16 KiB por `text`; `limites.max_ejemplo_texto`).
 - **Regla si llegan banco y examples**: los de la petición **sustituyen** al banco de esa pregunta (no se mezclan; el fondo y los umbrales de score del banco no se usan). La pregunta no tiene que estar en `knn.tareas`: sin tarea se usan el umbral global y el kNN cuenta como tarea `(peticion)` en las métricas.
   Con examples, L3 usa como demostraciones fs8 hasta `l3.ejemplos` de ellos: una vuelta por clase en orden de aparición, sin azar (mismo prompt para la misma petición). Sin `examples` la respuesta es la de siempre, byte a byte (test), y los bancos fuera de línea no cambian.
 - **Caché de vectores**: los vectores de los ejemplos se guardan por clave sha256 del texto ya preparado para el codificador (Qwen: la consulta con instrucción y pregunta; e5: texto con las mayúsculas normalizadas) + codificador + revisión del modelo,

@@ -242,7 +242,7 @@ components:
         examples:
           type: array
           maxItems: 256
-          description: "Opcional (no en multi). Ejemplos etiquetados de esta pregunta, hasta max_ejemplos (256) y max_ejemplo_texto (16 KiB) por text. Con el kNN activo sustituyen al banco fuera de linea de la pregunta (no se mezclan) y L3, si hace few-shot, los usa de demostraciones. Errores 400: invalid_example, invalid_example_label (label no es una de las opciones), too_many_examples; en knn.modo cpu, examples_required si la pregunta no los trae ni tiene banco. Sin este campo la respuesta es la de siempre."
+          description: "Opcional (no en multi). Ejemplos etiquetados de esta pregunta, hasta max_ejemplos (256 por pregunta), max_ejemplos_peticion (1024 en total) y max_ejemplo_texto (16 KiB) por text. Con el kNN activo sustituyen al banco fuera de linea de la pregunta (no se mezclan) y L3, si hace few-shot, los usa de demostraciones. Errores 400: invalid_example, invalid_example_label (label no es una de las opciones), too_many_examples; en knn.modo cpu, examples_required si la pregunta no los trae ni tiene banco. Sin este campo la respuesta es la de siempre."
           items:
             $ref: "#/components/schemas/Example"
     Example:

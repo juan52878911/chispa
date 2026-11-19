@@ -30,6 +30,7 @@ const (
 	MaxIDByte                 = 256      // id de pregunta, id de opción, nonce
 	MaxEjemplosPregunta       = 256      // examples por pregunta
 	MaxEjemploTextoByte       = 16 << 10 // text de cada ejemplo
+	MaxEjemplosTotal          = 1024     // examples en toda la petición (cada ejemplo sin caché es una codificación)
 )
 
 // Códigos de error de la API (campo error.code). Contrato: server/api/openapi.yaml.
@@ -74,15 +75,17 @@ type Limites struct {
 	// MaxEjemplos y MaxEjemploTexto: examples por pregunta y bytes del text de cada ejemplo (0 = por defecto).
 	MaxEjemplos     int `json:"max_ejemplos,omitempty"`
 	MaxEjemploTexto int `json:"max_ejemplo_texto,omitempty"`
+	// MaxEjemplosPeticion: examples en toda la petición, sumadas todas las preguntas (0 = 1024).
+	MaxEjemplosPeticion int `json:"max_ejemplos_peticion,omitempty"`
 }
 
 func LimitesPorDefecto() Limites {
-	return Limites{MaxCuerpo, MaxPreguntas, MaxOpciones, MaxEstadoByte, MaxTextoByte, MaxIDByte, MaxEjemplosPregunta, MaxEjemploTextoByte}
+	return Limites{MaxCuerpo, MaxPreguntas, MaxOpciones, MaxEstadoByte, MaxTextoByte, MaxIDByte, MaxEjemplosPregunta, MaxEjemploTextoByte, MaxEjemplosTotal}
 }
 
 func (l Limites) validar() error {
 	for n, v := range map[string]int{"max_cuerpo": l.MaxCuerpo, "max_preguntas": l.MaxPreguntas, "max_opciones": l.MaxOpciones,
-		"max_estado": l.MaxEstado, "max_texto": l.MaxTexto, "max_id": l.MaxID, "max_ejemplos": l.MaxEjemplos, "max_ejemplo_texto": l.MaxEjemploTexto} {
+		"max_estado": l.MaxEstado, "max_texto": l.MaxTexto, "max_id": l.MaxID, "max_ejemplos": l.MaxEjemplos, "max_ejemplo_texto": l.MaxEjemploTexto, "max_ejemplos_peticion": l.MaxEjemplosPeticion} {
 		if v < 0 {
 			return fmt.Errorf("config: limites.%s no puede ser negativo, llegó %d", n, v)
 		}
@@ -182,7 +185,7 @@ func normalizaLimites(l Limites) Limites {
 		v   int
 	}{{&d.MaxCuerpo, l.MaxCuerpo}, {&d.MaxPreguntas, l.MaxPreguntas},
 		{&d.MaxOpciones, l.MaxOpciones}, {&d.MaxEstado, l.MaxEstado}, {&d.MaxTexto, l.MaxTexto}, {&d.MaxID, l.MaxID},
-		{&d.MaxEjemplos, l.MaxEjemplos}, {&d.MaxEjemploTexto, l.MaxEjemploTexto}} {
+		{&d.MaxEjemplos, l.MaxEjemplos}, {&d.MaxEjemploTexto, l.MaxEjemploTexto}, {&d.MaxEjemplosPeticion, l.MaxEjemplosPeticion}} {
 		if p.v > 0 {
 			*p.dst = p.v
 		}
@@ -725,6 +728,7 @@ func (l Limites) validarPeticion(req peticion) ([]Pregunta, *errAPI) {
 		return nil, bad(ErrDemasiadasPreg, "", "questions: máximo %d por petición, llegaron %d", l.MaxPreguntas, len(req.Questions))
 	}
 	ids := map[string]bool{}
+	totalEj := 0
 	out := make([]Pregunta, len(req.Questions))
 	for i, q := range req.Questions {
 		at := fmt.Sprintf("questions[%d]", i)
@@ -799,6 +803,9 @@ func (l Limites) validarPeticion(req peticion) ([]Pregunta, *errAPI) {
 			}
 			if len(q.Examples) > l.MaxEjemplos {
 				return nil, bad(ErrDemasiadosEjem, q.ID, "%s.examples: máximo %d ejemplos por pregunta, llegaron %d", at, l.MaxEjemplos, len(q.Examples))
+			}
+			if totalEj += len(q.Examples); totalEj > l.MaxEjemplosPeticion {
+				return nil, bad(ErrDemasiadosEjem, q.ID, "%s.examples: máximo %d ejemplos en toda la petición", at, l.MaxEjemplosPeticion)
 			}
 			ejs = make([]EjemploPeticion, len(q.Examples))
 			for j, e := range q.Examples {
