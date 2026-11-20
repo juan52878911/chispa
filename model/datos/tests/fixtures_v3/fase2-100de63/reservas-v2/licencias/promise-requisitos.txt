@@ -1,0 +1,58 @@
+---
+annotations_creators:
+- other
+language:
+- es
+language_creators:
+- other
+license:
+- cc-by-4.0
+multilinguality:
+- monolingual
+pretty_name: PROMISE NFR translated to Spanish
+size_categories:
+- 10K<n<100K
+source_datasets:
+- original
+task_categories:
+- text-classification
+task_ids:
+- multi-class-classification
+---
+
+## Dataset Description
+
+- **Homepage:**
+- **Repository:**
+- **Paper:**
+- **Leaderboard:**
+- **Point of Contact:**
+
+### Dataset Summary
+
+Published version of PROMISE NFR translated to Spanish used for paper 'Requirements Classification Using FastText and BETO in Spanish Documents'
+
+### Languages
+
+Spanish
+
+## Dataset Structure
+
+### Data Fields
+
+Project: Project's Identifier.
+Requirement: Description of the software requirement.
+Label: Label of the requirement: F (functional requirement) and NF (non-functional requirement).
+
+## Dataset Creation
+
+### Initial Data Collection and Normalization
+
+PROMISE [http://promise.site.uottawa.ca/SERepository/] is a repository used in most requirements classification research. It has 84 datasets, and the one used for requirement classification is
+NFR, with 625 requirement sentences, 255 requirements identified as functional and 370 as non-functional. We translated into Spanish.
+
+## Additional Information
+
+### Citation Information
+
+https://doi.org/10.1007/978-3-031-29786-1_11

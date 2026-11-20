@@ -1,0 +1,184 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Women&#x27;s E-Commerce Clothing Reviews | Kaggle</title>
+  <meta charset="utf-8" />
+    <meta name="robots" content="index, follow" />
+  <meta name="description" content="23,000 Customer Reviews and Ratings " />
+    <meta name="keywords" content="business,earth and nature,internet,nlp,ratings and reviews,text mining" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0">
+  <meta name="theme-color" content="#008ABC" />
+  <script nonce="Fq2VIr49A/p1/861Kgyz8w==" type="text/javascript">
+    window["pageRequestStartTime"] = 1795126136740;
+    window["pageRequestEndTime"] = 1795126136751;
+    window["initialPageLoadStartTime"] = new Date().getTime();
+  </script>
+  <script nonce="Fq2VIr49A/p1/861Kgyz8w==" id="gsi-client" src="https://accounts.google.com/gsi/client" async defer></script>
+  <script nonce="Fq2VIr49A/p1/861Kgyz8w==">window.KAGGLE_JUPYTERLAB_PATH = "/static/assets/jupyterlab-v4/jupyterlab-index-10827f115039e839.html";</script>
+  <link rel="preconnect" href="https://www.google-analytics.com" crossorigin="anonymous" /><link rel="preconnect" href="https://stats.g.doubleclick.net" /><link rel="preconnect" href="https://storage.googleapis.com" /><link rel="preconnect" href="https://apis.google.com" />
+  <link href="/static/images/favicon-new.ico" rel="shortcut icon" type="image/x-icon" id="dynamic-favicon" />
+  <link rel="manifest" href="/static/json/manifest.json" crossorigin="use-credentials">
+
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght,MONO@0,300..800,1;1,300..800,1&family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap"
+    rel="preload" as="style" />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Symbols:FILL,wght@0..1,200..700&display=block"
+    rel="preload" as="style" />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght,MONO@0,300..800,1;1,300..800,1&family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap"
+    rel="stylesheet" media="print" id="async-google-font-1" />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Symbols:FILL,wght@0..1,200..700&display=block"
+    rel="stylesheet" media="print" id="async-google-font-2" />
+  <script nonce="Fq2VIr49A/p1/861Kgyz8w==" type="text/javascript">
+    const styleSheetIds = ["async-google-font-1", "async-google-font-2"];
+    styleSheetIds.forEach(function (id) {
+      document.getElementById(id).addEventListener("load", function() {
+        this.media = "all";
+      });
+    });
+  </script>
+
+    <script nonce="Fq2VIr49A/p1/861Kgyz8w==" id="site-wide-recaptcha"
+      src="https://www.google.com/recaptcha/enterprise.js?render=6LcVUOAUAAAAAP8nMSGuW46uJC5Zf6-PCYKN5xxv" async defer></script>
+    <style>.grecaptcha-badge { visibility: hidden; }</style>
+
+    <link rel="canonical" href="https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews" />
+    <link rel="stylesheet" type="text/css" href="/static/assets/app.css?v=e31a0a53cbc22063" />
+
+  
+    
+ 
+      <script nonce="Fq2VIr49A/p1/861Kgyz8w==">
+        try{(function(a,s,y,n,c,h,i,d,e){d=s.createElement("style");
+        d.appendChild(s.createTextNode(""));s.head.appendChild(d);d=d.sheet;
+        y=y.map(x => d.insertRule(x + "{ opacity: 0 !important }"));
+        h.start=1*new Date;h.end=i=function(){y.forEach(x => x<d.cssRules.length ? d.deleteRule(x) : {})};
+        (a[n]=a[n]||[]).hide=h;setTimeout(function(){i();h.end=null},c);h.timeout=c;
+        })(window,document,['.site-header-react__nav'],'dataLayer',2000,{'GTM-52LNT9S':true});}catch(ex){}
+    </script>
+    <script nonce="Fq2VIr49A/p1/861Kgyz8w==">
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-T7QHS60L4Q', {
+            'optimize_id': 'GTM-52LNT9S',
+            'displayFeaturesTask': null,
+            'send_page_view': false,
+            'content_group1': 'Datasets',
+            'user_properties': {
+                'logged_in': false,
+            }
+        });
+    </script>
+    <script nonce="Fq2VIr49A/p1/861Kgyz8w==" async src="https://www.googletagmanager.com/gtag/js?id=G-T7QHS60L4Q"></script>
+
+
+  
+    
+    <meta property="og:url" content="https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews" />
+    <meta property="og:title" content="Women&#x27;s E-Commerce Clothing Reviews" />
+    <meta property="og:description" content="23,000 Customer Reviews and Ratings " />
+    <meta property="og:type" content="website" />
+    <meta property="fb:app_id" content="2665027677054710" />
+
+        <meta property="og:image" content="https://storage.googleapis.com/kaggle-datasets-images/11827/16290/140ca3b71ec51512dcac444c57583f25/dataset-card.jpg?t=2018-02-03-20-33-18" />
+        <meta property="twitter:image" content="https://storage.googleapis.com/kaggle-datasets-images/11827/16290/140ca3b71ec51512dcac444c57583f25/dataset-card.jpg?t=2018-02-03-20-33-18" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@kaggledatasets" />
+
+
+
+
+  <meta name="twitter:site" content="@Kaggle" /> 
+  
+    
+    <script nonce="Fq2VIr49A/p1/861Kgyz8w==" type="application/ld+json">{"@context":"http://schema.org/","@type":"Dataset","name":"Women's E-Commerce Clothing Reviews","description":"### Context\n\nWelcome. This is a Women’s Clothing E-Commerce dataset revolving around the reviews written by customers. Its nine supportive features offer a great environment to parse out the text through its multiple dimensions. Because this is real commercial data, it has been anonymized, and references to the company in the review text and body have been replaced with “retailer”.\n\n### Content\n\nThis dataset includes 23486 rows and 10 feature variables. Each row corresponds to a customer review, and includes the variables:\n\n - **Clothing ID:** Integer Categorical variable that refers to the specific piece being reviewed. \n - **Age:** Positive Integer variable of the reviewers age.\n - **Title:** String variable for the title of the review.\n - **Review Text:** String variable for the review body. \n - **Rating:** Positive Ordinal Integer variable for the product score granted by the customer from 1 Worst, to 5 Best. \n - **Recommended IND:** Binary variable stating where the customer recommends the    product where 1 is recommended, 0 is not recommended.    \n - **Positive Feedback Count:** Positive Integer documenting the number of other customers who found this review positive.\n - **Division Name:** Categorical name of the product high level division.\n - **Department Name:** Categorical name of the product department name.\n - **Class Name:** Categorical name of the product class name.\n\n### Acknowledgements\n\nAnonymous but real source\n\n### Inspiration\n\nI look forward to come quality NLP! There is also some great opportunities for feature engineering, and multivariate analysis.\n\n### Publications\n[Statistical Analysis on E-Commerce Reviews, with Sentiment Classification using Bidirectional Recurrent Neural Network](https://www.researchgate.net/publication/323545316_Statistical_Analysis_on_E-Commerce_Reviews_with_Sentiment_Classification_using_Bidirectional_Recurrent_Neural_Network) <br>\nby [Abien Fred Agarap](https://www.kaggle.com/afagarap) - [Github](https://github.com/AFAgarap/ecommerce-reviews-analysis)\n","url":"https://www.kaggle.com/nicapotato/womens-ecommerce-clothing-reviews","version":1,"keywords":["subject, people and society, business","subject, earth and nature","subject, science and technology, internet","analysis, nlp","subject, people and society, business, ratings and reviews","analysis, text mining"],"license":{"@type":"CreativeWork","name":"CC0: Public Domain","url":"https://creativecommons.org/publicdomain/zero/1.0/"},"identifier":["11827"],"includedInDataCatalog":{"@type":"DataCatalog","name":"Kaggle","url":"https://www.kaggle.com"},"creator":{"@type":"Person","name":"nicapotato","url":"https://www.kaggle.com/nicapotato","image":"https://storage.googleapis.com/kaggle-avatars/thumbnails/866788-kg.png?t=2026-03-26-18-54-50"},"distribution":[{"@type":"DataDownload","requiresSubscription":true,"encodingFormat":"zip","fileFormat":"zip","contentUrl":"https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews/download?datasetVersionNumber=1","contentSize":"2924120 bytes"}],"commentCount":8,"dateModified":"2018-02-03T19:59:19.153Z","discussionUrl":"https://www.kaggle.com/nicapotato/womens-ecommerce-clothing-reviews/discussion","alternateName":"23,000 Customer Reviews and Ratings ","isAccessibleForFree":true,"thumbnailUrl":"https://storage.googleapis.com/kaggle-datasets-images/11827/16290/140ca3b71ec51512dcac444c57583f25/dataset-card.jpg?t=2018-02-03-20-33-18","interactionStatistic":[{"@type":"InteractionCounter","interactionType":"http://schema.org/CommentAction","userInteractionCount":8},{"@type":"InteractionCounter","interactionType":"http://schema.org/DownloadAction","userInteractionCount":106037},{"@type":"InteractionCounter","interactionType":"http://schema.org/ViewAction","userInteractionCount":615551},{"@type":"InteractionCounter","interactionType":"http://schema.org/LikeAction","userInteractionCount":1185}]}</script>
+
+
+  
+    
+
+  
+    
+
+
+
+    <script nonce="Fq2VIr49A/p1/861Kgyz8w==">window['useKaggleAnalytics'] = true;</script>
+
+  <script id="gapi-target" nonce="Fq2VIr49A/p1/861Kgyz8w==" src="https://apis.google.com/js/api.js" defer
+    async></script>
+  <script nonce="Fq2VIr49A/p1/861Kgyz8w==" src="/static/assets/runtime.js?v=bc858c7348aab33f"></script>
+  <script nonce="Fq2VIr49A/p1/861Kgyz8w==" src="/static/assets/vendor.js?v=694f6fa381c80af2"></script>
+  <script nonce="Fq2VIr49A/p1/861Kgyz8w==" src="/static/assets/app.js?v=c819f7d8d9f9e9aa"></script>
+</head>
+<body>
+  <div id="root">
+    
+
+
+
+
+
+
+
+
+<script nonce="Fq2VIr49A/p1/861Kgyz8w==" type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+    jax: ['input/TeX', 'output/SVG'],
+    "HTML-CSS": {
+    preferredFont: "TeX",
+    availableFonts: ["STIX", "TeX"],
+    linebreaks: {
+    automatic: true
+    },
+    EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50)
+    },
+    tex2jax: {
+    inlineMath: [["\\(", "\\)"], ["\\\\(", "\\\\)"]],
+    displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+    processEscapes: true,
+    ignoreClass: "tex2jax_ignore|dno"
+    },
+    TeX: {
+    noUndefined: {
+    attributes: {
+    mathcolor: "red",
+    mathbackground: "#FFEEEE",
+    mathsize: "90%"
+    }
+    }
+    },
+    Macros: {
+    href: "{}"
+    },
+    skipStartupTypeset: true,
+    messageStyle: "none",
+    extensions: ["Safe.js"],
+    });
+</script>
+<script type="text/javascript" nonce="Fq2VIr49A/p1/861Kgyz8w==">
+  window.addEventListener("DOMContentLoaded", () => {
+    const head = document.getElementsByTagName("head")[0];
+    const lib = document.createElement("script");
+    lib.type = "text/javascript";
+    // Always use the production asset in local dev, which is served from GCS. We tried to proxy and / or serve this
+    // in a better way in localhost, but it didn't work out. See b/328073416#comment8 for details.
+    const forceProdHost = window.location.hostname === "localhost";
+    lib.src = `${forceProdHost ? "https://www.kaggle.com" : ""}/static/mathjax/2.7.9/MathJax.js?config=TeX-AMS_SVG`;
+    head.appendChild(lib);
+  });
+</script>
+
+
+
+
+
+
+
+  </div>
+</body>
+</html>
