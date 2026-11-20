@@ -1,0 +1,146 @@
+{
+ "por_estado": {
+  "construida": 21,
+  "fuera": 16
+ },
+ "por_tipo": {
+  "choice": {
+   "candidatas": 15,
+   "construidas": 6,
+   "cuentan": 5,
+   "informativo": 1,
+   "n_bajo": true,
+   "es": 2,
+   "en": 3,
+   "es_informativo": 1,
+   "en_informativo": 0
+  },
+  "yesno": {
+   "candidatas": 12,
+   "construidas": 7,
+   "cuentan": 5,
+   "informativo": 2,
+   "n_bajo": true,
+   "es": 2,
+   "en": 3,
+   "es_informativo": 0,
+   "en_informativo": 2
+  },
+  "score": {
+   "candidatas": 10,
+   "construidas": 8,
+   "cuentan": 6,
+   "informativo": 2,
+   "n_bajo": true,
+   "es": 2,
+   "en": 4,
+   "es_informativo": 0,
+   "en_informativo": 2
+  }
+ },
+ "fuera": {
+  "tormentas-tipo": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "nhtsa-componente": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "neiss-parte-cuerpo": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "nsf-direccion": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "cpsc-recall-peligro": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "vaers-hospitalizado": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "osha-hospitalizado": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "ctgov-fase": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "readability-es": "licencia: la tarjeta o el origen declarado menciona Twitter/X: términos de la plataforma",
+  "arena-preferencia-es": "licencia: la tarjeta no declara licencia (campo license ausente)",
+  "cares-capitulo": "esquema/descarga: acceso restringido (gated): no se baja",
+  "noticias-es-categoria": "error RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-6aff7cb9-372a9123046c6d3f661eac2a;802fa4fe-0665-4845-bd72-2bd6f2dd2df9)\n\nRepository Not Found for url: https://huggingface.co/api/datasets/MarcOrfilaCarreras/spanish-news?blobs=true.\nPlease make sure you specified the correct `repo_id` and `repo_type`.\nIf you ar",
+  "ethics-justicia": "esquema/descarga: ningún fichero casa con ['justice/*']",
+  "worldbank-sector": "licencia: licencia no admitida o ambigua: «other»",
+  "grants-categoria": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found",
+  "fsis-clase": "licencia: catálogo: package_search: HTTPError: HTTP Error 404: Not Found"
+ },
+ "n_bajo_minimo": 8,
+ "por_idioma": {
+  "es": {
+   "cuentan": 6,
+   "informativo": 1,
+   "candidatas": 11,
+   "n_bajo": true
+  },
+  "en": {
+   "cuentan": 10,
+   "informativo": 4,
+   "candidatas": 26
+  }
+ },
+ "licencias_catalogo": {
+  "tormentas-tipo": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "nhtsa-componente": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "neiss-parte-cuerpo": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "nsf-direccion": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "cpsc-recall-peligro": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "vaers-hospitalizado": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "osha-hospitalizado": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "ctgov-fase": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "grants-categoria": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  },
+  "fsis-clase": {
+   "license_id": null,
+   "licencia": null,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "descarga": null,
+   "estado": "fuera"
+  }
+ },
+ "esquemas_auto": {}
+}

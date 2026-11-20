@@ -1,0 +1,101 @@
+{
+ "criterio": "crit-w1-fs8-e2e",
+ "n": 600,
+ "macro_go": 0.54,
+ "macro_python": 0.535,
+ "dif": 0.005,
+ "tolerancia": 0.005,
+ "cobertura_minima_por_tarea": {
+  "go": 1.0,
+  "python": 1.0
+ },
+ "por_tarea": {
+  "cfpb-quejas": {
+   "n": 100,
+   "go": 0.69,
+   "python": 0.69,
+   "dif": 0.0,
+   "cobertura_go": 1.0,
+   "cobertura_python": 1.0,
+   "acuerdo_fila_a_fila": 1.0
+  },
+  "congreso-eeuu-partido": {
+   "n": 100,
+   "go": 0.64,
+   "python": 0.63,
+   "dif": 0.01,
+   "cobertura_go": 1.0,
+   "cobertura_python": 1.0,
+   "acuerdo_fila_a_fila": 0.99
+  },
+  "finanzas-documentos": {
+   "n": 100,
+   "go": 0.82,
+   "python": 0.81,
+   "dif": 0.01,
+   "cobertura_go": 1.0,
+   "cobertura_python": 1.0,
+   "acuerdo_fila_a_fila": 0.99
+  },
+  "horeca-resenas": {
+   "n": 100,
+   "go": 0.68,
+   "python": 0.68,
+   "dif": 0.0,
+   "cobertura_go": 1.0,
+   "cobertura_python": 1.0,
+   "acuerdo_fila_a_fila": 1.0
+  },
+  "jql-valor-educativo": {
+   "n": 100,
+   "go": 0.13,
+   "python": 0.14,
+   "dif": -0.01,
+   "cobertura_go": 1.0,
+   "cobertura_python": 1.0,
+   "acuerdo_fila_a_fila": 0.97
+  },
+  "usajobs-nivel": {
+   "n": 100,
+   "go": 0.28,
+   "python": 0.26,
+   "dif": 0.02,
+   "cobertura_go": 1.0,
+   "cobertura_python": 1.0,
+   "acuerdo_fila_a_fila": 0.96
+  }
+ },
+ "condiciones": {
+  "dif_macro": {
+   "pasa": true
+  },
+  "cobertura": {
+   "pasa": true
+  },
+  "seleccion_demos": {
+   "pasa": true,
+   "acuerdo": 1.0,
+   "minimo": 0.97,
+   "n": 60,
+   "registradas": 60,
+   "sin_registro": 0,
+   "cobertura_muestra": 1.0,
+   "sin_registro_por_tarea": {}
+  }
+ },
+ "informativo": {
+  "macro_answer_del_servidor": 0.54,
+  "answer_del_servidor_por_tarea": {
+   "cfpb-quejas": 0.69,
+   "congreso-eeuu-partido": 0.64,
+   "finanzas-documentos": 0.82,
+   "horeca-resenas": 0.68,
+   "jql-valor-educativo": 0.13,
+   "usajobs-nivel": 0.28
+  }
+ },
+ "parcial": false,
+ "tareas_medidas": 6,
+ "tareas_totales": 6,
+ "pasa_todo": true
+}
