@@ -46,7 +46,20 @@ type ConfigKNN struct {
 	QwenTok string `json:"qwen_tok,omitempty"`
 	// QwenSesiones: sesiones ORT de Qwen (cada una carga su copia de los pesos, ≈ 2,4 GB en fp32); 0 = 1.
 	QwenSesiones int `json:"qwen_sesiones,omitempty"`
+	// Modo: "" (el de siempre: contesta L2 si el margen ≥ u, si no escala a L3), "gpu" (todo a L3: el kNN solo sirve para el top-k de las preguntas con más de 20 opciones;
+	// el escalado por margen y la respuesta de L2 quedan apagados; exige la sección l3) o "cpu" (solo kNN: contesta siempre L2, sin escalado por margen ni «siempre»;
+	// las preguntas deben traer examples o estar en tareas, si no la petición se rechaza con examples_required). Ver server/PRODUCTO.md.
+	Modo string `json:"modo,omitempty"`
+	// CacheVectoresMB: tope de la caché LRU de vectores de los examples de la petición, en MiB; 0 = 64.
+	CacheVectoresMB int `json:"cache_vectores_mb,omitempty"`
 }
+
+// Modos de knn.modo.
+const (
+	ModoKNNClasico = ""
+	ModoKNNGPU     = "gpu"
+	ModoKNNCPU     = "cpu"
+)
 
 // NombreCodificador es el codificador efectivo: e5-small si la config no dice nada (las configs anteriores a qwen3-emb arrancan igual que antes).
 // VecinosEfectivos son los vecinos del kNN: los de la config o, con 0, el valor por defecto del codificador (32 con e5-small; 8 con
@@ -80,8 +93,17 @@ type TareaKNN struct {
 }
 
 func (c ConfigKNN) validar() error {
-	if len(c.Tareas) == 0 {
-		return errors.New("config: knn.tareas no puede estar vacío")
+	// Sin tareas solo hay kNN con examples en la petición, y eso exige un codificador en el servidor.
+	if len(c.Tareas) == 0 && c.E5ONNX == "" && c.NombreCodificador() != CodificadorQwen3Emb {
+		return errors.New("config: knn.tareas no puede estar vacío (salvo con un codificador en el servidor, para usar solo examples de la petición)")
+	}
+	switch c.Modo {
+	case ModoKNNClasico, ModoKNNGPU, ModoKNNCPU:
+	default:
+		return fmt.Errorf("config: knn.modo %q desconocido (valores: \"\", %q, %q)", c.Modo, ModoKNNGPU, ModoKNNCPU)
+	}
+	if c.CacheVectoresMB < 0 || c.CacheVectoresMB > MaxCacheMB {
+		return fmt.Errorf("config: knn.cache_vectores_mb debe estar en [0, %d]", MaxCacheMB)
 	}
 	if !(c.Umbral >= 0 && c.Umbral <= 1) {
 		return fmt.Errorf("config: knn.umbral fuera de [0,1]: %v", c.Umbral)
@@ -155,7 +177,8 @@ const (
 
 type tareaKNNViva struct {
 	umbrales *UmbralesScore // score calibrado; nil = sin calibrar
-	ejemplos []EjemploFS    // few-shot de L3 (<banco>.ejemplos.jsonl); nil = la tarea contesta zero-shot
+	ejemplos []EjemploFS    // few-shot FIJO de L3 (<banco>.ejemplos.jsonl; en formato pool, las marcadas fs); nil = la tarea contesta zero-shot
+	pool     []EjemploFS    // formato pool: todo el oro con su `fila` del .npy, soporte de las demostraciones por kNN; nil = formato viejo
 	banco    *BancoKNN
 	umbral   float64
 	siempre  bool
@@ -163,13 +186,17 @@ type tareaKNNViva struct {
 
 // L2KNN: ver el comentario del fichero.
 type L2KNN struct {
-	p       ParamsKNN
-	tareas  map[string]*tareaKNNViva
-	porPreg map[string]string
-	cod     Codificador
-	met     *Metricas
-	cfg     ConfigKNN
-	Avisos  []string // cosas dudosas al cargar (tareas con oro y sin ejemplos fs)
+	p        ParamsKNN
+	tareas   map[string]*tareaKNNViva
+	porPreg  map[string]string
+	cod      Codificador
+	met      *Metricas
+	cfg      ConfigKNN
+	cacheVec *cacheVectores                                    // vectores de los examples de la petición
+	regDemos func(p Pregunta, tarea string, demos []EjemploFS) // diagnóstico: ver ConRegistroDemos
+	demosK   int                                               // > 0: demostraciones por consulta (kNN sobre el soporte), ver l3_demos_knn.go
+	sinTopK  bool                                              // L3 no usa el top-k del kNN (l3.top_k_knn = 0 o l3.top_k explícito): en modo gpu el kNN no tiene nada que hacer
+	Avisos   []string                                          // cosas dudosas al cargar (tareas con oro y sin ejemplos fs)
 }
 
 // EjemplosDe da los ejemplos de oro del few-shot de L3 para una pregunta (la tarea cuyo texto de `question` coincide); nil si no hay.
@@ -221,7 +248,7 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 	if err := cfg.validar(); err != nil {
 		return nil, err
 	}
-	k := &L2KNN{p: ParamsKNN{Vecinos: cfg.VecinosEfectivos(), Temp: cfg.Temperatura, SOro: cfg.SOro}.conDefectos(), tareas: map[string]*tareaKNNViva{}, porPreg: map[string]string{}, cod: cod, cfg: cfg}
+	k := &L2KNN{p: ParamsKNN{Vecinos: cfg.VecinosEfectivos(), Temp: cfg.Temperatura, SOro: cfg.SOro}.conDefectos(), tareas: map[string]*tareaKNNViva{}, porPreg: map[string]string{}, cod: cod, cfg: cfg, cacheVec: nuevaCacheVectores(cfg.CacheVectoresMB)}
 	siempre := map[string]bool{}
 	for _, s := range cfg.Siempre {
 		siempre[s] = true
@@ -238,7 +265,16 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 		if ej != nil && b.NOro == 0 {
 			ej = nil // sin oro no hay few-shot: L3 contesta zero-shot
 		}
-		if b.NOro > 0 && ej == nil {
+		pool, err := poolDeBanco(ej, b)
+		if err != nil {
+			return nil, fmt.Errorf("knn: tarea %q: %w", n, err)
+		}
+		if pool != nil {
+			if ej = fijasDePool(pool); len(ej) == 0 {
+				ej = nil
+			}
+		}
+		if b.NOro > 0 && ej == nil && pool == nil {
 			k.Avisos = append(k.Avisos, fmt.Sprintf("tarea %q: tiene oro pero no %s.ejemplos.jsonl: L3 contestará zero-shot", n, t.Banco))
 		}
 		var umb *UmbralesScore
@@ -254,7 +290,7 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 		if t.Umbral != nil {
 			u = *t.Umbral
 		}
-		k.tareas[n] = &tareaKNNViva{umbrales: umb, ejemplos: ej, banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
+		k.tareas[n] = &tareaKNNViva{umbrales: umb, ejemplos: ej, pool: pool, banco: b, umbral: u, siempre: siempre[n] || t.Siempre}
 		for _, q := range t.Preguntas {
 			k.porPreg[q] = n
 		}
@@ -263,6 +299,12 @@ func NuevoL2KNN(cfg ConfigKNN, cod Codificador) (*L2KNN, error) {
 }
 
 func (k *L2KNN) Nombre() string { return "L2" }
+
+// ConTopK dice si L3 usará el top-k del kNN; sin él, con knn.modo = gpu el kNN no codifica la consulta (la lo hace main con Config.TopKKNNActivo).
+func (k *L2KNN) ConTopK(activo bool) *L2KNN {
+	k.sinTopK = !activo
+	return k
+}
 
 // UsaMetricas conecta L2KNN con /metrics (chispa_knn_*); lo hace NuevaCascada.
 func (k *L2KNN) UsaMetricas(m *Metricas) { k.met = m }
@@ -293,35 +335,63 @@ func (k *L2KNN) Evaluar(tarea string, q []float32, ops []string) (DecisionKNN, e
 	if t == nil {
 		return DecisionKNN{}, fmt.Errorf("knn: tarea %q desconocida", tarea)
 	}
-	probs, sen, err := t.banco.Votar(q, ops, k.p)
+	return k.evaluarBanco(t.banco, t.umbral, t.siempre, q, ops)
+}
+
+// evaluarBanco es Evaluar sobre un banco cualquiera (el de la tarea o el de los examples de la petición). `Answer` es el argmax; la regla por tipo
+// (mediana en score, ver RespuestaKNN) la aplica Decidir. Con knn.modo = cpu no hay escalado por margen ni «siempre» (solo «sin_oro»); con gpu escala todo.
+func (k *L2KNN) evaluarBanco(b *BancoKNN, umbral float64, siempre bool, q []float32, ops []string) (DecisionKNN, error) {
+	probs, sen, err := b.Votar(q, ops, k.p)
 	if err != nil {
 		return DecisionKNN{}, err
 	}
-	d := DecisionKNN{Probs: probs, Sen: sen, Umbral: t.umbral}
-	best := 0
-	for i, v := range probs {
-		if v > probs[best] {
-			best = i
-		}
-	}
+	d := DecisionKNN{Probs: probs, Sen: sen, Umbral: umbral}
 	if len(ops) > 0 {
-		d.Answer = ops[best]
+		d.Answer = ops[argmaxF(probs)]
 	}
 	switch {
-	case t.banco.NOro == 0:
+	case b.NOro == 0:
 		d.Escala, d.Motivo = true, MotivoKNNSinOro
-	case t.siempre:
+	case k.cfg.Modo == ModoKNNCPU:
+	case k.cfg.Modo == ModoKNNGPU || siempre:
 		d.Escala, d.Motivo = true, MotivoKNNSiempre
-	case sen.Margen < t.umbral:
+	case sen.Margen < umbral:
 		d.Escala, d.Motivo = true, MotivoKNNMargen
 	}
 	return d, nil
 }
 
+// ExigeEjemplos: con knn.modo = cpu, una pregunta que no es de ninguna tarea con banco y no trae examples no se puede contestar: la petición se rechaza (examples_required).
+func (k *L2KNN) ExigeEjemplos(p Pregunta) bool {
+	if k.cfg.Modo != ModoKNNCPU || len(p.Ejemplos) > 0 {
+		return false
+	}
+	_, ok := k.porPreg[p.Texto]
+	return !ok
+}
+
+// nombreTareaPeticion es la tarea de las métricas de una pregunta con examples que no está en la config.
+const nombreTareaPeticion = "(peticion)"
+
 func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
-	tarea, ok := k.porPreg[p.Texto]
-	if !ok || p.Kind == KindMulti || len(p.Opciones) == 0 {
-		return Respuesta{}, nil // la pregunta no es de ninguna tarea con banco: no opina
+	tarea, enConfig := k.porPreg[p.Texto]
+	conEj := len(p.Ejemplos) > 0
+	if (!enConfig && !conEj) || p.Kind == KindMulti || len(p.Opciones) == 0 {
+		return Respuesta{}, nil // la pregunta no es de ninguna tarea con banco ni trae examples: no opina
+	}
+	ops := make([]string, len(p.Opciones))
+	for i, o := range p.Opciones {
+		ops[i] = o.ID
+	}
+	nombre := tarea
+	if !enConfig {
+		nombre = nombreTareaPeticion
+	}
+	// knn.modo = gpu: todo va a L3; el vector de la consulta solo hace falta para el top-k de L3 (choice con más de L3TopKKNNDesde opciones).
+	conDemos := k.demosK > 0 && k.cfg.Modo == ModoKNNGPU && (conEj || (enConfig && len(k.tareas[tarea].pool) > 0))
+	if k.cfg.Modo == ModoKNNGPU && !conDemos && (k.sinTopK || !(p.Kind == KindChoice && len(ops) > L3TopKKNNDesde)) {
+		k.met.knnFila(nombre, MotivoKNNSiempre)
+		return Respuesta{Tarea: nombre, MotivoKNN: MotivoKNNSiempre}, nil
 	}
 	q, _ := ctx.Value(claveVectorKNN{}).([]float32)
 	pr := presupuestoDe(ctx)
@@ -340,23 +410,42 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 			return Respuesta{}, fmt.Errorf("knn: codificador: %w", err)
 		}
 	}
-	if q == nil {
+	if q == nil || (conEj && k.cod == nil) {
 		k.met.knnSinVector()
 		return Respuesta{}, nil // sin vector no hay kNN: sigue L3
 	}
-	ops := make([]string, len(p.Opciones))
-	for i, o := range p.Opciones {
-		ops[i] = o.ID
+	var tv *tareaKNNViva
+	if enConfig {
+		tv = k.tareas[tarea]
+	}
+	umbral, siempre := k.cfg.Umbral, false
+	if tv != nil {
+		umbral, siempre = tv.umbral, tv.siempre
+	}
+	var banco *BancoKNN
+	if conEj { // los examples de la petición sustituyen al banco de la pregunta
+		t0 := time.Now()
+		var err error
+		banco, err = k.bancoDePeticion(ctx, p)
+		pr.knnCodNs.Add(int64(time.Since(t0)))
+		if err != nil {
+			return Respuesta{}, fmt.Errorf("knn: %w", err)
+		}
+	} else {
+		banco = tv.banco
 	}
 	t1 := time.Now()
-	d, err := k.Evaluar(tarea, q, ops)
+	d, err := k.evaluarBanco(banco, umbral, siempre, q, ops)
 	dv := time.Since(t1)
 	k.met.knnVotacion(dv)
 	pr.knnNs.Add(int64(dv))
 	if err != nil {
 		return Respuesta{}, err
 	}
-	k.met.knnFila(tarea, d.Motivo)
+	k.met.knnFila(nombre, d.Motivo)
+	if r, ok := RespuestaKNN(p.Kind, ops, d.Probs); ok {
+		d.Answer = r // mediana CORAL en score, argmax en el resto
+	}
 	probs := make(map[string]float64, len(ops))
 	for i, o := range ops {
 		probs[o] = d.Probs[i]
@@ -364,10 +453,22 @@ func (k *L2KNN) Decidir(ctx context.Context, p Pregunta) (Respuesta, error) {
 	tau := d.Umbral
 	if d.Escala {
 		tau = math.Inf(1) // nunca se acepta: la cascada sigue con L3 y conserva esta respuesta como pista
+	} else if k.cfg.Modo == ModoKNNCPU {
+		tau = 0 // sin escalado: contesta L2 aunque el margen sea mínimo
 	}
-	r := Respuesta{Answer: d.Answer, Probs: probs, Conf: math.Max(d.Sen.Margen, 1e-9), TauPropio: &tau, Tarea: tarea, MotivoKNN: d.Motivo}
+	r := Respuesta{Answer: d.Answer, Probs: probs, Conf: math.Max(d.Sen.Margen, 1e-9), TauPropio: &tau, Tarea: nombre, MotivoKNN: d.Motivo}
+	if conDemos {
+		if conEj {
+			r.Demos = k.demosDePeticionKNN(p, banco, q)
+		} else {
+			r.Demos = k.demosDeTarea(tv, q)
+		}
+		if k.regDemos != nil {
+			k.regDemos(p, nombre, r.Demos)
+		}
+	}
 	if d.Escala && p.Kind == KindChoice && len(ops) > L3TopKKNNDesde { // desempate de la preselección top-k de L3
-		if c, err := k.tareas[tarea].banco.SimCentroides(q, ops); err == nil {
+		if c, err := banco.SimCentroides(q, ops); err == nil {
 			r.RankKNN = make(map[string]float64, len(ops))
 			for i, o := range ops {
 				r.RankKNN[o] = c[i]
