@@ -136,9 +136,13 @@ Cabeceras de diagnóstico: `X-Chispa-Cod-Ms` (codificador e5), `X-Chispa-KNN-Ms`
   - Sin rúbrica ni calibración, la exactitud en dev está cerca del azar (T3: jql y usajobs, 0,15 las dos).
 - **`multi`: extensión solo de Go.** Sí/no independiente por opción (una llamada por opción con etiquetas S/N); `llm_logprobs.py` no lo tiene. Sin medir.
 
+## Qué modelo poner en L3 y en el codificador
+- **L3 (modo gpu): Qwen3-4B-Instruct-2507 por defecto.** Alternativa de **caudal** en una GPU de 48 GB (L40S): Qwen3-30B-A3B-Instruct-2507-FP8, con la misma exactitud en dev (+0,14 puntos de macro, IC95 pareado [−1,98, +2,28] puntos, el 0 dentro) y 4,0 req/s frente a 2,1 del 4B (`model/alt/resultados-20261113-p0-p2/techo-local-f07a800.json`, LEEME §20.2). No mejora la exactitud: solo el caudal. gpt-oss-20b queda peor (−4,44 puntos, IC [−6,64, −2,20]). Es informativo de dev; confirmarlo exige la batería v3 (LEEME §20.3).
+- **Codificador del kNN en CPU: e5 (por defecto) o Qwen3-Embedding.** Con Qwen3-Embedding la latencia es p50 ≈ 1 s en c7i.xlarge con 4 hilos (`l2-qwen3emb-5d9e86c.json`, LEEME §19.3), frente a ≈ 9 ms de e5 (arriba).
+
 ## Pendiente para producción
-- Medir el e2e fs8-kNN por el servidor con vLLM real, Qwen3-4B y banco Qwen con el pool de `ejemplos.jsonl` frente a Python: ud preparado y NO lanzado (`model/alt/aws/empaquetar_w1_fs8.sh`, criterio propuesto `model/alt/crit-w1-fs8-e2e.json`, sin congelar; 100 filas por tarea: el servidor codifica cada consulta con Qwen en CPU).
-- Medir fs8 con vLLM real (exactitud y latencia: los 8 turnos de ejemplo alargan el prompt; con 60 opciones y prefijo común, `--enable-prefix-caching` debería amortizarlo, sin medir).
+- Medido (dev, 100 filas por tarea, no sellado): el e2e fs8-kNN por el servidor con vLLM real, Qwen3-4B y banco Qwen **pasa justo**: macro Go 0,540 frente a Python 0,535, dif. 0,005 = tolerancia (`model/alt/resultados-20261113-p0-p2/w1-fs8-01914fe.json`, criterio `model/alt/crit-w1-fs8-e2e.json`; LEEME §20.1). Falta confirmarlo con más filas.
+- Falta la latencia de fs8 con vLLM real (los 8 turnos de ejemplo alargan el prompt; con 60 opciones y prefijo común, `--enable-prefix-caching` debería amortizarlo, sin medir).
 - Paridad fila a fila del top-k en Go con los vectores e5 reales de finanzas, que hoy solo está probado con datos sintéticos.
 - Calibrar u por cliente (hoy a mano); automatizarlo con un jsonl de validación.
 - Construir y probar la imagen `Dockerfile.producto` (aquí no hay demonio de Docker); firmar/versionar `e5.onnx` y los bancos; quitar `-pruebas` del arranque de cualquier ud (forzar_l3 es solo de pruebas).

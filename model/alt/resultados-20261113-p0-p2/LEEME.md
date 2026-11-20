@@ -2304,3 +2304,27 @@ Macro de las 6 tareas de dev (entre paréntesis, sin las sintéticas):
 - **Discrepancia del cliente explicada**: `e2e-fp32-v8-resumen.json` da `macro_sin_hatecheck` 0,4609 y `cifras.json` 0,4700. El cliente cuenta aciertos con el `answer` del servidor, que es el argmax de las probabilidades en todas las tareas (0 filas con `answer` ≠ argmax); `qwen3emb_medir.py` lee las `probs` como R11 (`lineas_base_v2.top1`): argmax en choice y mediana CORAL en las score. Solo cambian las tres score (horeca 0,458 → 0,496, jql 0,205 → 0,218, usajobs 0,196 → 0,200); las choice coinciden. Recalculado con `top1(…, "argmax")` sale 0,4609 (v8) y 0,4603 (v32), igual que el cliente. La referencia R11 usa la mediana, así que la comparación del criterio es la buena. **Consecuencia para producto**: el `answer` que devuelve hoy el servidor en las score no es el de la regla medida (también con e5): queda como seguimiento.
 - **Gasto de las dos corridas**: ≈ 0,32 USD (106 min de c7i.xlarge a 0,1785 USD/h; EBS despreciable). La hora de lanzamiento de la primera es aproximada (la instancia ya no aparece en EC2; sin permiso de CloudTrail): se toma 1 min antes del arranque del ud.
 - **Sin medir** (palanca para Juan): bajar `max_len` a 128 o 192 recortaría la latencia de las tareas largas, pero cambia la precisión y habría que medirla.
+
+## 20. Tanda opción A: W1 (fs8 por el servidor), W4 (techo local) y batería v3 (rama `integracion-opcion-a`, sin push)
+
+### 20.1 W1: e2e fs8 del servidor general en modo gpu, Go frente a Python (`w1-fs8-01914fe.json`; criterio `../crit-w1-fs8-e2e.json`, sha256 343365bd…): **PASA justo en la tolerancia**
+- Configuración: servidor general modo gpu, fs8 con demostraciones kNN por consulta, Qwen3-Embedding para elegir las demos, vLLM con Qwen3-4B. Es dev (100 filas por tarea, 6 tareas, n = 600), no sellado.
+- **Macro Go 0,540 frente a Python 0,535; dif = 0,005 exactamente** (`dif` 0,005, `tolerancia` 0,005): pasa en el borde. Con 100 filas por tarea la granularidad de la macro es 0,01/6; la dif. de 0,005 es media décima de acierto en una sola tarea (0,03/6), es decir, 3 filas netas repartidas entre tareas.
+- Cobertura 1,0 en Go y en Python; selección de demos 60/60 registradas, acuerdo 1,0 (mínimo 0,97).
+- Por tarea (Go / Python; acuerdo fila a fila): cfpb 0,69 / 0,69 (1,00); congreso 0,64 / 0,63 (0,99); finanzas 0,82 / 0,81 (0,99); horeca 0,68 / 0,68 (1,00); jql 0,13 / 0,14 (0,97); usajobs 0,28 / 0,26 (0,96). Fuente: `por_tarea`.
+- Tres corridas: la primera (g5, a6c5293) se cortó por el tope sin cifras; después la fase A en c7i (ONNX y bancos) y la B en g5 (Go 600/600; Python cortado por el tope en finanzas) y la B2 en g5 (solo las 312 filas de Python que faltaban, juntadas con `w1_juntar.py` sin re-medir Go).
+
+### 20.2 W4: techo local (`techo-local-f07a800.json`; criterio `../crit-techo-local.json`, sha256 0f39c265…): **EL 4B SE QUEDA**
+- Mitad B, fs8, diferencia de macro frente a Qwen3-4B con IC95 pareado: Qwen3-30B-A3B-Instruct-2507-FP8 **+0,14 puntos** (+0,0014; IC95 [−1,98, +2,28] puntos: el 0 dentro), 4,0 req/s frente a 2,1 del 4B en una L40S (g6e.xlarge); gpt-oss-20b **−4,44** (IC [−6,64, −2,20]), 5,3 req/s (sin razonamiento: harmony cerrado en el canal final, así que no es del todo comparable). Fuente: `pareadas`, `modelos`, `veredicto`.
+- **El 4B se cortó en su mitad A (5186 de 6028 filas): las cifras «A» y «todo» no son comparables entre modelos y no se citan como resultado.**
+- La primera corrida (9f82add) falló por el intérprete de la preselección (sin torch ni jinja2); la segunda (f07a800) lo arregla.
+- Informativo de dev: confirmarlo exige la batería v3.
+
+### 20.3 Batería v3, fase 2 corregida (8e1bc6d; `bateria-v3-8e1bc6d-resumen.json`, `bateria-v3-8e1bc6d-manifiesto.json`)
+- 37 candidatas, 21 construidas, **cuentan 16**: choice 5, yesno 5, score 6; en español 6 (en inglés 10). **Todos los tipos en «n bajo»** (< 8 por tipo).
+- Fuera las 9 federales (y grants y fsis) por HTTP 404 de la API CKAN de catalog.data.gov (también `status_show` da 404, así que la API no está en esa dirección; no es la licencia). Otros fuera: Twitter/X (readability-es), sin licencia (arena-preferencia-es), gated (cares), repo inexistente (noticias-es), sin ficheros (ethics-justicia), licencia «other» (worldbank).
+- Decisiones de la sesión madre para el criterio de apertura: ethics-justicia y los 6 benchmarks públicos (mmmlu, bbh, gsm8k, math, strategyqa, pubmedqa) son informativos; helpsteer3-es cuenta solo si helpsteer2 no está en v2 ni en el entrenamiento; tsjev parcial → «solape no comprobado».
+- Era la última iteración: abrir con n bajo o seguir es decisión de Juan.
+
+### 20.4 Gasto de AWS de la tanda
+De los logs de cada ud (arranque→listo + ≈ 3 min de arranque y espera; g5 1,006, c7i 0,1785, g6e 1,861 USD/h): W1 ≈ 2,40 USD (g5 a6c5293 ≈ 0,88; c7i A ≈ 0,06; g5 B ≈ 1,19; g5 B2 ≈ 0,27); W4 ≈ 2,06 (g6e 9f82add ≈ 0,48; g6e f07a800 ≈ 1,58); v3 ≈ 0,08 (dos c7i). Total ≈ 4,5 USD (+ EBS). Cuenta de delega de la tanda: W1 8,62, W2 0,67, W3 9,27, W4 3,04 USD.
