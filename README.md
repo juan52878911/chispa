@@ -154,7 +154,7 @@ Su documentación sigue en [`docs/`](docs/00-indice.md), que describe este modo 
   128 tokens ([`LEEME`](model/evaluacion/resultados/jevbench-20261029/LEEME.md)).
 - Un codificador abierto ajustado de punta a punta (e5-small sin congelar con cabeza cross-encoder, destilado de un LLM local)
   saca 0,511 en JevBench frente a 0,4935 de Chispa en el mismo arnés, pero con p50 de 206 ms frente a los ≤ 60 ms pedidos: no
-  compensa ([`informe`](model/alt/resultados/g5-2058ffa/informe.md)).
+  compensa ([`informe`](archivo/model-alt/resultados/g5-2058ffa/informe.md)).
 
 **L3 (LLM local), como respaldo.** Con Ollama y `qwen3:4b-instruct` en un i7 de 4 núcleos, sobre 1 061 filas: en hatecheck (sí/no)
 la cascada pasa del 28,8 % al 48,5 % a unos 4 s por escalada; en massive (60 opciones) apenas cambia (43,6 → 44,0 %). Sus
