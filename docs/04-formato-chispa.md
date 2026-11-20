@@ -61,7 +61,7 @@ Los números salen del enum de [`chispa3.go`](../format/chispa3/chispa3.go).
 - **Un runtime anterior rechaza el fichero.** El lector de CALIB decodifica con `DisallowUnknownFields` (`format/chispa3/secciones.go`): un servidor, SDK o app móvil sin estos campos falla al cargar con `chispa3: contenido de sección inválido: json: unknown field "tipos_l2"` (igual con `tau_escalate_l2`); no cae a `tipos` ni falla en silencio. Versión mínima de servidor, SDK y `chispamovil` para abrirlos: commit `2b7096a` o posterior. No hay marca de versión: no hagas rollback del runtime, ni distribuyas a apps móviles ya publicadas, un fichero que traiga `tipos_l2` o `tau_escalate_l2`. Un fichero sin esos campos sigue abriéndose en cualquier runtime.
 
 ## Claves de CALIB
-Las de `multi` (ver [03-api.md](03-api.md#multi-varias-etiquetas-a-la-vez)):
+Las de `multi` (ver [03-api.md](03-api.md#respuesta-200)):
 - `multi@<hex>`: (a, b, θ) de todas las opciones de un esquema; `<hex>` es el `HashEsquema2` (pregunta, kind y opciones con descripción) en hex. `multi@<hex>#<id>`: los de una opción.
 - `multi_l2@<hex>` y `multi_l2@<hex>#<id>`: lo mismo para L2 (MaxSim); se leen de `tipos_l2` si existe y, si no, de `tipos`. **Sin ellas L2 no opina en `multi`.** `chispa train` no las calibra (no tiene el ONNX de L2); las escribe un exportador de modelos o `multi.escribir_calib` con `maxsim_l2` por la API, y van a `tipos_l2`. Un `chispa train` posterior con `--l2` copia a `tipos_l2` las que ya traiga la CALIB de `x.chispa`.
 - `multi` y `multi#<id>` (sin `@`): ficheros anteriores; solo se leen si el fichero no tiene ninguna clave con `@`.

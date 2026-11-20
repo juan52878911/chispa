@@ -1,8 +1,11 @@
 # Qué es Chispa
 
-Chispa es un clasificador tipado, de bajo coste y de propósito general. Tú mandas un texto y una pregunta con sus opciones.
-Chispa devuelve una respuesta, sus probabilidades y la capa que contestó. Decide sobre esquemas que no ha visto, sin datos
-o con pocos ejemplos.
+> [!NOTE]
+> **Chispa es hoy un servidor de clasificación tipada con dos modos (GPU y CPU).** Qué es, cuándo usar cada uno, las cifras y lo refutado están en el [README](../README.md).
+> Lo que describe este documento es el **modo clásico (congelado)**: `.chispa` entrenado, capas L0/L1/L2, torres y SDK móvil. No recibe cambios; el modo nuevo se documenta en [`server/PRODUCTO.md`](../server/PRODUCTO.md).
+
+Chispa clásico es un clasificador tipado y de bajo coste. Tú mandas un texto y una pregunta con sus opciones.
+Chispa devuelve una respuesta, sus probabilidades y la capa que contestó. Funciona bien con ejemplos propios; sin datos, escala casi todo.
 
 Corre en CPU, sin GPU: en x86, en ARM y en el móvil. massive, clinc150, hatecheck, spam e injection son **benchmarks**
 para medirlo. No son el objetivo del producto.
@@ -19,7 +22,7 @@ Cada pregunta tiene un `kind`. Esquema de filas de datos: [`model/esquema.md`](.
 
 Siempre vuelve `probs` con una probabilidad calibrada por opción: suman 1 en `choice`, `score` y `noul`; en `multi` cada opción
 lleva la suya (cada una es un sí/no con su umbral) y no suman 1. L0 no opina en `multi`: su clasificador lineal es multiclase, y L2 solo opina si la `CALIB` trae `multi_l2@<hash>` (`chispa train` no lo escribe: en multi decide L1 o L3, si no, escala).
-Un ejemplo por tipo y qué devuelve cada capa: [03-api.md](03-api.md#qué-devuelve-cada-capa).
+Un ejemplo por tipo y qué devuelve cada capa: [03-api.md](03-api.md#respuesta-200).
 
 Las descripciones de las opciones importan: en zero-shot son lo único que Chispa sabe de tu tarea.
 Contrato completo: [03-api.md](03-api.md). Fuente: [`server/README.md`](../server/README.md#contrato).
@@ -54,7 +57,7 @@ L0 → L1 → L2 → escalar
 | L2 | e5-small (ONNX int8) con ranuras y una torre por opción. Con `CONJ` es L2c, con cabeza conjunta | confianza top-1 ≥ τ |
 | escalar | Ninguna capa llegó a su τ | siempre |
 
-- L1 opina en `multi` con una sigmoide por opción (L2, solo con `multi_l2@…` en `CALIB`; ver [03](03-api.md#multi-varias-etiquetas-a-la-vez)) y en `score` con la mediana de la distribución sobre los niveles (a partir de las descripciones de cada nivel); `noul` y `choice` como siempre ([07](07-rendimiento-y-limites.md#zero-shot)).
+- L1 opina en `multi` con una sigmoide por opción (L2, solo con `multi_l2@…` en `CALIB`; ver [03](03-api.md#respuesta-200)) y en `score` con la mediana de la distribución sobre los niveles (a partir de las descripciones de cada nivel); `noul` y `choice` como siempre ([07](07-rendimiento-y-limites.md#zero-shot)).
 - Para un esquema que solo llega en la petición decide L1; si el `.chispa` trae `TORR` (y el servidor usa `-tags ort` y `-tok`), también L2 con torre al vuelo:
   [08-esquemas-nuevos.md](08-esquemas-nuevos.md).
 - Con pocos ejemplos, `chispa train --shrinkage-lambda` añade la sección `SOPL1` y L1 (y L2c) encogen el prototipo hacia la media de los ejemplos, con peso `k/(k+λ)`; sin ella, no hay mezcla ([04](04-formato-chispa.md#secciones)).
@@ -74,4 +77,4 @@ El τ sale de `CALIB` (`tau_escalate`, y `tau_l2c` para L2c) o de la config del 
 En zero-shot, `CALIB` queda sin calibrar con τ = 0,6. `chispa train --conjunta` fija `tau_l2c` con probabilidades fuera de
 pliegue al 0,95 de precisión ([`sdk/python/README.md`](../sdk/python/README.md#chispa-train)).
 
-El porcentaje que escala con tráfico normal está en [07-rendimiento-y-limites.md](07-rendimiento-y-limites.md#abstención).
+El porcentaje que escala con tráfico normal está en [07-rendimiento-y-limites.md](07-rendimiento-y-limites.md#excepción-2-la-abstención).

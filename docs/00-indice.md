@@ -1,7 +1,11 @@
 # Documentación de Chispa
 
-Chispa es un clasificador tipado (`choice`, `score`, `noul`) de bajo coste y de propósito general. Decide sobre un esquema
-que no ha visto, en zero-shot o con pocos ejemplos, en CPU (x86, ARM y móvil), con una cascada de capas. Escala a otra capa o a
+> [!NOTE]
+> **Chispa es hoy un servidor de clasificación tipada con dos modos (GPU y CPU).** Qué es, cuándo usar cada uno, las cifras y lo refutado están en el [README](../README.md).
+> Lo que describe este documento es el **modo clásico (congelado)**: `.chispa` entrenado, capas L0/L1/L2, torres y SDK móvil. No recibe cambios; el modo nuevo se documenta en [`server/PRODUCTO.md`](../server/PRODUCTO.md).
+
+Chispa clásico es un clasificador tipado (`choice`, `score`, `noul`) de bajo coste. Decide sobre un esquema
+con una cascada de capas, en CPU (x86, ARM y móvil); en zero-shot escala casi todo (ver [07](07-rendimiento-y-limites.md)). Escala a otra capa o a
 una persona cuando no está segura. massive, clinc150 y las demás tareas son benchmarks, no el objetivo.
 
 Esta documentación es para quien integra Chispa. El detalle de desarrollo está en los README de cada carpeta.

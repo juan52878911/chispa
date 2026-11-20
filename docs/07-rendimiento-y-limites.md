@@ -1,8 +1,12 @@
 # Rendimiento y límites
 
+> [!NOTE]
+> **Chispa es hoy un servidor de clasificación tipada con dos modos (GPU y CPU).** Qué es, cuándo usar cada uno, las cifras y lo refutado están en el [README](../README.md).
+> Lo que describe este documento es el **modo clásico (congelado)**: `.chispa` entrenado, capas L0/L1/L2, torres y SDK móvil. No recibe cambios; el modo nuevo se documenta en [`server/PRODUCTO.md`](../server/PRODUCTO.md).
+
 Todo lo de aquí es medido y lleva su fuente. Lo que no se midió, se dice: «sin medir».
 
-Chispa es un clasificador de propósito general. massive, clinc150, hatecheck, inyecciones, herramientas, spam e injection
+Estas cifras son del modo clásico. massive, clinc150, hatecheck, inyecciones, herramientas, spam e injection
 son **benchmarks**: pruebas de que cada modo funciona, no el objetivo del producto. Ninguna cifra de abajo es de tu tarea.
 
 ## Por modo

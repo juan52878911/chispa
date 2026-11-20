@@ -1,5 +1,9 @@
 # Inicio rápido
 
+> [!NOTE]
+> **Chispa es hoy un servidor de clasificación tipada con dos modos (GPU y CPU).** Qué es, cuándo usar cada uno, las cifras y lo refutado están en el [README](../README.md).
+> Lo que describe este documento es el **modo clásico (congelado)**: `.chispa` entrenado, capas L0/L1/L2, torres y SDK móvil. No recibe cambios; el modo nuevo se documenta en [`server/PRODUCTO.md`](../server/PRODUCTO.md).
+
 De un esquema nuevo a una petición `curl`. Los comandos se escriben desde la raíz del repositorio.
 
 Ejemplo de esta página: clasificar solicitudes que llegan a una ferretería colombiana. Es un esquema inventado; no es
