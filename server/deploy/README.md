@@ -54,3 +54,7 @@ Detalle: `docs/06-despliegue.md`.
 
 ## Imagen de producto (kNN + e5 + L3 fs8)
 `Dockerfile.producto` (sobre la imagen de arriba) y `config.ejemplo.json`: ver `server/PRODUCTO.md`.
+
+## Dos modos del servidor general
+`config.modo-gpu.json` (todo a L3 con fs8; el kNN elige las 8 demostraciones más cercanas a cada consulta y el top-k) y `config.modo-cpu.json` (solo kNN con e5; exige `examples[]` en la petición o un banco): ver `server/PRODUCTO.md`.
+`config.ejemplo.json` y `config.ejemplo-qwen3emb.json` siguen en el modo de siempre (escalado por margen).

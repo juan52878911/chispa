@@ -1,0 +1,23 @@
+{
+  "api_keys": [
+    {
+      "id": "cliente-a",
+      "hash_sha256": "5f1809302f06d1c05ae56929417b33256b780176970793c19a07dd40bd2b325f",
+      "rps": 20,
+      "rafaga": 40
+    }
+  ],
+  "knn": {
+    "modo": "cpu",
+    "codificador": "e5-small",
+    "e5_onnx": "/modelos/e5.onnx",
+    "e5_sesiones": 4,
+    "cache_vectores_mb": 64,
+    "umbral": 0,
+    "tareas": {}
+  },
+  "limites": {
+    "max_ejemplos": 256,
+    "max_ejemplo_texto": 16384
+  }
+}

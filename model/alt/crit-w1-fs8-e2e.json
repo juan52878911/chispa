@@ -1,0 +1,54 @@
+{
+  "id": "crit-w1-fs8-e2e",
+  "congelado_antes_de_medir": true,
+  "estado": "CONGELADO por el orquestador el 2026-11-19 antes de medir (v2: demostraciones kNN por consulta); su sha256 va en el ud y en el informe",
+  "fecha": "2026-11-19",
+  "objeto": "El servidor Go (modo gpu: todo a L3, fs8 con las 8 demostraciones MÁS CERCANAS A CADA CONSULTA por kNN sobre el soporte de 8 por clase, el pool de <banco>.ejemplos.jsonl del banco de Qwen3-Embedding) da por HTTP, con vLLM real y Qwen3-4B-Instruct-2507, la misma exactitud que el fs8-kNN de Python (llm_logprobs.py --ejemplos --demos, como lineas_base_v2_pred demos / lineas_base_v2d.py y la apertura sellada §17.24 D y §17.26) sobre las mismas filas y las mismas demostraciones, y elige esas demostraciones igual que Python",
+  "modelos": {
+    "l3": "Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f17c01a7cc42f958dc650907174af0554 en vLLM, bfloat16, logprobs (top 20) con el relleno por prompt_logprobs de siempre",
+    "codificador_banco": "Qwen/Qwen3-Embedding-0.6B @ 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3 (ONNX fp32; el banco lo escribe chispa-banco-qwen)"
+  },
+  "datos": {
+    "tareas": "las 6 de DESARROLLO de la batería v2; las selladas no se abren",
+    "filas": "hasta n_por_tarea filas de test por tarea, elegidas por sha256 del id (w1_filas.py); las mismas para el servidor y para Python",
+    "n_por_tarea": 100,
+    "demostraciones": "las 8 más cercanas por coseno de Qwen3-Embedding a cada consulta, elegidas por el servidor sobre el soporte de 8 por clase de cada tarea con la regla de lineas_base_v2_pred.demos_fila (si las clases caben en 8, la más cercana de cada una y el resto por cercanía; orden del prompt: de la más lejana a la más cercana). El servidor deja sus ids por fila (-demos-log) y Python puntúa con ESAS demostraciones (llm_logprobs.py --demos), de modo que la exactitud compara el camino del prompt y de vLLM; la selección se comprueba aparte (condición seleccion_demos). NO son las 8 fijas por tarea de la medida anterior"
+  },
+  "lectura": {
+    "regla": "model/alt/lineas_base_v2.top1(probs, r) con esp=False, para el servidor (probs de la respuesta HTTP) y para Python (probs de llm_logprobs.py)",
+    "nota": "en score es la mediana CORAL y en choice y sí/no el argmax; la `answer` del servidor no cuenta (solo se da como informativo)"
+  },
+  "criterio": {
+    "condiciones_todas": [
+      {
+        "nombre": "dif_macro",
+        "regla": "|macro_go - macro_python| <= 0.005, macro = media de la exactitud por tarea en las 6 tareas de dev"
+      },
+      {
+        "nombre": "cobertura",
+        "regla": "100 % de las filas medidas con respuesta válida en las dos lecturas (Go: HTTP 200 con probs; Python: valida) en cada tarea"
+      },
+      {
+        "nombre": "seleccion_demos",
+        "regla": "en una muestra de 10 consultas por tarea (60), la selección de demostraciones que registra el servidor coincide con la de Python (lineas_base_v2_pred.demos_fila sobre los vectores del banco y de la consulta, codificados con chispa-banco-qwen, la misma ruta que el servidor) en el mismo orden en >= 97 % de las filas"
+      }
+    ],
+    "tolerancia_macro": 0.005,
+    "cobertura_minima": 1.0,
+    "acuerdo_seleccion_minimo": 0.97
+  },
+  "configuracion_servidor": "server/deploy/config.modo-gpu.json con knn.tareas de las 6 tareas y l3.top_k_knn = 0 (L3 ve todas las opciones, igual que Python: el top-k de finanzas se midió aparte, T3b), l3.ejemplos 8 y demostraciones por kNN (por defecto en modo gpu; l3.demos_fijas apagado), l3.tau 0, timeout_fila 60 s y 4 clientes (ninguna fila queda parcial por tiempo); chispa-server -demos-log",
+  "informativo_no_cuenta": [
+    "acuerdo fila a fila entre las dos lecturas por tarea",
+    "macro de la `answer` del servidor leída tal cual",
+    "latencia por capa (cabeceras X-Chispa-*) y peticiones por segundo del servidor con fs8",
+    "exactitud de cada tarea de los dos lados",
+    "cobertura y latencia del codificador Qwen3-Embedding en CPU por consulta (el servidor codifica ahora cada consulta: X-Chispa-Cod-Ms)"
+  ],
+  "limites": {
+    "aws_usd": 1.0,
+    "instancia": "una g5.xlarge bajo demanda (A10G 24 GB, 4 vCPU, 16 GB); 55 min de tope duro con shutdown -h +55 = 55/60 x 1,006 USD/h = 0,92 USD de cómputo más ≈ 0,01 de EBS (100 GB gp3)",
+    "calculo_de_n": "con 6 tareas x 100 filas = 600 filas por el servidor y otras 600 por Python (1 200 llamadas a vLLM, ≈ 3 min a ≈ 8 filas/s) más 60 codificaciones de la muestra; el servidor codifica CADA consulta con Qwen3-Embedding en CPU (4 vCPU, una sesión): ≈ 0,2 a 1 s por consulta según la longitud, es decir ≈ 2 a 10 min en serie para 600 (con 300 por tarea serían 6 a 30 min: no cabe). El resto del tope se va en el arranque (pip de vLLM, 8 GB del 4B, ONNX de Qwen3-Embedding y su banco): ≈ 20 min. Si algo tarda el doble sigue cabiendo en 55 min",
+    "selladas": "no se abren"
+  }
+}

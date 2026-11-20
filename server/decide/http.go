@@ -26,8 +26,11 @@ const (
 	MotivoMaxOpcionesExcesivo = "max_opciones_excesivo" // torre_al_vuelo_motivo: max_opciones pasa de MaxOpcionesTope
 	MaxOpcionesTope           = 4096                    // máximo de limites.max_opciones: la caché de torres crece 16 × este valor
 	MaxEstadoByte             = 256 << 10
-	MaxTextoByte              = 4 << 10 // question, description de opción
-	MaxIDByte                 = 256     // id de pregunta, id de opción, nonce
+	MaxTextoByte              = 4 << 10  // question, description de opción
+	MaxIDByte                 = 256      // id de pregunta, id de opción, nonce
+	MaxEjemplosPregunta       = 256      // examples por pregunta
+	MaxEjemploTextoByte       = 16 << 10 // text de cada ejemplo
+	MaxEjemplosTotal          = 1024     // examples en toda la petición (cada ejemplo sin caché es una codificación)
 )
 
 // Códigos de error de la API (campo error.code). Contrato: server/api/openapi.yaml.
@@ -54,6 +57,10 @@ const (
 	ErrNoAutorizado      = "unauthorized"
 	ErrRecargaFallida    = "reload_failed"
 	ErrLimitada          = "rate_limited"
+	ErrDemasiadosEjem    = "too_many_examples"
+	ErrEjemploInvalido   = "invalid_example"
+	ErrEjemploEtiqueta   = "invalid_example_label"
+	ErrEjemplosFalta     = "examples_required"
 )
 
 // Limites son los topes de entrada de /v1/decide. Un valor 0 en el JSON de configuración
@@ -65,15 +72,20 @@ type Limites struct {
 	MaxEstado    int `json:"max_estado"`    // bytes de state
 	MaxTexto     int `json:"max_texto"`     // bytes de question y de cada description
 	MaxID        int `json:"max_id"`        // bytes de cada id y nonce
+	// MaxEjemplos y MaxEjemploTexto: examples por pregunta y bytes del text de cada ejemplo (0 = por defecto).
+	MaxEjemplos     int `json:"max_ejemplos,omitempty"`
+	MaxEjemploTexto int `json:"max_ejemplo_texto,omitempty"`
+	// MaxEjemplosPeticion: examples en toda la petición, sumadas todas las preguntas (0 = 1024).
+	MaxEjemplosPeticion int `json:"max_ejemplos_peticion,omitempty"`
 }
 
 func LimitesPorDefecto() Limites {
-	return Limites{MaxCuerpo, MaxPreguntas, MaxOpciones, MaxEstadoByte, MaxTextoByte, MaxIDByte}
+	return Limites{MaxCuerpo, MaxPreguntas, MaxOpciones, MaxEstadoByte, MaxTextoByte, MaxIDByte, MaxEjemplosPregunta, MaxEjemploTextoByte, MaxEjemplosTotal}
 }
 
 func (l Limites) validar() error {
 	for n, v := range map[string]int{"max_cuerpo": l.MaxCuerpo, "max_preguntas": l.MaxPreguntas, "max_opciones": l.MaxOpciones,
-		"max_estado": l.MaxEstado, "max_texto": l.MaxTexto, "max_id": l.MaxID} {
+		"max_estado": l.MaxEstado, "max_texto": l.MaxTexto, "max_id": l.MaxID, "max_ejemplos": l.MaxEjemplos, "max_ejemplo_texto": l.MaxEjemploTexto, "max_ejemplos_peticion": l.MaxEjemplosPeticion} {
 		if v < 0 {
 			return fmt.Errorf("config: limites.%s no puede ser negativo, llegó %d", n, v)
 		}
@@ -172,7 +184,8 @@ func normalizaLimites(l Limites) Limites {
 		dst *int
 		v   int
 	}{{&d.MaxCuerpo, l.MaxCuerpo}, {&d.MaxPreguntas, l.MaxPreguntas},
-		{&d.MaxOpciones, l.MaxOpciones}, {&d.MaxEstado, l.MaxEstado}, {&d.MaxTexto, l.MaxTexto}, {&d.MaxID, l.MaxID}} {
+		{&d.MaxOpciones, l.MaxOpciones}, {&d.MaxEstado, l.MaxEstado}, {&d.MaxTexto, l.MaxTexto}, {&d.MaxID, l.MaxID},
+		{&d.MaxEjemplos, l.MaxEjemplos}, {&d.MaxEjemploTexto, l.MaxEjemploTexto}, {&d.MaxEjemplosPeticion, l.MaxEjemplosPeticion}} {
 		if p.v > 0 {
 			*p.dst = p.v
 		}
@@ -222,6 +235,10 @@ type peticion struct {
 		Kind     string   `json:"kind"`
 		Options  []Opcion `json:"options"`
 		Nonce    string   `json:"nonce"`
+		Examples []struct {
+			Text  string `json:"text"`
+			Label string `json:"label"`
+		} `json:"examples"`
 	} `json:"questions"`
 }
 
@@ -312,6 +329,12 @@ func (s *Servidor) decide(w http.ResponseWriter, r *http.Request) {
 		s.fallo(w, ea.status, ea.code, ea.qid, "%s", ea.msg)
 		return
 	}
+	for _, p := range preguntas {
+		if v.casc.ExigeEjemplos(p) {
+			s.fallo(w, http.StatusBadRequest, ErrEjemplosFalta, p.ID, "questions[%q]: este servidor (knn.modo cpu) clasifica solo con ejemplos: la pregunta debe traer examples o ser de una tarea con banco", p.ID)
+			return
+		}
+	}
 	// La clave paga el resto de preguntas (la primera ya la cobró conAuth con la petición).
 	cl := cobroDe(r.Context())
 	cl.cobra(len(preguntas) - 1)
@@ -328,6 +351,9 @@ func (s *Servidor) decide(w http.ResponseWriter, r *http.Request) {
 		if p.Nonce != "" {
 			h := sha256.Sum256([]byte(p.Estado))
 			ck = idClave + "|" + p.Nonce + "|" + hex.EncodeToString(h[:8]) + "|" + ClaveEsquema(p) + "|" + p.ID
+			if len(p.Ejemplos) > 0 { // otra lista de ejemplos es otra pregunta: sin esto la caché devolvería la respuesta de los de antes
+				ck += "|" + hashEjemplos(p.Ejemplos)
+			}
 			if b, ok := v.nonces.Get(ck); ok {
 				s.Met.NonceHits.Add(1)
 				out.Results[i] = b
@@ -408,6 +434,8 @@ const (
 	kQuestion
 	kOptions
 	kOption
+	kExamples
+	kExample
 )
 
 var errSintaxis = errors.New("sintaxis")
@@ -556,7 +584,7 @@ func (e *escaner) objeto(k, prof int) error {
 		sub := kAny
 		var kid string
 		var campo = -1
-		if k == kRoot || k == kQuestion || k == kOption {
+		if k == kRoot || k == kQuestion || k == kOption || k == kExample {
 			if esc {
 				kid, err = texto(raw, true)
 				if err != nil {
@@ -584,12 +612,21 @@ func (e *escaner) objeto(k, prof int) error {
 					campo = 3
 				case "options":
 					campo, sub = 4, kOptions
+				case "examples":
+					campo, sub = 5, kExamples
 				}
 			case kOption:
 				switch string(raw) {
 				case "id":
 					campo = 0
 				case "description":
+					campo = 1
+				}
+			case kExample:
+				switch string(raw) {
+				case "text":
+					campo = 0
+				case "label":
 					campo = 1
 				}
 			}
@@ -634,6 +671,8 @@ func (e *escaner) array(k, prof int) error {
 		max, elem = e.l.MaxPreguntas, kQuestion
 	case kOptions:
 		max, elem = e.l.MaxOpciones, kOption
+	case kExamples:
+		max, elem = e.l.MaxEjemplos, kExample
 	}
 	n := 0
 	for {
@@ -655,6 +694,9 @@ func (e *escaner) array(k, prof int) error {
 		if max > 0 && n > max {
 			if k == kQuestions {
 				return bad(ErrDemasiadasPreg, "", "questions: máximo %d por petición, llegaron más", max)
+			}
+			if k == kExamples {
+				return bad(ErrDemasiadosEjem, e.qid, "examples: máximo %d ejemplos por pregunta", max)
 			}
 			return bad(ErrDemasiadasOpc, e.qid, "options: máximo %d opciones", max)
 		}
@@ -686,6 +728,7 @@ func (l Limites) validarPeticion(req peticion) ([]Pregunta, *errAPI) {
 		return nil, bad(ErrDemasiadasPreg, "", "questions: máximo %d por petición, llegaron %d", l.MaxPreguntas, len(req.Questions))
 	}
 	ids := map[string]bool{}
+	totalEj := 0
 	out := make([]Pregunta, len(req.Questions))
 	for i, q := range req.Questions {
 		at := fmt.Sprintf("questions[%d]", i)
@@ -753,7 +796,34 @@ func (l Limites) validarPeticion(req peticion) ([]Pregunta, *errAPI) {
 			}
 			seen[o.ID] = true
 		}
-		out[i] = Pregunta{ID: q.ID, Estado: req.State, Texto: q.Question, Kind: q.Kind, Opciones: ops, Nonce: q.Nonce}
+		var ejs []EjemploPeticion
+		if len(q.Examples) > 0 {
+			if q.Kind == KindMulti {
+				return nil, bad(ErrEjemploInvalido, q.ID, "%s.examples: no valen con kind multi", at)
+			}
+			if len(q.Examples) > l.MaxEjemplos {
+				return nil, bad(ErrDemasiadosEjem, q.ID, "%s.examples: máximo %d ejemplos por pregunta, llegaron %d", at, l.MaxEjemplos, len(q.Examples))
+			}
+			if totalEj += len(q.Examples); totalEj > l.MaxEjemplosPeticion {
+				return nil, bad(ErrDemasiadosEjem, q.ID, "%s.examples: máximo %d ejemplos en toda la petición", at, l.MaxEjemplosPeticion)
+			}
+			ejs = make([]EjemploPeticion, len(q.Examples))
+			for j, e := range q.Examples {
+				ea := fmt.Sprintf("%s.examples[%d]", at, j)
+				switch {
+				case strings.TrimSpace(e.Text) == "":
+					return nil, bad(ErrEjemploInvalido, q.ID, "%s.text: obligatorio y no vacío", ea)
+				case len(e.Text) > l.MaxEjemploTexto:
+					return nil, bad(ErrCampoLargo, q.ID, "%s.text: más de %d bytes", ea, l.MaxEjemploTexto)
+				case e.Label == "":
+					return nil, bad(ErrEjemploInvalido, q.ID, "%s.label: obligatorio", ea)
+				case !seen[e.Label]:
+					return nil, bad(ErrEjemploEtiqueta, q.ID, "%s.label: %q no es una de las opciones de la pregunta", ea, e.Label)
+				}
+				ejs[j] = EjemploPeticion{Texto: e.Text, Etiqueta: e.Label}
+			}
+		}
+		out[i] = Pregunta{ID: q.ID, Estado: req.State, Texto: q.Question, Kind: q.Kind, Opciones: ops, Nonce: q.Nonce, Ejemplos: ejs}
 	}
 	return out, nil
 }
