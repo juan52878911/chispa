@@ -62,8 +62,8 @@ Los tres tipos de pregunta, igual en los dos modos (contrato: [`server/api/opena
 La guía está en [`server/PRODUCTO.md`](server/PRODUCTO.md): qué entra (ejemplos de oro, bancos), cómo generar los bancos, la config del servidor
 (`server/deploy/config.ejemplo.json`, y `config.ejemplo-qwen3emb.json` para el codificador de Qwen), el contrato de respuesta, los límites y lo que queda pendiente.
 
-En preparación (otro trabajo los está escribiendo; no los des por hechos hasta verlos en `server/PRODUCTO.md`): ejemplos dentro de la petición HTTP,
-la regla de `score` y las configuraciones `modo-gpu` y `modo-cpu`.
+Ya están en el servidor (ver `server/PRODUCTO.md`): ejemplos dentro de la petición HTTP (`examples[]`), la regla de `score` y las configuraciones
+`server/deploy/config.modo-gpu.json` y `config.modo-cpu.json`.
 
 ```sh
 cd server && go build -o chispa-server ./cmd/chispa-server   # con -tags ort para el codificador ONNX
