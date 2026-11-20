@@ -1,0 +1,174 @@
+---
+annotations_creators: 
+- MajorIsaiah
+- Ximyer
+- clavel
+- inoid
+language_creators: [crowdsourced]
+language: [es]
+license: [apache-2.0]
+multilinguality: [monolingual]
+pretty_name: UNAM Tesis
+size_categories:
+- n=200
+source_datasets: [original]
+task_categories: [text-classification]
+task_ids: [language-modeling]
+---
+
+# Dataset Card of "unam_tesis"
+
+## Dataset Description
+
+- **Homepage:** 
+- **Repository:** 
+- **Paper:** 
+- **Leaderboard:** 
+- **Point of Contact:** 
+- [yiselclavel@gmail.com](mailto:yiselclavel@gmail.com)
+- [isaac7isaias@gmail.com](mailto:isaac7isaias@gmail.com)
+
+### Dataset Summary
+
+El dataset unam_tesis cuenta con 1000 tesis de 5 carreras de la Universidad Nacional Autónoma de México (UNAM), 200 por carrera. Se pretende seguir incrementando este dataset con las demás carreras y más tesis.
+
+### Supported Tasks and Leaderboards
+
+text-classification
+
+### Languages
+
+Español (es)
+
+## Dataset Structure
+
+### Data Instances
+
+Las instancias del dataset son de la siguiente forma: 
+
+    El objetivo de esta tesis es elaborar un estudio de las condiciones asociadas al aprendizaje desde casa a nivel preescolar y primaria en el municipio de Nicolás Romero a partir de la cancelación de clases presenciales ante la contingencia sanitaria del Covid-19 y el entorno familiar del estudiante. En México, la Encuesta para la Medición del Impacto COVID-19 en la Educación (ECOVID-ED) 2020, es un proyecto que propone el INEGI y realiza de manera especial para conocer las necesidades de la población estudiantil de 3 a 29 años de edad, saber qué está sucediendo con su entorno inmediato, las condiciones en las que desarrollan sus actividades académicas y el apoyo que realizan padres, tutores o cuidadores principales de las personas en edad formativa. La ECOVID-ED 2020 se llevó a cabo de manera especial con el objetivo de conocer el impacto de la cancelación provisional de clases presenciales en las instituciones educativas del país para evitar los contagios por la pandemia COVID-19 en la experiencia educativa de niños, niñas, adolescentes y jóvenes de 3 a 29 años, tanto en el ciclo escolar 2019-2020, como en ciclo 2020-2021. En este ámbito de investigación, el Instituto de Investigaciones sobre la Universidad y la Educación (IISUE) de la Universidad Nacional Autónoma de México público en 2020 la obra “Educación y Pandemia: Una visión académica” que se integran 34 trabajos que abordan la muy amplia temática de la educación y la universidad con reflexiones y ejercicios analíticos estrechamente relacionadas en el marco coyuntural de la pandemia COVID-19. La tesis se presenta en tres capítulos: En el capítulo uno se realizará una descripción del aprendizaje de los estudiantes a nivel preescolar y primaria del municipio de NicolásRomero, Estado de México, que por motivo de la contingencia sanitaria contra el Covid-19 tuvieron que concluir su ciclo académico 2019-2020 y el actual ciclo 2020-2021 en su casa debido a la cancelación provisional de clases presenciales y bajo la tutoría de padres, familiar o ser cercano; así como las horas destinadas al estudio y las herramientas tecnológicas como teléfonos inteligentes, computadoras portátiles, computadoras de escritorio, televisión digital y tableta. En el capítulo dos, se presentarán las herramientas necesarias para la captación de la información mediante técnicas de investigación social, a través de las cuales se mencionará, la descripción, contexto y propuestas del mismo, considerando los diferentes tipos de cuestionarios, sus componentes y diseño, teniendo así de manera específica la diversidad de ellos, que llevarán como finalidad realizar el cuestionario en línea para la presente investigación. Posteriormente, se podrá destacar las fases del diseño de la investigación, que se realizarán mediante una prueba piloto tomando como muestra a distintos expertos en el tema. De esta manera se obtendrá la información relevante para estudiarla a profundidad. En el capítulo tres, se realizará el análisis apoyado de las herramientas estadísticas, las cuales ofrecen explorar la muestra de una manera relevante, se aplicará el método inferencial para expresar la información y predecir las condiciones asociadas al autoaprendizaje, la habilidad pedagógica de padres o tutores, la convivencia familiar, la carga académica y actividades escolares y condicionamiento tecnológico,con la finalidad de inferir en la población. Asimismo, se realizarán pruebas de hipótesis, tablas de contingencia y matriz de correlación. Por consiguiente, los resultados obtenidos de las estadísticas se interpretarán para describir las condiciones asociadas y como impactan en la enseñanza de preescolar y primaria desde casa.|María de los Ángeles|Blancas Regalado|Análisis de las condiciones del aprendizaje desde casa en los alumnos de preescolar y primaria del municipio de Nicolás Romero |2022|Actuaría
+
+|  Carreras  |  Número de instancias | 
+|--------------|----------------------|
+|  Actuaría   |  200    | 
+|  Derecho|   200    | 
+|  Economía|   200    | 
+|  Psicología|   200    | 
+|  Química Farmacéutico Biológica|   200    | 
+
+### Data Fields
+
+El dataset está compuesto por los siguientes campos: "texto|titulo|carrera". <br/>
+texto: Se refiere al texto de la introducción de la tesis. <br/>
+titulo: Se refiere al título de la tesis. <br/>
+carrera: Se refiere al nombre de la carrera a la que pertenece la tesis. <br/>
+
+### Data Splits
+
+El dataset tiene 2 particiones: entrenamiento (train) y prueba (test).
+
+| Partición |  Número de instancias | 
+|--------------|-------------------|
+|  Entrenamiento |  800    | 
+|  Prueba |   200    | 
+
+## Dataset Creation
+
+### Curation Rationale
+
+La creación de este dataset ha sido motivada por la participación en el Hackathon 2022 de PLN en Español organizado por Somos NLP, con el objetivo de democratizar el NLP en español y promover su aplicación a buenas causas y, debido a que no existe un dataset de tesis en español.
+
+### Source Data
+
+#### Initial Data Collection and Normalization
+
+El dataset original (dataset_tesis) fue creado a partir de un proceso de scraping donde se extrajeron tesis de la Universidad Nacional Autónoma de México en el siguiente link: https://tesiunam.dgb.unam.mx/F?func=find-b-0&local_base=TES01. 
+
+Se optó por realizar un scraper para conseguir la información. Se decidió usar la base de datos TESIUNAM, la cual es un catálogo en donde se pueden visualizar las tesis de los sustentantes que obtuvieron un grado en la UNAM, así como de las tesis de licenciatura de escuelas incorporadas a ella.
+
+Para ello, en primer lugar se consultó la Oferta Académica (http://oferta.unam.mx/indice-alfabetico.html) de la Universidad, sitio de donde se extrajo cada una de las 131 licenciaturas en forma de lista. Después, se analizó cada uno de los casos presente en la base de datos, debido a que existen carreras con más de 10 tesis, otras con menos de 10, o con solo una o ninguna tesis disponible. Se usó Selenium para la interacción con un navegador Web (Edge) y está actualmente configurado para obtener las primeras 20 tesis, o menos, por carrera.
+
+Este scraper obtiene de esta base de datos:
+
+-  Nombres del Autor
+-  Apellidos del Autor
+-  Título de la Tesis
+-  Año de la Tesis
+-  Carrera de la Tesis
+
+A la vez, este scraper descarga cada una de las tesis en la carpeta Downloads del equipo local. En el csv formado por el scraper se añadió el "Resumen/Introduccion/Conclusion de la tesis", dependiendo cual primero estuviera disponible, ya que la complejidad recae en la diferencia de la estructura y formato de cada una de las tesis.
+
+#### Who are the source language producers?
+
+Los datos son creados por humanos de forma manual, en este caso por estudiantes de la UNAM y revisados por sus supervisores.
+
+### Annotations
+
+El dataset fue procesado para eliminar información innecesaria para los clasificadores. El dataset original cuenta con los siguientes campos: "texto|autor_nombre|autor_apellido|titulo|año|carrera".
+
+#### Annotation process
+
+Se extrajeron primeramente 200 tesis de 5 carreras de esta universidad: Actuaría, Derecho, Economía, Psicología y Química Farmacéutico Biológica. De estas se extrajo: introducción, nombre del autor, apellidos de autor, título de la tesis y la carrera. Los datos fueron revisados y limpiados por los autores.
+
+Luego, el dataset fue procesado con las siguientes tareas de Procesamiento de Lenguaje Natural (dataset_tesis_procesado):
+- convertir a minúsculas
+- tokenización
+- eliminar palabras que no son alfanuméricas
+- eliminar palabras vacías
+- stemming: eliminar plurales
+
+#### Who are the annotators?
+
+Las anotaciones fueron hechas por humanos, en este caso los autores del dataset, usando código de máquina en el lenguaje Python.
+
+### Personal and Sensitive Information
+
+[More Information Needed]
+
+## Considerations for Using the Data
+
+### Social Impact of Dataset
+
+El presente conjunto de datos favorecerá la búsqueda e investigación relacionada con tesis en español, a partir de su categorización automática por un modelo entrenado con este dataset. Esta tarea favorece el cumplimiento del objetivo 4 de Desarrollo Sostenible de la ONU: Educación y Calidad (https://www.un.org/sustainabledevelopment/es/objetivos-de-desarrollo-sostenible/). 
+
+### Discussion of Biases
+
+El texto tiene algunos errores en la codificación por lo que algunos caracteres como las tildes no se muestran correctamente. Las palabras con estos caracteres son eliminadas en el procesamiento hasta que se corrija el problema.
+
+### Other Known Limitations
+
+[More Information Needed]
+
+## Additional Information
+
+### Dataset Curators
+
+Miembros del equipo (user de Hugging Face):
+
+    [Isacc Isahias López López](https://huggingface.co/MajorIsaiah)    
+    [Yisel Clavel Quintero](https://huggingface.co/clavel)
+    [Dionis López](https://huggingface.co/inoid)
+    [Ximena Yeraldin López López](https://huggingface.co/Ximyer)
+
+### Licensing Information
+
+La versión 1.0.0 del dataset unam_tesis está liberada bajo la licencia <a href='http://www.apache.org/licenses/LICENSE-2.0'/> Apache-2.0 License </a>. 
+
+### Citation Information
+
+"Esta base de datos se ha creado en el marco del Hackathon 2022 de PLN en Español organizado por Somos NLP patrocinado por Platzi, Paperspace y Hugging Face: https://huggingface.co/hackathon-pln-es."
+
+Para citar este dataset, por favor, use el siguiente formato de cita:
+
+    @inproceedings{Hackathon 2022 de PLN en Español, 
+        title={UNAM's Theses with BETO fine-tuning classify}, 
+        author={López López, Isaac Isaías; Clavel Quintero, Yisel; López Ramos, Dionis & López López, Ximena Yeraldin}, 
+        booktitle={Hackathon 2022 de PLN en Español}, 
+        year={2022}
+    }
+
+### Contributions
+
+Gracias a [@yiselclavel](https://github.com/yiselclavel) y [@IsaacIsaias](https://github.com/IsaacIsaias) por agregar este dataset.
+
+

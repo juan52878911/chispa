@@ -1,0 +1,44 @@
+---
+license: cc0-1.0
+task_categories:
+  - text-classification
+language:
+  - en
+tags:
+  - e-commerce
+  - clothing
+  - reviews
+  - cc0
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/train-*.parquet
+---
+
+# kaggle-womens-ecom-clothing-reviews
+
+The Kaggle Women's Clothing E-Commerce Reviews dataset, repacked into one wide ZStandard parquet with one row per review.
+
+## What it is for
+
+The repo is a repack of the Kaggle dataset `nicapotato/womens-ecommerce-clothing-reviews` into a single train split.
+Each row is one review: `row_id`, `clothing_id`, `age`, `rating`, `recommended_ind`, `positive_feedback_count`, `title`, `review_text`, `division_name`, `department_name` and `class_name`.
+The text and taxonomy columns are nullable. They hold NULL where the upstream row had no value.
+The data suits text classification of English product reviews, for example rating or recommendation from review text.
+
+## Provenance
+
+- Upstream source: [nicapotato/womens-ecommerce-clothing-reviews](https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews) on Kaggle, CC0-1.0.
+- Repacked with ZStandard level 9 compression. Citation metadata is in `CITATION.cff`.
+
+## Use
+
+```python
+from datasets import load_dataset
+ds = load_dataset("chibifire/kaggle-womens-ecom-clothing-reviews", split="train")
+```
+
+## Licence
+
+[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/), the upstream dedication.

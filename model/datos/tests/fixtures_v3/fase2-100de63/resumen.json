@@ -1,0 +1,76 @@
+{
+ "por_estado": {
+  "fuera": 19,
+  "construida": 12
+ },
+ "por_tipo": {
+  "choice": {
+   "candidatas": 11,
+   "construidas": 2,
+   "cuentan": 1,
+   "informativo": 1,
+   "n_bajo": true,
+   "es": 0,
+   "en": 1,
+   "es_informativo": 1,
+   "en_informativo": 0
+  },
+  "yesno": {
+   "candidatas": 10,
+   "construidas": 3,
+   "cuentan": 2,
+   "informativo": 1,
+   "n_bajo": true,
+   "es": 0,
+   "en": 2,
+   "es_informativo": 0,
+   "en_informativo": 1
+  },
+  "score": {
+   "candidatas": 10,
+   "construidas": 7,
+   "cuentan": 5,
+   "informativo": 2,
+   "n_bajo": true,
+   "es": 1,
+   "en": 4,
+   "es_informativo": 0,
+   "en_informativo": 2
+  }
+ },
+ "fuera": {
+  "patentes-cpc": "esquema/descarga: la descarga previsible (31.8 GB) pasa del tope de la tarea (3.0 GB)",
+  "tormentas-tipo": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|no restrictions|U\\.S\\. Government/)",
+  "nhtsa-componente": "licencia: no se pudo bajar la ficha https://www.nhtsa.gov/nhtsa-datasets-and-apis (HTTPError: HTTP Error 403: Forbidden)",
+  "neiss-parte-cuerpo": "licencia: no se pudo bajar la ficha https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data (HTTPError: HTTP Error 403: Forbidden)",
+  "nsf-direccion": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|U\\.S\\. Government/)",
+  "wikinoticias-es-categoria": "licencia: la ficha contradice la licencia: SA en el texto («…la licencia que utiliza wikipedia, la licencia creative commons attribution <b>sharealike</b> 3.0, <b>es incompatible</b>. </p><p>no cumplir con estas normas puede dañar…»)",
+  "unam-tesis-carrera": "esquema/descarga: faltan columnas esperadas ['Carrera', 'Resumen', 'Título']; la fila trae ['texto|titulo|carrera']",
+  "biotech-evento": "esquema/descarga: faltan columnas esperadas ['content', 'label 1', 'title']; la fila trae ['Content', 'Label 1', 'Label 2', 'Label 3', 'Label 4', 'Label 5', 'Target Organization', 'Title']",
+  "cpsc-recall-peligro": "licencia: no se pudo bajar la ficha https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information (HTTPError: HTTP Error 403: Forbidden)",
+  "vaers-hospitalizado": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|public use|U\\.S\\. Government/)",
+  "wnli-es": "error JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 1 (char 2)",
+  "osha-hospitalizado": "licencia: no se pudo bajar la ficha https://www.osha.gov/severeinjury (HTTPError: HTTP Error 403: Forbidden)",
+  "moral-stories-accion": "esquema/descarga: faltan columnas esperadas ['immoral_action', 'intention', 'situation']; la fila trae ['ID', 'label', 'moral_action']",
+  "bbh-deportes": "licencia: la tarjeta no declara licencia (campo license ausente)",
+  "strategyqa-si-no": "error JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 1 (char 2)",
+  "fake-news-es": "esquema/descarga: faltan columnas esperadas ['Descripcion', 'Label', 'Titulo']; la fila trae ['CATEGORY', 'HEADLINE', 'ID', 'LINK', 'SOURCE', 'TEXT', 'TOPICS']",
+  "argq-calidad": "licencia: cabecera cc-by-3.0 pero el cuerpo de la tarjeta contradice: SA en el texto («…ts#reusers.27_rights_and_obligations) * (c) copyright ibm 2014. released under [cc-by-sa 3.0](http://creativecommons.org/licenses/by-sa/3.0/) ## citation information…»)",
+  "sts-es": "licencia: la tarjeta no declara licencia (campo license ausente)",
+  "ctgov-fase": "licencia: la ficha no contiene el texto exigido para esta licencia (/public domain|no copyright|U\\.S\\. Government/)"
+ },
+ "n_bajo_minimo": 8,
+ "por_idioma": {
+  "es": {
+   "cuentan": 1,
+   "informativo": 1,
+   "candidatas": 7,
+   "n_bajo": true
+  },
+  "en": {
+   "cuentan": 7,
+   "informativo": 3,
+   "candidatas": 24
+  }
+ }
+}
