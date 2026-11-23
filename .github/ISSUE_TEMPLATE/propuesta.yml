@@ -1,0 +1,21 @@
+name: Propuesta / Proposal
+description: Una idea o un cambio grande, para hablarlo antes de escribir código / An idea or large change, to discuss before coding
+labels: [propuesta]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qué problema resuelve / What problem does it solve
+    validations:
+      required: true
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Propuesta / Proposal
+    validations:
+      required: true
+  - type: textarea
+    id: medida
+    attributes:
+      label: Cómo se mediría / How would it be measured
+      description: Las cifras del proyecto llevan criterio fijado antes de medir. / Project numbers use criteria fixed before measuring.

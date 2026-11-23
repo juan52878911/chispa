@@ -1,0 +1,51 @@
+texto,etiqueta
+"¿Cuánto vale el galón de pintura blanca de tres años?",cotizacion
+"Necesito cotizar 20 láminas de drywall y perfiles",cotizacion
+"¿Tienen disponible taladro percutor de media pulgada?",cotizacion
+"Me pasa el precio por mayor de la varilla de 3/8",cotizacion
+"¿A cómo está el metro de manguera para jardín?",cotizacion
+"¿Qué precio tiene la caja de baldosa de 60 por 60?",cotizacion
+"Cotíceme por favor 100 metros de cable número 12",cotizacion
+"¿Les queda pegante para enchape en bodega?",cotizacion
+"Buenas, ¿cuánto cuesta la tubería PVC de 4 pulgadas?",cotizacion
+"¿Manejan precio especial si llevo 30 bultos de arena?",cotizacion
+"Quiero comprar dos cajas de tornillos y que me las envíen a Soacha",pedido
+"Hice un pedido el lunes y todavía no llega",pedido
+"Quiero pagar y recibir en casa las baldosas que cotizamos",pedido
+"¿En qué va mi pedido 4587?",pedido
+"Confirmo la compra de cinco bultos de cemento para mañana",pedido
+"Mándeme a domicilio tres galones de pintura y una brocha",pedido
+"Ya pagué la transferencia, ¿cuándo despachan?",pedido
+"Necesito que el pedido llegue antes del sábado a la obra",pedido
+"Separen por favor la escalera de aluminio, paso a recogerla hoy",pedido
+"El domiciliario no ha llegado con mi pedido de esta mañana",pedido
+"El taladro que compré dejó de funcionar a los tres días",garantia
+"Quiero devolver el martillo, vino con el mango roto",garantia
+"Me llegó una sierra distinta a la que pedí y quiero cambiarla",garantia
+"La garantía de la pulidora aún está vigente, ¿cómo la hago valer?",garantia
+"Compré una escalera y está torcida, necesito el reembolso",garantia
+"La pintura que me vendieron salió dañada y con grumos",garantia
+"La llave de paso gotea desde que la instalé, quiero que me la cambien",garantia
+"El candado se trabó la primera semana, ¿me lo reponen?",garantia
+"Devuélvanme la plata, la cerradura no le sirve a mi puerta",garantia
+"La manguera se rompió al primer uso, exijo el cambio",garantia
+"¿Qué broca sirve para perforar concreto sin que se parta?",asesoria
+"¿Cuántos bultos de cemento necesito para una placa de 20 metros?",asesoria
+"No sé si usar silicona o sellante para el baño",asesoria
+"¿Qué diferencia hay entre pintura vinilo y esmalte?",asesoria
+"¿Cómo instalo una llave de lavamanos sin cambiar la tubería?",asesoria
+"¿Qué chazo me recomienda para colgar un televisor en drywall?",asesoria
+"¿Sirve el impermeabilizante en una terraza que ya tiene goteras?",asesoria
+"¿Qué calibre de cable uso para una ducha eléctrica?",asesoria
+"¿Cada cuánto hay que cambiarle el disco a la pulidora?",asesoria
+"¿Cómo preparo la pared antes de pintar si tiene humedad?",asesoria
+"Necesito la factura electrónica de mi compra del viernes",factura
+"Me pueden mandar el RUT de la ferretería",factura
+"La factura salió a nombre equivocado, hay que corregir el NIT",factura
+"Pido factura a nombre de mi empresa para la compra de ayer",factura
+"No me llegó la factura al correo",factura
+"Necesito un certificado de retención en la fuente de este año",factura
+"Reenvíenme la factura del pedido 4587 que la perdí",factura
+"La factura tiene mal el valor del IVA",factura
+"¿A qué correo les mando los datos para facturar a la constructora?",factura
+"Anulen esa factura y hagan una nueva con la razón social correcta",factura

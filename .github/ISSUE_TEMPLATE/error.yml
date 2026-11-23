@@ -1,0 +1,40 @@
+name: Error / Bug
+description: Algo no funciona como dice la documentación / Something does not work as documented
+labels: [error]
+body:
+  - type: markdown
+    attributes:
+      value: "Las vulnerabilidades no van aquí: ver SECURITY.md. / Security issues: see SECURITY.md."
+  - type: input
+    id: version
+    attributes:
+      label: Commit o versión / Commit or version
+      placeholder: "git rev-parse --short HEAD"
+    validations:
+      required: true
+  - type: dropdown
+    id: modo
+    attributes:
+      label: Modo / Mode
+      options: [clásico (.chispa), CPU (kNN), GPU (Qwen3-4B), SDK, otro / other]
+    validations:
+      required: true
+  - type: input
+    id: sistema
+    attributes:
+      label: Sistema / System
+      placeholder: "macOS 15 arm64, Go 1.27.1, Python 3.12"
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo / Steps to reproduce
+      description: Comando exacto y, si aplica, la petición JSON (sin datos personales). / Exact command and request JSON (no personal data).
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: salida
+    attributes:
+      label: Qué pasó y qué esperabas / What happened and what you expected
+    validations:
+      required: true

@@ -14,15 +14,44 @@
 </p>
 
 <p align="center">
+  <a href="#pruébalo-en-5-minutos">Pruébalo</a> ·
   <a href="#los-dos-modos">Modos</a> ·
   <a href="#cómo-arrancarlo">Arrancar</a> ·
   <a href="#cifras-honestas">Cifras</a> ·
   <a href="#qué-está-refutado">Refutado</a> ·
   <a href="#modo-clásico-congelado">Modo clásico</a> ·
-  <a href="docs/00-indice.md">Documentación</a>
+  <a href="docs/00-indice.md">Documentación</a> ·
+  <a href="README.en.md">English</a>
 </p>
 
 ---
+
+## Para quién
+
+Para quien tiene que poner una etiqueta cerrada a muchos textos cortos (tickets, PQRS, correos, mensajes de chat) y quiere que la
+decisión corra en su propia máquina, con sus propios ejemplos, con una probabilidad por opción y con una señal de «no estoy seguro»
+(`escalate`) en vez de una respuesta inventada. Hay tres formas de usarlo:
+
+| Si tienes… | Usa | Lo que está medido |
+|---|---|---|
+| Datos etiquetados de tu tarea (≥ 20 por opción) y solo CPU, o un móvil | **Modo clásico**: un `.chispa` entrenado por tarea | macro-F1 **0,814** en massive y **0,887** en clinc150, p99 de **9–12 ms** por consulta en CPU ([fuente](server/deploy/resultados/e2e-20261028/LEEME.md)) |
+| Unos pocos ejemplos por clase (8 en la medida), solo CPU | **Modo CPU**: kNN con e5, los ejemplos van en la petición | `choice` **0,483** en 8 tareas selladas, a la par del Qwen3-4B sin ejemplos (0,485); codificador ≈ 9 ms por consulta ([cifras](#cifras-honestas), [`PRODUCTO.md`](server/PRODUCTO.md)) |
+| Unos pocos ejemplos por clase y una GPU | **Modo GPU**: Qwen3-4B con 8 demostraciones elegidas por kNN | **0,501** global en las selladas (0,614 en `choice`) ([cifras](#cifras-honestas)) |
+
+Qué no es: no es un modelo que acierte sin ejemplos (el zero-shot del modo clásico no vende), `score` es experimental y solo ayuda
+con una rúbrica escrita por ti, y ningún paquete del SDK está publicado en un registro todavía.
+
+## Pruébalo en 5 minutos
+
+Solo CPU, sin descargar modelos; necesitas Go ≥ 1.27 y Python ≥ 3.9. Desde la raíz del repositorio:
+
+```sh
+ejemplos/ferreteria/correr.sh
+```
+
+Entrena un `.chispa` con 50 ejemplos inventados (10 por opción) de una ferretería, lo sirve con `chispa-server` y clasifica 5 mensajes
+que no están en los ejemplos. Salida y explicación en [`ejemplos/README.md`](ejemplos/README.md). Con tan pocos ejemplos acierta las 5
+pero **escala** las 5 (su confianza no llega al umbral): es justo lo que debe hacer, y para que conteste solo hacen falta más datos.
 
 ## Qué es Chispa hoy
 
@@ -295,6 +324,7 @@ desplegar Chispa en una microVM ([`deploy/kindling/`](deploy/kindling/README.md)
 
 | Carpeta | Qué hay |
 |---|---|
+| [`ejemplos/`](ejemplos/README.md) | La demo de 5 minutos (modo clásico, solo CPU) |
 | [`docs/`](docs/00-indice.md) | Documentación de producto: [qué es](docs/01-que-es.md), [inicio rápido](docs/02-inicio-rapido.md), [API](docs/03-api.md), [formato](docs/04-formato-chispa.md), [límites](docs/07-rendimiento-y-limites.md) |
 | [`server/`](server/README.md) | `chispa-server`: servidor de clasificación ([`PRODUCTO.md`](server/PRODUCTO.md)); cascada clásica y torres congeladas, OpenAPI, carga y despliegue |
 | [`format/chispa3/`](format/chispa3/README.md) | El formato `.chispa` v3 y su cargador en Go |
@@ -307,6 +337,11 @@ desplegar Chispa en una microVM ([`deploy/kindling/`](deploy/kindling/README.md)
 | [`audio/`](audio/README.md) | Diseño de Chispa de audio, sin modelos |
 
 Antes de dar algo por terminado: `make test` y `make smoke`.
+
+## Contribuir y seguridad
+
+Cómo proponer cambios: [`CONTRIBUTING.md`](CONTRIBUTING.md). Vulnerabilidades: [`SECURITY.md`](SECURITY.md), nunca en un issue público.
+Normas de convivencia: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ## Licencia
 
