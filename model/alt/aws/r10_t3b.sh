@@ -137,7 +137,7 @@ if [ "$LOCAL" = 1 ]; then URL=${CHISPA_LOCAL_URL:?en local hace falta CHISPA_LOC
 else
   T1=$(date +%s)
   if bajar Qwen/Qwen3-4B-Instruct-2507 $REV4 "$BASE/m4" '*.json' '*.safetensors' '*.txt' 'LICENSE*'; then
-    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
     nohup "$VPY" -m vllm.entrypoints.openai.api_server --model "$BASE/m4" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
       --gpu-memory-utilization 0.85 --max-logprobs 20 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm-qwen3-4b.log" 2>&1 &
     VP=$!

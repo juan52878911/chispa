@@ -68,7 +68,7 @@ def reescribir(a):
     if tipos is not None:
         d = json.loads(secs[formato.CALIB])
         d["tipos"] = tipos
-        d["tipos_l2"] = tipos   # desde 2b7096a L2 lee tipos_l2 (si existe) y no tipos
+        d["tipos_l2"] = tipos   # desde cb11a09 L2 lee tipos_l2 (si existe) y no tipos
         secs[formato.CALIB] = json.dumps(d).encode()
     if l2 is not None:
         secs[formato.L2] = l2
@@ -157,7 +157,7 @@ class Servidor:
         (tmp / "torre.onnx").write_bytes(self.torr["onnx"])
         self.q, self.t, self.tok = E.sesion(tmp / "l2.onnx"), E.sesion(tmp / "torre.onnx"), tok
         self.calib = json.loads(secs[formato.CALIB])
-        if self.calib.get("tipos_l2"):   # L2 lee tipos_l2 si existe (desde 2b7096a); `tipos` es de L1
+        if self.calib.get("tipos_l2"):   # L2 lee tipos_l2 si existe (desde cb11a09); `tipos` es de L1
             self.calib["tipos"] = self.calib["tipos_l2"]
         g = onnx.load(str(tmp / "l2.onnx"), load_external_data=False)
         props = {p.key: p.value for p in g.metadata_props}

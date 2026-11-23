@@ -1,6 +1,6 @@
 # T0.4: modelos abiertos frente a e5-small + kNN (español, CPU)
 
-Sondeo congelado antes de evaluar (commit 7b33239): `model/sondeo/SHA256`, hash de ese fichero
+Sondeo congelado antes de evaluar (commit 7d50e9a): `model/sondeo/SHA256`, hash de ese fichero
 `shasum -a 256 model/sondeo/SHA256` (lista de los 8 `.jsonl`; verificada con `shasum -c` al terminar: 0 diferencias).
 Tareas: `intencion` (MASSIVE es, 13 clases), `toxicidad` (HateCheck es, 2 clases), `whatsapp_comercio`
 (Arena, 4 clases), `herramientas` (212 peticiones, 15 herramientas + `escalate`). Tablas completas en `resultados_tablas.md`

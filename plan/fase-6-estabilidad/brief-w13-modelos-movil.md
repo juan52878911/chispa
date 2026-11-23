@@ -17,7 +17,7 @@
 
   Lo exporta `model/l2/exportar.py` (`--perfil movil` / `movil-int8`, con `--vocab-ampliar`), y `chispa train` (SDK) los
   empaqueta (`--perfil`, `--torre`, `--l1`).
-- **Checkpoint:** el ajuste 1, la línea base oficial (`s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt`), con
+- **Checkpoint:** el ajuste 1, la línea base oficial (`s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt`), con
   texto de torre v1.
 
 ## Terminado cuando

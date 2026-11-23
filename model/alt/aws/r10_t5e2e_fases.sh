@@ -79,7 +79,7 @@ else
   VPY=/opt/vllm/bin/python; PY=python3
   wait $PDL 2>/dev/null; [ "$(cat "$BASE/descarga-modelo.rc" 2>/dev/null || echo 9)" = 0 ] || { tail -3 "$BASE/descarga-modelo.log"; fallo "descarga del modelo"; estado vllm "FALLO modelo"; cierre; }
   URL=http://127.0.0.1:8000
-  export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+  export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
   nohup "$VPY" -m vllm.entrypoints.openai.api_server --model "$BASE/modelo" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
     --gpu-memory-utilization 0.85 --max-logprobs 20 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm-4b.log" 2>&1 &
   VP=$!

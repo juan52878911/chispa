@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # R10-c, g5: el 4B por logprobs etiqueta el fondo de la batería v2 (6 tareas dev). Mismo ud que R7b/R9-m (llm_r7b.sh sin tocar; solo cambian el
-# prefijo s3://…/r10-c-lp-SHA y N_REET) y el cliente llm_logprobs.py del sha de R5 (0bcbd78). El fondo se REORDENA para que quepa lo más útil
+# prefijo s3://…/r10-c-lp-SHA y N_REET) y el cliente llm_logprobs.py del sha de R5 (f85da01). El fondo se REORDENA para que quepa lo más útil
 # (`few_shot_v2 ordenar`: baratas hasta 100 por clase, luego alternando por coste las caras y el resto) y se imprime lo que cabe en la ventana.
 # No sube nada.
 # Uso: bash model/alt/aws/empaquetar_r10_c_lp.sh SHA SHA_R5 FONDO DIR_SALIDA [VENTANA_S=720]

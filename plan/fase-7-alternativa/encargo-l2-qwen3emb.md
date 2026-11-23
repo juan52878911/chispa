@@ -17,7 +17,7 @@ Pedido por Juan («Sí, intégralo») a través de la sesión «LLM arquitectura
   - Si la p50 en CPU pasa de 150 ms, la nota de PRODUCTO.md es «recomendado con GPU o cuando la latencia no importe».
 
 ## Línea base
-- `llm-rondas-r10` (48e9a2c) más los 4 commits de R11 (52edbe5, la referencia en Python).
+- `llm-rondas-r10` (53e0415) más los 4 commits de R11 (736a001, la referencia en Python).
 - No se fusiona con `integracion-uso-general`: eso lo decide Juan.
 
 ## Presupuesto

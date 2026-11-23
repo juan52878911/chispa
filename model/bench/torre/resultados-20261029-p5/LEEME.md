@@ -1,4 +1,4 @@
-# P5, primera corrida (c6a.2xlarge, `integracion` @ `fd051c7`, checkpoint G.8 corrida 2, 2026-10-29)
+# P5, primera corrida (c6a.2xlarge, `integracion` @ `93099de`, checkpoint G.8 corrida 2, 2026-10-29)
 
 - **Perfil servidor:** consulta y torre fp32 con vocabulario completo.
   - **Paridad exacta:** coseno de `h` 1,0000 (mínimo 1,0000), top-1 1,000 y 0 % de `<unk>`.

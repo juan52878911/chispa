@@ -11,9 +11,9 @@ CHISPA_S3=__CHISPA_S3__
 # Coste ≈ 1 USD: g5.xlarge 1,01 USD/h × ≈ 60 min; el techo es `shutdown -h +75` = 1,3 USD. Opcionales: CHISPA_{G8,META,BLANDAS}_S3, CHISPA_MINUTOS, CHISPA_MAX_FILAS_M3/M4.
 # CHISPA_TEXTO_TORRE=v2_sin_id (W6): el ajuste pasa `--texto-torre v2_sin_id` (texto de torre sin id si hay descripción, contrato-torre.md) y el nuevo se
 # mide con él; G.8 sigue en v1 (su checkpoint no trae texto_torre). M3 incluye `todo_mayusculas`. Mismo tope: ≈ 1 USD y `shutdown -h +75`.
-# CHISPA_V3=1 (W9, ajuste v3): parte del checkpoint v2 (CHISPA_G8_S3, por defecto s3://…/ajuste-v2-23b38e6/ckpt/mejor.pt) con CHISPA_TEXTO_TORRE=v2_sin_id
+# CHISPA_V3=1 (W9, ajuste v3): parte del checkpoint v2 (CHISPA_G8_S3, por defecto s3://…/ajuste-v2-73c3ca2/ckpt/mejor.pt) con CHISPA_TEXTO_TORRE=v2_sin_id
 # por defecto, y añade a train Clandestino (`microsoft/Clandestino` de GitHub, solo `IsAIGenerated == "False"` y sin PII, model.datos.clandestino; se baja y se corre primero `contar`) y `tsjev-es`
-# (CHISPA_TSJEV_ES_S3, por defecto s3://…/traducir-286bda8/tsjev-es; se baja resumen.json y los ficheros train-*/dev-* que lista, nunca los test-*; sin
+# (CHISPA_TSJEV_ES_S3, por defecto s3://…/traducir-9646a04/tsjev-es; se baja resumen.json y los ficheros train-*/dev-* que lista, nunca los test-*; sin
 # ListBucket no se puede listar). El aumento usa las fracciones de v3 (paráfrasis 0,4, erratas 0,3, inglés 0,1). El nuevo se mide frente a **v2**
 # (dir `v2/`, no `g8/`) en la misma máquina: JevBench, M3 (paráfrasis, erratas, renombrar, todo en mayúsculas…) y M4 ampliado (MASSIVE es/en, MMMLU
 # ES_LA con su pareja de MMLU, o solo en español marcado). Si Clandestino no baja o no tiene filas válidas
@@ -22,10 +22,10 @@ CHISPA_S3=__CHISPA_S3__
 EXCLUIR=${CHISPA_EXCLUIR:-massive,hatecheck,inyecciones}   # MASSIVE, HateCheck y MMMLU solo se miden, nunca se entrenan
 V3=${CHISPA_V3:-0}
 case $V3 in 0|1) ;; *) echo "CHISPA_V3 debe ser 0 o 1, no «$V3»"; exit 2;; esac
-if [ "$V3" = 1 ]; then BN=v2; G8_DEF=s3://chispa-pruebas-cuenta-aws/ajuste-v2-23b38e6/ckpt/mejor.pt
+if [ "$V3" = 1 ]; then BN=v2; G8_DEF=s3://chispa-pruebas-cuenta-aws/ajuste-v2-73c3ca2/ckpt/mejor.pt
 else BN=g8; G8_DEF=s3://chispa-pruebas-cuenta-aws/general-20261029b/ckpt/mejor.pt; fi   # BN: nombre del checkpoint de partida y de su carpeta de medidas
 G8_S3=${CHISPA_G8_S3:-$G8_DEF}
-TSJEV_ES_S3=${CHISPA_TSJEV_ES_S3:-s3://chispa-pruebas-cuenta-aws/traducir-286bda8/tsjev-es}
+TSJEV_ES_S3=${CHISPA_TSJEV_ES_S3:-s3://chispa-pruebas-cuenta-aws/traducir-9646a04/tsjev-es}
 META_S3=${CHISPA_META_S3:-s3://chispa-pruebas-cuenta-aws/meta-20261027/meta}
 BLANDAS_S3=${CHISPA_BLANDAS_S3:-s3://chispa-pruebas-cuenta-aws/maestro-20261027/ronda1}
 EPIS="--episodios --k-min 4 --k-max 32 --frac-meta 0.5 --frac-zeroshot 0.25"

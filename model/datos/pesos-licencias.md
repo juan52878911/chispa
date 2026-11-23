@@ -1,7 +1,7 @@
 # Pesos y licencias: qué datos entraron en el entrenamiento de cada checkpoint (2026-11-03)
 
-Antes de publicar pesos con Apache-2.0. Auditoría de solo lectura del código con que se lanzó cada ajuste (`80ab8ef` ajuste 1,
-`23b38e6` v2, `ff35977` v3) y de los resultados en git. No se abrió `data/` ni `models/`.
+Antes de publicar pesos con Apache-2.0. Auditoría de solo lectura del código con que se lanzó cada ajuste (`4a2e745` ajuste 1,
+`73c3ca2` v2, `d299834` v3) y de los resultados en git. No se abrió `data/` ni `models/`.
 
 ## Conclusión
 - **Ningún L2 entrenado (G.8, ajuste 1 = línea base oficial, v2, v3) es publicable bajo Apache tal cual.**
@@ -43,15 +43,15 @@ Antes de publicar pesos con Apache-2.0. Auditoría de solo lectura del código c
 | G.8 | meta pawsx-es (train) | libre para cualquier uso | sí | `conversion-20261027.json` |
 | G.8 | **meta sib200-es (train, 701)** | **CC-BY-SA-4.0** | **no** | `model/meta/sib200_es.py`; `conversion-20261027.json` |
 | G.8 | blandas del maestro Qwen3.5-4B | Apache según un comentario; tarjeta sin verificar | dudoso | `maestro/resultados/ronda1-18000.json`; `blandas: 512944` |
-| **ajuste 1 = línea base oficial** | todo lo de G.8 (arranca `--desde` G.8) | ver G.8 | ver G.8 | `ajuste.sh@80ab8ef`; `estado.tsv` |
+| **ajuste 1 = línea base oficial** | todo lo de G.8 (arranca `--desde` G.8) | ver G.8 | ver G.8 | `ajuste.sh@4a2e745`; `estado.tsv` |
 | ajuste 1 | locales de G.8 más pawsx (train, 49 401) | libre | sí | 128 828 − 78 726 |
-| ajuste 1 | **sib200 (train, 701)** | **CC-BY-SA-4.0** | **no** | `sib200.py@80ab8ef:15`; `estado.tsv` «16 fuentes (sib200 pawsx …)» |
+| ajuste 1 | **sib200 (train, 701)** | **CC-BY-SA-4.0** | **no** | `sib200.py@4a2e745:15`; `estado.tsv` «16 fuentes (sib200 pawsx …)» |
 | ajuste 1 | meta tsjev (train, 171 172) | por tarea | **dudoso** | `ajuste-20261029/entrenamiento.json` |
 | ajuste 1 | blandas Qwen (ronda1) | sin verificar | dudoso | `blandas: 178365` |
 | ajuste 1 | XNLI, clima, ALIA, PQRS ×4 | NC / NC-SA / etiquetas de LLM / SA | no entran (solo test, filtro aplicado) | `xnli.py`, `clima.py`, `odio_alia.py`, `pqrs_comun.py` |
 | ajuste 1 | aumento (`--aumento`) | por reglas, sin LLM | sí | `model/l2/aumento.py` |
-| v2 (`ajuste-v2-23b38e6`) | lo mismo que el ajuste 1 | idem | idem (con sib200) | `ajuste.sh` 80ab8ef→23b38e6: solo texto_torre y épocas |
-| v3 (`v3-ff359773`) | lo de v2 | idem | idem | `ajuste.sh@ff35977` |
+| v2 (`ajuste-v2-73c3ca2`) | lo mismo que el ajuste 1 | idem | idem (con sib200) | `ajuste.sh` 4a2e745→73c3ca2: solo texto_torre y épocas |
+| v3 (`v3-d299834d`) | lo de v2 | idem | idem | `ajuste.sh@d299834` |
 | v3 | Clandestino (train 23 963, humanas y sin PII) | MIT más condiciones de uso de Microsoft | **dudoso** | `ajuste-v3-20261102/LEEME.md` |
 | L1 potion | modelo de terceros, re-codificado sin entrenar | MIT (sin verificar; destilado de bge-m3) | sí, con aviso | `runtime/l1/exportar.py`; `sdk/NOTICE` |
 | e5 multilingual-small | — | MIT (sin verificar) | sí, con aviso | `sdk/NOTICE` |
@@ -87,7 +87,7 @@ entrenamiento (`sdk/python/chispa/train.py:349`), así que **no sirve como prueb
 | `model/l2/tests/fixtures/esquemas-v2.chispa`, `format/chispa3/testdata/*` (resto) | < 3 KB | fixtures del formato | sí |
 
 ## Qué falta para cerrar
-- **Filas exactas por fuente del ajuste 1:** están en `convertir.log` y `log.txt` dentro de `s3://…/ajuste-80ab8ef/resultados.tgz`.
+- **Filas exactas por fuente del ajuste 1:** están en `convertir.log` y `log.txt` dentro de `s3://…/ajuste-4a2e745/resultados.tgz`.
 - **Licencia por tarea de tsjev y tsinst:** hace falta el `sources.yaml` del dataset de tasksource.
 - **Contenido y licencia de las 512 944 blandas de G.8:** `s3://…/maestro-20261027/ronda1/blandas.tgz` y la tarjeta de Qwen3.5-4B.
 - **Commit exacto de G.8:** no aparece en su LEEME.

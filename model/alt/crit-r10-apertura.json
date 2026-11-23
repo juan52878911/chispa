@@ -2,7 +2,7 @@
  "ronda": "r10-apertura",
  "estado": "BORRADOR hasta que la sesión principal lo revise y lo congele (rellenar `congelado.commit` y commitear; el ud comprueba el sha256 de ESTE fichero)",
  "congelado": {
-  "commit": "1635175",
+  "commit": "7b01ee5",
   "fecha": "2026-11-16T00:39:27-0500"
  },
  "motivo": "Apertura única de las 8 tareas selladas de la batería v2 (R10): medir UNA vez el sistema final congelado (choice: 4B con 8 demostraciones elegidas por kNN; score: rúbrica mecánica + umbrales isotónicos) frente a sus líneas base, con el criterio fijado en dev y sin leer ninguna fila sellada",
@@ -23,7 +23,7 @@
    "senal": "margen p1 - p2 del kNN-e5",
    "f": 0.5,
    "u": 0.039217,
-   "fuente": "model/alt/resultados-20261113-p0-p2/e-cascada-sin-fondo-9030c9b.json (u elegido en la mitad A de dev, aplicado tal cual); L3 = el sistema final; el final manda TODO a L3 mientras cascada_en_final sea false"
+   "fuente": "model/alt/resultados-20261113-p0-p2/e-cascada-sin-fondo-a880aee.json (u elegido en la mitad A de dev, aplicado tal cual); L3 = el sistema final; el final manda TODO a L3 mientras cascada_en_final sea false"
   }
  },
  "sistemas": {

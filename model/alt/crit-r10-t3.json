@@ -10,7 +10,7 @@
   "4b-fs8": "el mismo 4B, logprobs con 8 ejemplos en contexto del soporte de oro (informativo)",
   "14b-awq-zs": "Qwen/Qwen3-14B-AWQ@31c69efc29464b6bb0aee1398b5a7b50a99340c3, logprobs zero-shot, enable_thinking=false, contexto 8192",
   "mdeberta-nli": "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@b5113eb38ab63efdd7f280f8c144ea8b13f978ce, NLI zero-shot (informativo)",
-  "l2-zs": "checkpoint L2 de Chispa ajuste-80ab8ef/ckpt/mejor.pt, sin soporte (informativo)",
+  "l2-zs": "checkpoint L2 de Chispa ajuste-4a2e745/ckpt/mejor.pt, sin soporte (informativo)",
   "knn-e5-k8": "kNN e5 (614241f6...), 8 de oro por clase, 32 vecinos, temperatura 0,05 (informativo)"
  },
  "metrica": "exactitud por tarea (inválida = fallo); macro = media de las 6 exactitudes por tarea",

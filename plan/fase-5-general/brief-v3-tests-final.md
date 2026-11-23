@@ -2,7 +2,7 @@
 
 ## Antecedentes
 - `integracion` ya tiene fusionados:
-  - `chispa-sdk` (`a797bd4`);
+  - `chispa-sdk` (`1e50326`);
   - `calib_completa` y su test.
 - Hay que confirmar que todo sigue en verde sobre el HEAD que recibes antes de cerrar la tanda.
 

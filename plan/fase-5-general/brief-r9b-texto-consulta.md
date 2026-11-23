@@ -1,7 +1,7 @@
 # R9b `texto_consulta` de noul con la torre de `true`, y recuento de filas `[true, false]`
 
 ## Antecedentes
-R9 (`2e7cb86`) dejó dos piezas usando la torre de `true` en las preguntas noul:
+R9 (`a51efba`) dejó dos piezas usando la torre de `true` en las preguntas noul:
 - el exportador;
 - el runtime.
 

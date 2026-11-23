@@ -14,7 +14,7 @@
   },
   "knn": {"oro_por_clase": 8, "temperatura": 0.05, "vecinos_medidos": [32, 8], "vecinos_por_defecto": "el de mayor macro e2e en dev; empate → 32"},
   "referencia_python": {
-    "fuente": "R11 (model/alt/resultados-20261113-p0-p2/r11-alternativas-ba463e8.json), GPU bf16, transformers 5.22.2",
+    "fuente": "R11 (model/alt/resultados-20261113-p0-p2/r11-alternativas-b0e2ea3.json), GPU bf16, transformers 5.22.2",
     "macro_dev_knn_qwen": {"v32": 0.4675, "v8": 0.4683},
     "paridad": "transformers 5.22.2, AutoTokenizer(padding_side='left') y AutoModel fp32 en CPU, misma revisión"
   },

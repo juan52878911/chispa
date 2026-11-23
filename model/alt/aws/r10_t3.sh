@@ -7,13 +7,13 @@ CHISPA_S3=__CHISPA_S3__
 #   3 14b-awq-zs  Qwen3-14B-AWQ por logprobs zero-shot, sin pensar            4 mdeberta-nli  NLI zero-shot
 #   5 l2-zs (checkpoint de Chispa, sin soporte) y knn-e5-k8
 # Lectura congelada: model/alt/crit-r10-t3.json (su sha256 se comprueba ANTES de medir). Cifras: res/cifras.json (lineas_base_v2.py, solo numpy).
-# Lee:     $CHISPA_S3/{codigo.tgz,dev.tgz} y s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt (L2), todos por nombre exacto
+# Lee:     $CHISPA_S3/{codigo.tgz,dev.tgz} y s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt (L2), todos por nombre exacto
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar.
 MIN=${CHISPA_MIN:-110}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-6}; HILOS=${CHISPA_HILOS:-32}; VLLM=${CHISPA_VLLM:-0.33.0}
 D1=${CHISPA_D1:-14}; D2=${CHISPA_D2:-18}; D3=${CHISPA_D3:-26}; D4=${CHISPA_D4:-10}; D5=${CHISPA_D5:-8}   # minutos máximos por sistema (el 3 incluye cargar el modelo)
 REV4=cdbee75f17c01a7cc42f958dc650907174af0554; REV14=31c69efc29464b6bb0aee1398b5a7b50a99340c3; REVNLI=b5113eb38ab63efdd7f280f8c144ea8b13f978ce
 E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3; TRANSFORMERS=5.22.2
-CRIT_SHA=__CRIT_SHA__; N_TEST=__N_TEST__; N_SOP=__N_SOP__; CKPT=${CHISPA_CKPT:-s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt}
+CRIT_SHA=__CRIT_SHA__; N_TEST=__N_TEST__; N_SOP=__N_SOP__; CKPT=${CHISPA_CKPT:-s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt}
 ORDEN="horeca-resenas usajobs-nivel cfpb-quejas jql-valor-educativo congreso-eeuu-partido finanzas-documentos"
 LOCAL=${CHISPA_LOCAL:-0}
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-t3-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
@@ -124,7 +124,7 @@ if [ "$LOCAL" = 1 ]; then URL=${CHISPA_LOCAL_URL:?en local hace falta CHISPA_LOC
 else
   T1=$(date +%s); OK4=0
   if bajar Qwen/Qwen3-4B-Instruct-2507 $REV4 "$BASE/m4" '*.json' '*.safetensors' '*.txt' 'LICENSE*'; then
-    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
     arrancar "$BASE/m4" qwen3-4b 16384 0.85 --dtype bfloat16 && OK4=1
   fi
   if [ $OK4 = 1 ]; then estado servidor "OK Qwen3-4B-Instruct-2507@$REV4 en $(( $(date +%s) - T1 )) s"; else tail -5 "$BASE/vllm-qwen3-4b.log"; fallo "4B no arrancó"; estado servidor "FALLO 4B"; fi

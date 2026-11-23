@@ -2,9 +2,9 @@
 
 **Línea base oficial actual:** `linea-base.json`.
 
-- **Modelo:** el ajuste 1 de G.8 (`s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt`), con texto de torre v1.
+- **Modelo:** el ajuste 1 de G.8 (`s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt`), con texto de torre v1.
   `.chispa` de `chispa train --ckpt --perfil servidor --torre` (945 MB).
-- **Código y máquina:** `integracion-limpia` `dea0e88` (con `sdk` `3b579a3`, ZY: torres nuevas hasta 256), en una c6a.2xlarge. Sustituye a la primera corrida (`4b49db4`), que dejó clinc150 sin medir.
+- **Código y máquina:** `integracion-limpia` `5b8e679` (con `sdk` `097f46d`, ZY: torres nuevas hasta 256), en una c6a.2xlarge. Sustituye a la primera corrida (`0bc4a23`), que dejó clinc150 sin medir.
 - **Servidor:** `/healthz` da `{"capas":{"L0":false,"L1":false,"L2":true,"L3":false},"torre_al_vuelo":true,"texto_torre":"v1"}`.
 - **Batería** `sdk/python/ejemplos/bateria.json`, sin `--robustez` y con los umbrales de latencia relajados: 11 000 preguntas.
   Las dos corridas dan **exactitud 0,6436 y F1 0,5769**, idénticas: es determinista.

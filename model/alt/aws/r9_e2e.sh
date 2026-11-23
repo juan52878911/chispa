@@ -17,7 +17,7 @@ GO_VERSION=1.27.1
 GO_SHA256=__GO_SHA256__                  # go${GO_VERSION}.linux-amd64.tar.gz (de https://go.dev/dl/); lo sustituye empaquetar_r9_e2e.sh
 ORT_VERSION=1.31.1                       # onnxruntime_go v1.38.0 (server/go.mod; README del servidor)
 ORT_SHA256=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9   # onnxruntime-linux-x64-1.31.1.tgz (server/deploy/Dockerfile)
-MOVIL_S3=${CHISPA_MOVIL_S3:-s3://chispa-pruebas-cuenta-aws/movil-90e3263c/movil}
+MOVIL_S3=${CHISPA_MOVIL_S3:-s3://chispa-pruebas-cuenta-aws/movil-f6acb278/movil}
 MOVIL_SHA=995dd6a7276a7026ce12ad3e04a5324714f62dc05a1c20b11141a580c30db6f4; MOVIL_BYTES=249716640   # model/bench/movil/resultados-20261102-210131/manifiesto.json
 TOK_SHA=356d7ef09425121e93a0a595ca5a4591fbebeb8785b0fc5f405a374459cd1ed6; TOK_BYTES=12111120        # e5.chispa-tok, mismo manifiesto
 DURA_C=${CHISPA_DURA_C:-180}; CLIENTES_A=${CHISPA_CLIENTES_A:-16}; CLIENTES_C=${CHISPA_CLIENTES_C:-32}
@@ -102,7 +102,7 @@ else
   URL=http://127.0.0.1:8000; T1=$(date +%s)
   HF_HUB_ENABLE_HF_TRANSFER=0 "$VPY" -c "from huggingface_hub import snapshot_download as s; s('Qwen/Qwen3-4B-Instruct-2507', revision='$REV', local_dir='$BASE/modelo', allow_patterns=['*.json','*.safetensors','*.txt','merges.txt','vocab.json','LICENSE*'])" \
     || { fallo "descarga del modelo"; estado vllm "FALLO modelo"; cierre; }
-  export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+  export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
   nohup "$VPY" -m vllm.entrypoints.openai.api_server --model "$BASE/modelo" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
     --gpu-memory-utilization 0.85 --max-logprobs 20 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm-4b.log" 2>&1 &
   VP=$!

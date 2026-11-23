@@ -42,12 +42,12 @@ recibes la opción elegida y una probabilidad por opción, con un LLM pequeño (
 | Cuándo | Quieres la mayor exactitud y tienes una GPU (las cifras son de una A10G) | No hay GPU, o la latencia y el coste mandan sobre la exactitud |
 | Requisitos | GPU con vLLM; ejemplos por clase (8 por clase para fs8); en `score`, una rúbrica por nivel escrita por ti | Ejemplos por clase (8 por clase en la medida): en la petición o en bancos. Sin ejemplos no contesta |
 | Codificador | e5-small para elegir demos | e5-small (por defecto) o Qwen3-Embedding-0.6B (opcional) |
-| Latencia orientativa | L3 p50 ≈ 0,6 s con 8 clientes y filas de 60 opciones; p95 ≈ 4 s ([`LEEME` §17.5](model/alt/resultados-20261113-p0-p2/LEEME.md#175-resultado-de-r10-caudal-ec2-inst-33-g5-2026-11-16--045-usd)) | kNN ≈ 1 ms y codificador e5 ≈ 8,6 ms en serie ([`PRODUCTO.md`](server/PRODUCTO.md), R10); con Qwen3-Embedding el kNN es 0,07 ms, pero el codificador da p50 ≈ 1 s en CPU (c7i.xlarge, 4 hilos) ([§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-5d9e86csh-l2-qwen3emb-5d9e86cjson-pasa-pasa_todotrue)) |
-| Coste orientativo | g5.xlarge bajo demanda ≈ 1,006 USD/h ([§12.5](model/alt/resultados-20261113-p0-p2/LEEME.md#125-resultado-ec2-inst-08-2026-11-13-incompleto-falta-el-q4-sin-q4-no-pasaría-agrupada-06497-frente-a-065)); caudal de 7,5 a 10 peticiones/s por g5 con filas de 60 opciones, limitado por vLLM ([§17.5](model/alt/resultados-20261113-p0-p2/LEEME.md#175-resultado-de-r10-caudal-ec2-inst-33-g5-2026-11-16--045-usd)) | c7i.xlarge ≈ 0,1785 USD/h ([§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-5d9e86csh-l2-qwen3emb-5d9e86cjson-pasa-pasa_todotrue)) |
+| Latencia orientativa | L3 p50 ≈ 0,6 s con 8 clientes y filas de 60 opciones; p95 ≈ 4 s ([`LEEME` §17.5](model/alt/resultados-20261113-p0-p2/LEEME.md#175-resultado-de-r10-caudal-ec2-inst-33-g5-2026-11-16--045-usd)) | kNN ≈ 1 ms y codificador e5 ≈ 8,6 ms en serie ([`PRODUCTO.md`](server/PRODUCTO.md), R10); con Qwen3-Embedding el kNN es 0,07 ms, pero el codificador da p50 ≈ 1 s en CPU (c7i.xlarge, 4 hilos) ([§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-3126880sh-l2-qwen3emb-3126880json-pasa-pasa_todotrue)) |
+| Coste orientativo | g5.xlarge bajo demanda ≈ 1,006 USD/h ([§12.5](model/alt/resultados-20261113-p0-p2/LEEME.md#125-resultado-ec2-inst-08-2026-11-13-incompleto-falta-el-q4-sin-q4-no-pasaría-agrupada-06497-frente-a-065)); caudal de 7,5 a 10 peticiones/s por g5 con filas de 60 opciones, limitado por vLLM ([§17.5](model/alt/resultados-20261113-p0-p2/LEEME.md#175-resultado-de-r10-caudal-ec2-inst-33-g5-2026-11-16--045-usd)) | c7i.xlarge ≈ 0,1785 USD/h ([§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-3126880sh-l2-qwen3emb-3126880json-pasa-pasa_todotrue)) |
 
 Sobre el codificador del modo CPU: **Qwen3-Embedding-0.6B es «recomendado con GPU o cuando la latencia no importe»**. En CPU da p50 ≈ 1 s
-por consulta y 2,2 GB de RAM, y a cambio +2,6 puntos de macro sobre e5 con 8 vecinos en dev (0,4683 frente a 0,4429, [§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-ba463e8json)).
-El int8 no es viable (coseno 0,980 < 0,99, [§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-5d9e86csh-l2-qwen3emb-5d9e86cjson-pasa-pasa_todotrue)).
+por consulta y 2,2 GB de RAM, y a cambio +2,6 puntos de macro sobre e5 con 8 vecinos en dev (0,4683 frente a 0,4429, [§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-b0e2ea3json)).
+El int8 no es viable (coseno 0,980 < 0,99, [§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-3126880sh-l2-qwen3emb-3126880json-pasa-pasa_todotrue)).
 
 Los tres tipos de pregunta, igual en los dos modos (contrato: [`server/api/openapi.yaml`](server/api/openapi.yaml)):
 
@@ -55,7 +55,7 @@ Los tres tipos de pregunta, igual en los dos modos (contrato: [`server/api/opena
 |---|---|---|
 | `choice` | Elegir una opción | estable; hasta 62 opciones, y con más de 20, L3 ve solo el top-10 del kNN ([`PRODUCTO.md`](server/PRODUCTO.md)) |
 | `noul` | Sí o no | estable |
-| `score` | Nivel ordinal, ids `"1"` … `"K"` | **experimental** (`experimental: true`): solo ayuda con una rúbrica por nivel escrita por ti ([§17.21](model/alt/resultados-20261113-p0-p2/LEEME.md#1721-resultado-de-t3b-ec2-inst-36-g5--05-usd-verificado-t3b-cifras-91deb47json-pasa-con-rúbrica--umbrales-calibrados), [§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-29c441fjson-medido)) |
+| `score` | Nivel ordinal, ids `"1"` … `"K"` | **experimental** (`experimental: true`): solo ayuda con una rúbrica por nivel escrita por ti ([§17.21](model/alt/resultados-20261113-p0-p2/LEEME.md#1721-resultado-de-t3b-ec2-inst-36-g5--05-usd-verificado-t3b-cifras-d0fc6d7json-pasa-con-rúbrica--umbrales-calibrados), [§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-3d86859json-medido)) |
 
 ## Cómo arrancarlo
 
@@ -76,7 +76,7 @@ Todas las cifras son de exactitud (macro: media de las exactitudes por tarea) y 
 ### Selladas: una sola apertura, 8 tareas
 
 Se abrieron **una vez** (2026-11-16) con la configuración congelada de antemano; 4 tareas `choice` y 4 `score`; el sistema final y el 4B sin ejemplos cubren el 100 % de las 2 955 filas.
-Fuente: [§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-29c441fjson-medido), `apertura-selladas-29c441f.json`. IC95 por tareas entre corchetes (solo 4 tareas por tipo, así que son anchos).
+Fuente: [§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-3d86859json-medido), `apertura-selladas-3d86859.json`. IC95 por tareas entre corchetes (solo 4 tareas por tipo, así que son anchos).
 
 | sistema | choice | score | global (8) |
 |---|---|---|---|
@@ -88,12 +88,12 @@ Fuente: [§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de
 Diferencias del final: frente al 4B sin ejemplos, +12,9 en `choice` [−1,6, +28,0], −2,7 en `score` [−12,4, +4,4] y +5,1 global [−4,3, +15,5];
 frente a la mayoritaria, +37,3 global [+24,4, +50,9]; frente al kNN, +10,0 global [−0,0, +18,4]. **Lectura honesta:** en `choice`, el kNN (0,483) y el 4B sin ejemplos (0,485)
 empatan; lo que sube es meter las demostraciones elegidas por kNN. En `score` el sistema final no mejora al 4B sin ejemplos.
-Las selladas quedan gastadas: ya no son una medida ciega ([§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-29c441fjson-medido)).
+Las selladas quedan gastadas: ya no son una medida ciega ([§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-3d86859json-medido)).
 
 ### Dev: indicativas, 6 tareas
 
 Las 6 tareas de desarrollo se miraron varias veces: son **indicativas** y confirmarlas exige una batería nueva sellada. Macro de exactitud
-([§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-ba463e8json), `r11-alternativas-ba463e8.json`):
+([§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-b0e2ea3json), `r11-alternativas-b0e2ea3.json`):
 
 | sistema | macro dev (6) |
 |---|---|
@@ -103,9 +103,9 @@ Las 6 tareas de desarrollo se miraron varias veces: son **indicativas** y confir
 | kNN-e5, 32 vecinos | 0,390 |
 
 Con el servidor Go por HTTP, kNN con Qwen3-Embedding y 8 vecinos: **0,4700** (R11 en Python: 0,4683; cobertura 100 %,
-[§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-5d9e86csh-l2-qwen3emb-5d9e86cjson-pasa-pasa_todotrue)).
-Otras cifras de dev: demostraciones elegidas por kNN frente a al azar, +5,5 de macro en 5 tareas ([§17.24](model/alt/resultados-20261113-p0-p2/LEEME.md#1724-resultado-de-d-ec2-inst-24-g5-54-min--10-usd-verificado-d-cifras-91deb47json-no-medido-por-cobertura-0902--1-informativo-demos-por-knn-55-la-mezcla-no-aporta));
-en `score`, la rúbrica escrita más los umbrales calibrados sube +15,1 de exactitud macro sobre 3 tareas ([§17.21](model/alt/resultados-20261113-p0-p2/LEEME.md#1721-resultado-de-t3b-ec2-inst-36-g5--05-usd-verificado-t3b-cifras-91deb47json-pasa-con-rúbrica--umbrales-calibrados)),
+[§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-3126880sh-l2-qwen3emb-3126880json-pasa-pasa_todotrue)).
+Otras cifras de dev: demostraciones elegidas por kNN frente a al azar, +5,5 de macro en 5 tareas ([§17.24](model/alt/resultados-20261113-p0-p2/LEEME.md#1724-resultado-de-d-ec2-inst-24-g5-54-min--10-usd-verificado-d-cifras-d0fc6d7json-no-medido-por-cobertura-0902--1-informativo-demos-por-knn-55-la-mezcla-no-aporta));
+en `score`, la rúbrica escrita más los umbrales calibrados sube +15,1 de exactitud macro sobre 3 tareas ([§17.21](model/alt/resultados-20261113-p0-p2/LEEME.md#1721-resultado-de-t3b-ec2-inst-36-g5--05-usd-verificado-t3b-cifras-d0fc6d7json-pasa-con-rúbrica--umbrales-calibrados)),
 pero con una rúbrica mecánica, en las selladas, resta 2,7.
 
 ## Qué está refutado
@@ -117,12 +117,12 @@ Cada línea es una hipótesis que se midió con criterio congelado y no se sostu
 - **Q4_K_M del 4B:** pierde 3,05 puntos y el criterio pedía ≤ 2 ([§12.7](model/alt/resultados-20261113-p0-p2/LEEME.md#127-resultado-de-la-ronda-de-q4-ec2-inst-13-2026-11-15-el-q4-pierde-305-puntos-y-no-cumple--2)).
 - **LLM pequeños como L3 barato (Qwen3-1.7B y 0.6B):** refutados, también por logprobs ([§13.6](model/alt/resultados-20261113-p0-p2/LEEME.md#136-resultado-de-r2-ec2-inst-19-g5xlarge-2026-11-15-los-dos-refutados), [§14.5](model/alt/resultados-20261113-p0-p2/LEEME.md#145-resultado-de-r5-ec2-inst-01-g5xlarge-2026-11-15-pequeños-refutados-el-4b-por-logprobs-da-0729)).
 - **Prequential (el fondo etiquetado por el LLM se acumula sobre la marcha):** refutado en R6 y sin pasar en R8b ([§14.8](model/alt/resultados-20261113-p0-p2/LEEME.md#148-resultados-de-r6-en-la-c7i-ec2-inst-34-2026-11-15-r4-no-pasa-r6-refutado-versiones-y-latencia), [§15.5](model/alt/resultados-20261113-p0-p2/LEEME.md#155-resultado-de-r8b-ec2-inst-11-c7i2xlarge-2026-11-16-prequential-no-pasa-la-cascada-alcanza-a-l3-escalando-el-30-)).
-- **Fondo etiquetado por el LLM para el kNN (few-shot C):** refutado en dev; hunde las tareas `score` donde el LLM falla ([§17.8](model/alt/resultados-20261113-p0-p2/LEEME.md#178-c-few-shot-real-en-v2-dev-preparado-código-8e27680-rama-r10-c-fusionada), resultado dentro de la misma sección).
-- **Destilación del 4B en el biencoder:** el piloto empeora −11,2 a −14,1 puntos frente a e5 puro y se para ([§17.15](model/alt/resultados-20261113-p0-p2/LEEME.md#1715-resultado-del-piloto-de-destilación-ec2-inst-29-g5-51-min-de-trabajo--095-usd-verificado-r10-piloto-3c1a7ca-para)).
-- **Cascada kNN → L3 sin fondo etiquetado:** solo funciona con datos; con 8 por clase pierde 1,3 puntos escalando la mitad y el AUROC del margen es 0,608 ([§17.23](model/alt/resultados-20261113-p0-p2/LEEME.md#1723-resultado-de-e-i7-0-usd-e-cascada-sin-fondo-9030c9bjson-no-pasa--la-cascada-solo-funciona-con-datos)); el kNN de Qwen tampoco la arregla ([§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-ba463e8json)). Por eso el modo GPU lo manda todo a L3.
-- **Reranker Qwen3-Reranker-0.6B como clasificador:** −10,9 frente al 4B y igual de lento ([§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-ba463e8json)).
-- **Rúbrica mecánica para `score`:** no se sostiene fuera de dev (−2,7 en las selladas) ([§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-29c441fjson-medido)).
-- **int8 del Qwen3-Embedding:** no viable, coseno 0,980 < 0,99 ([§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-5d9e86csh-l2-qwen3emb-5d9e86cjson-pasa-pasa_todotrue)).
+- **Fondo etiquetado por el LLM para el kNN (few-shot C):** refutado en dev; hunde las tareas `score` donde el LLM falla ([§17.8](model/alt/resultados-20261113-p0-p2/LEEME.md#178-c-few-shot-real-en-v2-dev-preparado-código-1480852-rama-r10-c-fusionada), resultado dentro de la misma sección).
+- **Destilación del 4B en el biencoder:** el piloto empeora −11,2 a −14,1 puntos frente a e5 puro y se para ([§17.15](model/alt/resultados-20261113-p0-p2/LEEME.md#1715-resultado-del-piloto-de-destilación-ec2-inst-29-g5-51-min-de-trabajo--095-usd-verificado-r10-piloto-edb29db-para)).
+- **Cascada kNN → L3 sin fondo etiquetado:** solo funciona con datos; con 8 por clase pierde 1,3 puntos escalando la mitad y el AUROC del margen es 0,608 ([§17.23](model/alt/resultados-20261113-p0-p2/LEEME.md#1723-resultado-de-e-i7-0-usd-e-cascada-sin-fondo-a880aeejson-no-pasa--la-cascada-solo-funciona-con-datos)); el kNN de Qwen tampoco la arregla ([§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-b0e2ea3json)). Por eso el modo GPU lo manda todo a L3.
+- **Reranker Qwen3-Reranker-0.6B como clasificador:** −10,9 frente al 4B y igual de lento ([§18.2](model/alt/resultados-20261113-p0-p2/LEEME.md#182-resultado-de-r11-ec2-inst-21-g5-us-east-1b-042857---0453-utc--24-min--04-usd-verificado-r11-alternativas-b0e2ea3json)).
+- **Rúbrica mecánica para `score`:** no se sostiene fuera de dev (−2,7 en las selladas) ([§17.26](model/alt/resultados-20261113-p0-p2/LEEME.md#1726-resultado-de-la-apertura-única-de-las-selladas-2-g5-a-inst-03-b-inst-18--21-usd-verificado-en-las-dos-apertura-selladas-3d86859json-medido)).
+- **int8 del Qwen3-Embedding:** no viable, coseno 0,980 < 0,99 ([§19.3](model/alt/resultados-20261113-p0-p2/LEEME.md#193-segunda-corrida-ec2-inst-15-c7ixlarge-us-east-1f-launchtime-074430-utc--listo-092043-verificado-0921--97-min--029-usd-ud-ud-l2-qwen3emb-3126880sh-l2-qwen3emb-3126880json-pasa-pasa_todotrue)).
 - **Zero-shot de Chispa clásico:** no vende (ver el modo clásico más abajo).
 
 ## Modo clásico (congelado)
@@ -154,7 +154,7 @@ Su documentación sigue en [`docs/`](docs/00-indice.md), que describe este modo 
   128 tokens ([`LEEME`](model/evaluacion/resultados/jevbench-20261029/LEEME.md)).
 - Un codificador abierto ajustado de punta a punta (e5-small sin congelar con cabeza cross-encoder, destilado de un LLM local)
   saca 0,511 en JevBench frente a 0,4935 de Chispa en el mismo arnés, pero con p50 de 206 ms frente a los ≤ 60 ms pedidos: no
-  compensa ([`informe`](archivo/model-alt/resultados/g5-2058ffa/informe.md)).
+  compensa ([`informe`](archivo/model-alt/resultados/g5-41e8e2a/informe.md)).
 
 **L3 (LLM local), como respaldo.** Con Ollama y `qwen3:4b-instruct` en un i7 de 4 núcleos, sobre 1 061 filas: en hatecheck (sí/no)
 la cascada pasa del 28,8 % al 48,5 % a unos 4 s por escalada; en massive (60 opciones) apenas cambia (43,6 → 44,0 %). Sus

@@ -15,7 +15,7 @@ personal en microVM de kindling (host nodo-kindling, un i3-3220 virtualizado **s
 ## Modelos abiertos frente a e5 (T0.4)
 
 Macro-F1 media en 4 tareas en español (intención de MASSIVE, toxicidad de HateCheck-ES, WhatsApp de la
-Arena y orquestar herramientas), 1 hilo, mismos 120 ejemplos por tarea. Sondeo congelado en `7b33239`.
+Arena y orquestar herramientas), 1 hilo, mismos 120 ejemplos por tarea. Sondeo congelado en `7d50e9a`.
 
 | Modelo | Macro-F1 media | Δ vs e5 kNN-32 | Licencia |
 |---|---|---|---|

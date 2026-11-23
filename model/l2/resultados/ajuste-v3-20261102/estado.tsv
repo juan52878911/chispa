@@ -1,6 +1,6 @@
 entorno	OK torch 2.10.0+cu130 cuda True dispositivo cuda, go version go1.27.1 linux/amd64
 paquete	OK
-v2	OK 4113441 bytes de s3://chispa-pruebas-cuenta-aws/ajuste-v2-23b38e6/ckpt/mejor.pt
+v2	OK 4113441 bytes de s3://chispa-pruebas-cuenta-aws/ajuste-v2-73c3ca2/ckpt/mejor.pt
 clandestino	OK leidas 9998 IA 1625 PII 6479 validas 30055 score {'1': 406, '2': 434, '3': 627, '4': 322, '5': 105}
 jevbench	OK 231 casos
 datos	OK 17 fuentes convertidas (sib200 pawsx odio_alia toxicidad_protestas toxicidad_constitucion )

@@ -1,4 +1,4 @@
-# D1f: la base de `chispa train --ckpt` ya da la paridad sin pasos manuales (integracion @ ea79c2b)
+# D1f: la base de `chispa train --ckpt` ya da la paridad sin pasos manuales (integracion @ 5474570)
 
 - **Con qué:** `exportar` escribe la CALIB de L2 de todas las cabezas (`calib_completa`), y el SDK (TZ) la copia a
   `tipos_l2`.

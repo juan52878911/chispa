@@ -6,12 +6,12 @@ CHISPA_S3=__CHISPA_S3__
 #   1 knn-e5-k8 (vectores de e5 con transformers fijado + kNN)   2 l2-zs (checkpoint de Chispa, sin soporte)   3 mdeberta-nli (el más caro: va el último,
 #   de lo barato a lo caro por tarea, con tope de filas por tarea CHISPA_NLI_FILAS y tope de tiempo; lo no puntuado cuenta como fallo y se informa la cobertura)
 # Entorno: venv propio con Python >= 3.10, torch==2.7.1 (rueda CPU de download.pytorch.org/whl/cpu; transformers 5 exige torch >= 2.6) y transformers==5.22.2.
-# Lee:     $CHISPA_S3/{codigo.tgz,dev.tgz} y s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt, por nombre exacto
+# Lee:     $CHISPA_S3/{codigo.tgz,dev.tgz} y s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt, por nombre exacto
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar. Cifras: res/cifras.json (lineas_base_v2.py).
 MIN=${CHISPA_MIN:-40}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-5}; HILOS=${CHISPA_HILOS:-8}; NLI_FILAS=${CHISPA_NLI_FILAS:-__NLI_FILAS__}
 TORCH=2.7.1; TRANSFORMERS=5.22.2
 REVNLI=b5113eb38ab63efdd7f280f8c144ea8b13f978ce; E5_REV=614241f622f53c4eeff9890bdc4f31cfecc418b3
-CRIT_SHA=__CRIT_SHA__; N_TEST=__N_TEST__; N_SOP=__N_SOP__; CKPT=${CHISPA_CKPT:-s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt}
+CRIT_SHA=__CRIT_SHA__; N_TEST=__N_TEST__; N_SOP=__N_SOP__; CKPT=${CHISPA_CKPT:-s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt}
 LOCAL=${CHISPA_LOCAL:-0}
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-t3a-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi
 set -uo pipefail

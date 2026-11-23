@@ -11,7 +11,7 @@ Variantes (solo cambia lo indicado; todo lo demás es idéntico):
   grueso_fino  `--cabeza-score grueso_fino` (la cabeza de score arranca con su init);
   ruido        `coral1` y `--ruido-cond P` (`--ruido-p`, 0,15 por defecto);
   noul_dif, noul_softmax, k1, coseno, sin_nce, sin_brier   ablaciones de L2 (ver `ABLACIONES`), con la cabeza de score de `control`.
-Datos y parámetros como el ajuste 1 (`aws/ajuste.sh` de 80ab8ef) donde aplican: partida de M1 con `--desde` (lr 3e-5 y torre 1e-5),
+Datos y parámetros como el ajuste 1 (`aws/ajuste.sh` de 4a2e745) donde aplican: partida de M1 con `--desde` (lr 3e-5 y torre 1e-5),
 `--max-tok 256`, lote 64, `--tope-tarea 2000 --alfa 0.3 --excluir-fuera` sobre tsjev tratado como meta (mismo tope por tarea y mismas
 tareas «fuera»), sin otro meta, sin aumento, sin etiquetas blandas, sin episodios (k=0). El orden de los lotes es una función pura de
 (semilla, paso), así que las cuatro variantes de una semilla ven exactamente los mismos lotes; el ruido tiene su propio generador.

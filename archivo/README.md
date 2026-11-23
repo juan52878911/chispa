@@ -6,7 +6,7 @@ Material histórico que ya no usa el producto ni las pruebas. Se conserva con `g
 
 Carpeta `model/alt/` movida aquí en la parte que es claramente histórica:
 
-- `resultados/` (`g5-0c76f26`, `g5-2058ffa`): salidas del hito 4 (cross-encoder frente a Chispa, destilación, latencia, sondeo). Las cifras vigentes están en `model/alt/resultados-20261113-p0-p2/LEEME.md`.
+- `resultados/` (`g5-57edf3c`, `g5-41e8e2a`): salidas del hito 4 (cross-encoder frente a Chispa, destilación, latencia, sondeo). Las cifras vigentes están en `model/alt/resultados-20261113-p0-p2/LEEME.md`.
 
 ## Qué se quedó en `model/alt/` y por qué
 

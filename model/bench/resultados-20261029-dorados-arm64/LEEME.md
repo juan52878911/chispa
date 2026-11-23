@@ -1,6 +1,6 @@
-# Dorados de determinismo en arm64 nativo (Graviton c7g.large spot, `aee1328`, 2026-10-29)
+# Dorados de determinismo en arm64 nativo (Graviton c7g.large spot, `cad3aa0`, 2026-10-29)
 
-Los dorados se generaron en amd64 (BD, `0988b06`). Aquí se comprueban en arm64 nativo (aarch64, Go 1.27.1, ORT 1.31.1
+Los dorados se generaron en amd64 (BD, `55b083c`). Aquí se comprueban en arm64 nativo (aarch64, Go 1.27.1, ORT 1.31.1
 aarch64). Coste: 3 min de spot, ≈ 0,01 USD.
 
 | paso | resultado |

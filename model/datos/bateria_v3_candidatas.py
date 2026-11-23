@@ -349,7 +349,7 @@ for _c in CANDIDATAS:
         _c.update(bloque="informativo", motivo_bloque=MOTIVO_INFORMATIVO)
 
 DESCARTADAS = [  # (fuente, motivo); «de memoria» = no comprobado en este nodo
-    # comprobadas en la fase 2 real (c7i, ud 100de63): fuera por su licencia o tamaño, no se repiten en la segunda iteración
+    # comprobadas en la fase 2 real (c7i, ud 65304bb): fuera por su licencia o tamaño, no se repiten en la segunda iteración
     ("NortheasternUniversity/big_patent (patentes-cpc)", "fase 2: demasiado grande (31,8 GB frente a un tope de 3 GB por tarea)"),
     ("Wikinoticias en español (wikinoticias-es-categoria)", "fase 2: la ficha de derechos de Wikinoticias dice CC BY-SA (-SA)"),
     ("IBM argument quality (argq-calidad)", "fase 2: cabecera cc-by-3.0 pero el cuerpo de la tarjeta dice CC BY-SA 3.0 (-SA)"),

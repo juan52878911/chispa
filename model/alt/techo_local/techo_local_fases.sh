@@ -161,7 +161,7 @@ medir_modelo() {
   else
     for _ in $(seq 120); do [ -f "$BASE/m-$M.ok" ] && break; sleep 10; done
     [ -f "$BASE/m-$M.ok" ] || { tail -3 "$BASE/bajadas.log"; fallo "descarga de $M"; estado "servidor-$M" "FALLO descarga"; return; }
-    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
     [ "$M" = gpt-oss-20b ] && export VLLM_MXFP4_USE_MARLIN=1   # MXFP4 en una GPU Ada (L40S) sin kernels de Hopper; sin verificar con este vLLM
     URL=http://127.0.0.1:8000
     if arrancar; then estado "servidor-$M" "OK $M_REPO@${M_REV:0:12} en $(( $(date +%s) - t1 )) s ($(nvidia-smi --query-gpu=memory.used --format=csv,noheader 2>/dev/null))"

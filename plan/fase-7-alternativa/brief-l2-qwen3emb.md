@@ -5,7 +5,7 @@ Encargo: `plan/fase-7-alternativa/encargo-l2-qwen3emb.md`. El criterio de acepta
 ## Contexto
 - R11 midió en Python que Qwen3-Embedding-0.6B gana a e5 como codificador del kNN de L2, con un macro en dev de 0,4675 (32 vecinos) y 0,4683 (8 vecinos).
   - Código: `model/alt/alternativas_r11.py`, en `cmd_vec_qwen`, `EmbQwen` y `consulta_emb`.
-  - Resultado: `model/alt/resultados-20261113-p0-p2/r11-alternativas-ba463e8.json`; el LEEME está en la misma carpeta, §18.
+  - Resultado: `model/alt/resultados-20261113-p0-p2/r11-alternativas-b0e2ea3.json`; el LEEME está en la misma carpeta, §18.
 - Hoy el servidor solo sabe codificar con e5. El código está en:
   - `server/decide/e5_ort.go`, `e5.go`, `e5_stub.go` y `tokenizador_e5.go`;
   - `l2knn.go` (la interfaz `Codificador`, y `ConfigKNN` con `e5_onnx` y `e5_sesiones`) y `knn.go`;
@@ -71,7 +71,7 @@ Encargo: `plan/fase-7-alternativa/encargo-l2-qwen3emb.md`. El criterio de acepta
 - Reglas del CLAUDE.md del repo. Commitea en tu rama; sin push ni merge.
 
 ## Entorno
-- Línea base: la rama `l2-qwen3emb` en su HEAD (48e9a2c + R11).
+- Línea base: la rama `l2-qwen3emb` en su HEAD (53e0415 + R11).
 - Nada de torch en el nodo. Las descargas grandes de modelos (más de 50 MB) no se hacen aquí: van al ud.
 
 ## Tope

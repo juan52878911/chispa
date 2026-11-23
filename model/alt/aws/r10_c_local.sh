@@ -4,7 +4,7 @@
 # Uso: bash model/alt/aws/r10_c_local.sh [SHA]       Resultados en /tmp/chispa-r10c-dryrun/{g5,c7i}/res
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-sha=${1:-$(git rev-parse HEAD)}; r5=0bcbd78
+sha=${1:-$(git rev-parse HEAD)}; r5=f85da01
 D=${CHISPA_DRY_DIR:-/tmp/chispa-r10c-dryrun}; chmod -R u+w "$D" 2>/dev/null || true; rm -rf "$D"; mkdir -p "$D/dev" "$D/fx"
 python3 - "$D/fx" "$D/dev" <<'PY'
 import json, random, sys

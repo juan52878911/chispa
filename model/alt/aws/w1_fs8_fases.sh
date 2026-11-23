@@ -54,7 +54,7 @@ if [ "$LOCAL" != 1 ]; then
     "$PYG" -m venv /opt/hf && /opt/hf/bin/pip install -q --no-cache-dir huggingface_hub || return 1
     HF_HUB_ENABLE_HF_TRANSFER=0 /opt/hf/bin/python -c "from huggingface_hub import snapshot_download as s; s('Qwen/Qwen3-4B-Instruct-2507', revision='$REV4', local_dir='$BASE/modelo4b', allow_patterns=['*.json','*.safetensors','*.txt','merges.txt','vocab.json','LICENSE*'])" || return 2
     "$PYG" -m venv /opt/vllm && /opt/vllm/bin/pip install -q --no-cache-dir "vllm==$VLLM" || return 3
-    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
     nohup /opt/vllm/bin/python -m vllm.entrypoints.openai.api_server --model "$BASE/modelo4b" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
       --gpu-memory-utilization 0.85 --max-logprobs 20 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm-4b.log" 2>&1 &
     echo $! > "$BASE/vllm.pid"

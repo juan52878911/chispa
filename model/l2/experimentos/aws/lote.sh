@@ -14,7 +14,7 @@ PASOS=${CHISPA_PASOS:-300}
 SEMILLAS=${CHISPA_SEMILLAS:-"0 1 2"}
 APAGADO_MIN=${CHISPA_APAGADO_MIN:-150}
 VARIANTES=${CHISPA_VARIANTES:-"control coral_vec acumulados grueso_fino noul_dif noul_softmax k1 coseno sin_nce sin_brier ruido"}
-M1_S3=${CHISPA_M1_S3:-s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt}
+M1_S3=${CHISPA_M1_S3:-s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt}
 TSJEV_S3=${CHISPA_TSJEV_S3:-s3://chispa-pruebas-cuenta-aws/meta-20261027/meta/tsjev}
 [ "$LOCAL" = 1 ] || shutdown -h +"$APAGADO_MIN"
 set -uo pipefail

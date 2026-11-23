@@ -9,7 +9,7 @@
   1. **Descripciones repetidas (R19-9).** En v2, si dentro de una misma pregunta dos o más opciones tienen la misma
      descripción (igualdad exacta tras `strip()`), **esas opciones usan el texto v1**, con id. Solo esas.
   2. **Versión en la metadata del ONNX de la torre:** `chispa.torre.texto_torre` (`"v1"` o `"v2_sin_id"`), junto a
-     `chispa.torre.{dim,max_len,prefijo}`. `chispa train` (sdk ≥ `4f4b707`, ya en tu base) la compara con
+     `chispa.torre.{dim,max_len,prefijo}`. `chispa train` (sdk ≥ `88d21bb`, ya en tu base) la compara con
      `META.texto_torre` y falla si no coinciden.
   3. **`model/l2/empaquetar_go/main.go` (R19-3).** Hoy valida META con `DecodificarMeta` y reinserta `texto_torre` a mano.
      Desde la base actual, `format/chispa3/secciones.go` tiene `MetaTexto` (con `Codificar` y `VersionTextoTorre`) y su

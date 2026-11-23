@@ -16,9 +16,9 @@ CHISPA_S3=__CHISPA_S3__
 # ONNX + chispa train · 5 validación con chispa-server (-tags ort): /healthz (L0, L1, L2, torre_al_vuelo) y una decisión por escenario · 6 manifiesto
 # y subida. Cada paso deja OK/FALLO en estado.tsv; al salir (trap) sube resultados.tgz, estado.tsv y log.txt a $CHISPA_S3/ y apaga (shutdown -h +60).
 # Tiempo ≈ 35 min (entorno y descargas ~10, exportar + train de dos perfiles ~15, validación ~5). Coste declarado ≈ 0,15 USD (c6a.2xlarge ≈ 0,31 USD/h).
-# Opcionales: CHISPA_CKPT_S3 (ajuste-80ab8ef), CHISPA_ORT_VERSION (1.31.1).
+# Opcionales: CHISPA_CKPT_S3 (ajuste-4a2e745), CHISPA_ORT_VERSION (1.31.1).
 # CHISPA_LOCAL=1: prueba en seco sin dnf, pip, descargas, aws ni shutdown, con checkpoint aleatorio y fixtures; sin ORT (~/ort) ni gcc, la validación es OMITIDO.
-CKPT_S3=${CHISPA_CKPT_S3:-s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt}
+CKPT_S3=${CHISPA_CKPT_S3:-s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt}
 LOCAL=${CHISPA_LOCAL:-0}
 AQUI=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)   # solo para la prueba en seco
 if [ "$LOCAL" = 1 ]; then [ "${CHISPA_S3#__}" != "$CHISPA_S3" ] && CHISPA_S3=s3://local/modelos-movil; else shutdown -h +60; fi

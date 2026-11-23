@@ -6,12 +6,12 @@
   - renombrar 0 %;
   - paráfrasis 11,9 % y erratas 11,0 %.
 
-  Su checkpoint está en `s3://chispa-pruebas-cuenta-aws/ajuste-v2-23b38e6/ckpt/mejor.pt`.
+  Su checkpoint está en `s3://chispa-pruebas-cuenta-aws/ajuste-v2-73c3ca2/ckpt/mejor.pt`.
 - **Juan aprobó un último ajuste (v3)** partiendo de v2, con:
   1. **Clandestino** (`microsoft/Clandestino` en HF, licencia MIT, con la condición de uso de Microsoft: «no dañar», no
      vigilancia). Juan la acepta. Solo filas con `Is AI Generated == false`.
   2. **El español traducido** de las tareas commercial de tsjev. Lo produce otra corrida en AWS, en paralelo, y queda en
-     `s3://…/traducir-286bda8/tsjev-es/*.jsonl.gz`. No lo traduces tú: lo lees.
+     `s3://…/traducir-9646a04/tsjev-es/*.jsonl.gz`. No lo traduces tú: lo lees.
   3. **Aumento centrado en paráfrasis y erratas en español.** La pregunta en inglés baja de prioridad.
 - **Global-MMLU no entra**: el orquestador lo descarta porque se mide con MMMLU ES_LA, que también deriva de MMLU, y
   contaminaría la medida.

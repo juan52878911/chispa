@@ -78,7 +78,7 @@ if [ "$LOCAL" = 1 ]; then cp "$CHISPA_LOCAL_DATOS"/bateria-no-vista/* "$BAT/"; c
   MAN=$BASE/manifiesto.json; EXTRA="--pasos 2 --epocas 1 --lote 4 --max-tok 96 --max-tokens 4096 --tope-tarea 0 --max-dev 8"; estado datos "OK local"
 else
   s3cp "$CHISPA_S3/bateria-no-vista.tgz" "$BASE/bateria.tgz" && tar -xzf "$BASE/bateria.tgz" -C "$BAT" || { fallo "bateria-no-vista.tgz"; estado datos "FALLO bateria"; cierre; }
-  rm -f "$BAT"/._*   # AppleDouble de macOS (la ronda 0be529b no pudo evaluar por ellos)
+  rm -f "$BAT"/._*   # AppleDouble de macOS (la ronda d36f8ab no pudo evaluar por ellos)
   if [ -n "$CKPT_S3" ]; then
     git clone -q https://github.com/fstandhartinger/jevbench "$JEV" || { fallo "git clone JevBench"; estado jevbench "FALLO"; cierre; }
     JEVARG=$JEV/datasets/public; estado datos "OK solo evaluar: batería y JevBench"

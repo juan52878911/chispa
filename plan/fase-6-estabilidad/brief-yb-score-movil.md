@@ -10,12 +10,12 @@ Si chispamovil (L0, L1, ids de agregación, torre de consulta) y las capas de Ko
 ## Terminado cuando
 - chispamovil: un helper propio (`nivelesScore(ids) ([]string, bool)`) usado en `ordinal` (L0), `puntuarNiveles` (L1), `idsOrdenados` (agregación) y en la torre de consulta de score; sin camino de orden declarado. Tests por capa con ids `1..K` permutados (mismo resultado) y no canónicos (no opina).
 - Kotlin y Swift: donde decidan score por sí mismos (CORAL de L2 en `Capas.*`, agregación en `TextoLargo.*`), la misma comprobación; la capa no opina con ids no `1..K`. Tests unitarios en `sdk/android/chispa/src/test/**` y `sdk/ios/Tests/**`. No hay JDK ni Swift en el nodo: revisa a mano y dilo.
-- **`escalate_reason`** con paridad con el servidor (`docs/03-api.md` y `server/decide`, solo lectura, en la base `sdk` ≥ `92b1707`):
+- **`escalate_reason`** con paridad con el servidor (`docs/03-api.md` y `server/decide`, solo lectura, en la base `sdk` ≥ `53cdee2`):
   `sin_opinion` (ninguna capa opina), `baja_confianza` (alguna opina, pero por debajo de τ) y `score_ids_no_validos` (ids de
   score fuera de `1..K`). Va en el resultado de chispamovil y en los tipos públicos de Kotlin y Swift, con el mismo nombre de
   campo y los mismos valores que el servidor. Tests de cada motivo en chispamovil; en Kotlin y Swift, tests escritos y
   revisados a mano.
-- **Tres tests de chispamovil que hoy fallan** (VF17 sobre `sdk` `92b1707`: 87 PASS, 3 FAIL, 1 SKIP) tienen que acabar en verde:
+- **Tres tests de chispamovil que hoy fallan** (VF17 sobre `sdk` `53cdee2`: 87 PASS, 3 FAIL, 1 SKIP) tienen que acabar en verde:
   - `TestTiposL2ParidadYCompatibilidad` y `TestTextosYDecisionIgualesAlServidor`: sus fixtures de score usan ids bajo/medio/alto,
     que el servidor ya no admite. Pásalos a `1..K`, o a «no opina» si el test trata justo de eso.
   - `TestTextoLargoL1ParidadConServidor`: el servidor no opina y el móvil sí. Con la regla `1..K` en el móvil tiene que

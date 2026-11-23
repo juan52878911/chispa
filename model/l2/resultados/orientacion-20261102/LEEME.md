@@ -1,4 +1,4 @@
-# (a) Orientación de score con G.8 (c6a.2xlarge, `38342fe`, 16 min, ≈ 0,1 USD)
+# (a) Orientación de score con G.8 (c6a.2xlarge, `e1b9d33`, 16 min, ≈ 0,1 USD)
 
 | torre | ρ medio por esquema (JevBench) | exactitud CORAL |
 |---|---|---|

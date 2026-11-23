@@ -1,7 +1,7 @@
 {
  "id": "r10-piloto-destilacion-4b-biencoder-v2",
  "congelado": "2026-11-15",
- "reemplaza": "v1 (sha256 dd2d102b001e1882f52d07b2ea60a34410332802dd530dfa6ac642a0a8f4bccb): partia del checkpoint de produccion ajuste-80ab8ef; la sesion principal lo redefinio antes de medir",
+ "reemplaza": "v1 (sha256 dd2d102b001e1882f52d07b2ea60a34410332802dd530dfa6ac642a0a8f4bccb): partia del checkpoint de produccion ajuste-4a2e745; la sesion principal lo redefinio antes de medir",
  "que_mide": "si destilar Qwen3-4B (blandas existentes) en el biencoder L2, entrenado desde e5-small puro, mejora a e5 puro en zero-shot sin romper el few-shot, en int8 y sobre las 6 tareas DEV de la bateria v2",
  "metrica": "macro_f1 por tarea (model.evaluacion.chispa_eval), en puntos (x100); media simple de las tareas",
  "tareas": ["finanzas-documentos", "horeca-resenas", "jql-valor-educativo", "cfpb-quejas", "usajobs-nivel", "congreso-eeuu-partido"],

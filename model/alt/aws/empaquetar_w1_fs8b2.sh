@@ -2,14 +2,14 @@
 # W1d: empaqueta la fase B2 (g5.xlarge, tope 45 min = 0,75 USD): escribe model/alt/aws/lanzados/ud-w1-fs8b2-SHA.sh y SAL/codigo.tgz. NO sube ni lanza nada.
 #   codigo.tgz   de `git archive SHA`: solo el Python que usa B2 (sin server/, sin Go, sin dev.tgz: las entradas salen de faseA.tar y resultados.tgz de B, comprobados por sha256).
 # El ud fija por sha256: el criterio (CRIT_SHA256, congelado por el orquestador y distinto de nada nuevo), el resultados.tgz de la fase B (RESB_SHA256) y faseA.tar (FASEA_SHA256).
-# El Python de la medida (llm_logprobs, lineas_base_v2, lineas_base_v2_pred, w1_demos, w1_medir, el criterio) tiene que ser BYTE A BYTE el de la fase B (BASE_B, por defecto ad2b70e): si difiere, no se empaqueta.
-# Se sube a mano, por nombre exacto: codigo.tgz a s3://chispa-pruebas-cuenta-aws/w1-fs8b2-SHA/ (B2 escribe ahí log.txt, listo y resultados.tgz); lee s3://.../w1-fs8b-ad2b70e/resultados.tgz y s3://.../w1-fs8a-ad2b70e/faseA.{tar,json}.
+# El Python de la medida (llm_logprobs, lineas_base_v2, lineas_base_v2_pred, w1_demos, w1_medir, el criterio) tiene que ser BYTE A BYTE el de la fase B (BASE_B, por defecto 872aa07): si difiere, no se empaqueta.
+# Se sube a mano, por nombre exacto: codigo.tgz a s3://chispa-pruebas-cuenta-aws/w1-fs8b2-SHA/ (B2 escribe ahí log.txt, listo y resultados.tgz); lee s3://.../w1-fs8b-872aa07/resultados.tgz y s3://.../w1-fs8a-872aa07/faseA.{tar,json}.
 # CHISPA_UD_DIR cambia el directorio del ud (pruebas en seco); CHISPA_PERMITIR_CRIT_SIN_CONGELAR=1 solo en la prueba en seco; S3B_PREFIJO y S3A_PREFIJO (nombres de carpeta) cambian de dónde lee.
 # Uso: CRIT_SHA256=343365bd...498e2 RESB_SHA256=b95e87a3...6d9 FASEA_SHA256=c0e7d227...ad6 bash model/alt/aws/empaquetar_w1_fs8b2.sh SHA DIR_SALIDA
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 sha=${1:?SHA}; sal=${2:?DIR_SALIDA}
-BASE_B=${BASE_B:-ad2b70e}
+BASE_B=${BASE_B:-872aa07}
 hex() { [[ ${!1:-} =~ ^[0-9a-f]{64}$ ]] || { echo "$1 falta o no es un sha256 en hex" >&2; exit 1; }; }
 hex CRIT_SHA256; hex RESB_SHA256; hex FASEA_SHA256
 mkdir -p "$sal"; sal=$(cd "$sal" && pwd)

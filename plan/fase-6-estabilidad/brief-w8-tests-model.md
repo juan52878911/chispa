@@ -1,7 +1,7 @@
 # W8 Dos fallos reales de tests en `model/l2` vistos en el clon limpio (VF19)
 
 ## Antecedentes
-La verificación en clon limpio de la otra sesión (VF19, `sdk` `fb1db4d`, ya en tu base) vio dos fallos reales en `model/l2`.
+La verificación en clon limpio de la otra sesión (VF19, `sdk` `5961090`, ya en tu base) vio dos fallos reales en `model/l2`.
 Los otros tres que salen son de red (HuggingFace) y no se tocan.
 1. **`model/l2/tests/test_r9_claves.py::test_fixture_r9_al_dia`.** La fixture difiere en el último dígito de un float.
    Sospecha: el valor se regenera con aritmética que depende de la CPU o de FMA y se compara con igualdad exacta, igual que

@@ -9,8 +9,8 @@ CHISPA_S3=${CHISPA_S3_LOCAL:-__CHISPA_S3__}   # CHISPA_S3_LOCAL (con CHISPA_LOCA
 # y espera $CHISPA_S3/verificado. NUNCA sube texto de test fuera de datos-sellados.tgz ni lo imprime: el log se audita antes de subirlo (si trae texto de test no se sube).
 MIN=${CHISPA_MIN:-90}; ESPERA_MIN=${CHISPA_ESPERA_MIN:-5}
 COD_SHA256=__COD_SHA256__; MAN_SHA256=__MAN_SHA256__; N_TAREAS=__N_TAREAS__
-DEV_URI=${CHISPA_V3_DEV:-s3://chispa-pruebas-cuenta-aws/w1-fs8-a6c5293/dev.tgz}; DEV_SHA256=ce0423dc05a5b393067b6aeb2c1da4aa4d6192d249d1a52061c5f579e8dd3ca9
-SEL_URI=${CHISPA_V3_SELLADAS:-s3://chispa-pruebas-cuenta-aws/r10-apertura-29c441f-a/selladas.tgz}; SEL_SHA256=a2bb334e5a1e0961a3d79f011d9525dfb872112d5e305a14303dbf16b5f487a0
+DEV_URI=${CHISPA_V3_DEV:-s3://chispa-pruebas-cuenta-aws/w1-fs8-27fdfc9/dev.tgz}; DEV_SHA256=ce0423dc05a5b393067b6aeb2c1da4aa4d6192d249d1a52061c5f579e8dd3ca9
+SEL_URI=${CHISPA_V3_SELLADAS:-s3://chispa-pruebas-cuenta-aws/r10-apertura-3d86859-a/selladas.tgz}; SEL_SHA256=a2bb334e5a1e0961a3d79f011d9525dfb872112d5e305a14303dbf16b5f487a0
 HUB=2.4.0; PYARROW=26.0.0; PYYAML=6.0.3
 LOCAL=${CHISPA_LOCAL:-0}
 if [ "$LOCAL" = 1 ]; then case $CHISPA_S3 in __*) CHISPA_S3=/tmp/chispa-b3-s3; mkdir -p "$CHISPA_S3";; esac; else shutdown -h +$MIN; fi

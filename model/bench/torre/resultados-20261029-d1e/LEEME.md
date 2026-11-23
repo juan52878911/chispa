@@ -1,4 +1,4 @@
-# D1e: paridad servidor ↔ Python en JevBench, cerrada (integracion @ 458ed94, chispa-sdk f91e143 fusionado)
+# D1e: paridad servidor ↔ Python en JevBench, cerrada (integracion @ c3d9dd5, chispa-sdk 8d7f553 fusionado)
 
 | pasada | total | choice | noul | score | discrepancias (78 casos) |
 |---|---|---|---|---|---|

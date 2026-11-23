@@ -99,7 +99,7 @@ for par in $MODELOS; do
     URL=http://127.0.0.1:8000; MOD=$NOM
     for _ in $(seq 150); do [ -f "$BASE/m-$NOM.ok" ] || [ -f "$BASE/m-$NOM.mal" ] && break; sleep 5; done
     [ -f "$BASE/m-$NOM.ok" ] || { fallo "$NOM: descarga"; estado "$NOM" "FALLO descarga"; continue; }
-    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
     nohup "$VPY" -m vllm.entrypoints.openai.api_server --model "$BASE/m-$NOM" --served-model-name "$NOM" --dtype bfloat16 --max-model-len 16384 \
       --max-logprobs 20 --gpu-memory-utilization 0.85 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm-$NOM.log" 2>&1 &
     VP=$!

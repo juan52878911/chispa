@@ -1,6 +1,6 @@
 # Batería v3, fase 2: el ud de la c7i
 
-**Estado (W3c, segunda y última iteración, sin red):** la fase 2 real (c7i, ud `100de63`, 299 s) construyó 12 de 31 y dejó 19 fuera; resultados en `tests/fixtures_v3/fase2-100de63/`.
+**Estado (W3c, segunda y última iteración, sin red):** la fase 2 real (c7i, ud `65304bb`, 299 s) construyó 12 de 31 y dejó 19 fuera; resultados en `tests/fixtures_v3/fase2-65304bb/`.
 Esta iteración arregla lo arreglable, saca las licencias y descargas federales del registro oficial (catalog.data.gov), propone candidatas nuevas (español y sí/no primero) y prepara **un solo ud** que rehace la fase 2 entera desde cero (huellas incluidas; no se mezclan dos corridas).
 El ud se prepara y **NO se lanza**. Si tras la corrida algún tipo queda bajo 8, se informa «n bajo» (abrir igual es decisión de Juan): no se rellena.
 Lo que no se puede comprobar de forma automática queda **fuera**, con su motivo; nada se verifica a mano en el Mac.
@@ -28,7 +28,7 @@ Ya confirmado en la fase 2 real: choice 1, yesno 2, score 5 (es 1). Con los lect
 **Techo si todo pasa** (cuentan): choice 14, yesno 10, score 8, español 10. **Riesgo real**: score necesita las tres nuevas/federales (`ctgov-fase`, `helpsteer3-es`, `fsis-clase`) para llegar a 8 y es la más probable de quedar «n bajo»; yesno y choice dependen de que las federales no den 403 y de las nuevas de memoria; español necesita 8 de 10. El informe «n bajo» sale solo en `resumen.json`; no se rellena.
 
 ## Qué hace el ud (`model/datos/aws/bateria_v3.sh` + `bateria_v3_fases.sh`)
-1. Baja `codigo.tgz` (de `bateria-v3-SHA/`), y de v2 `s3://chispa-pruebas-cuenta-aws/w1-fs8-a6c5293/dev.tgz` (6 jsonl) y `s3://chispa-pruebas-cuenta-aws/r10-apertura-29c441f-a/selladas.tgz` (8 jsonl; ya abiertas en §17.26: leerlas para huellas no las gasta),
+1. Baja `codigo.tgz` (de `bateria-v3-SHA/`), y de v2 `s3://chispa-pruebas-cuenta-aws/w1-fs8-27fdfc9/dev.tgz` (6 jsonl) y `s3://chispa-pruebas-cuenta-aws/r10-apertura-3d86859-a/selladas.tgz` (8 jsonl; ya abiertas en §17.26: leerlas para huellas no las gasta),
    por nombre exacto (el rol no tiene ListBucket) y comprueba **antes de usarlas** sus sha256 (`ce0423dc…3ca9` y `a2bb334e…5a0`, fijos en el propio ud) y el del manifiesto.
 2. Entorno: venv con `huggingface_hub`, `pyarrow` y `PyYAML` fijados; **comprueba imports, nº de tareas y alcance de las fuentes antes de bajar un dato**.
 2b. **Huellas dentro de la c7i** (`bateria_v3_huellas.py`; salen solo hashes y sketches, los textos no salen de la instancia):

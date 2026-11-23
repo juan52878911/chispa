@@ -38,7 +38,7 @@ Descartada: CataloniaTweet (la tarjeta no da el significado de las etiquetas 0/1
 | macro-F1 medio de las 6 | | 0,448 | 0,596 | 0,527 | 0,573 |
 | JevBench | 231 | 0,498 [0,433–0,563] | 0,511 [0,446–0,576] | 0,446 [0,381–0,507] | no medido |
 
-Comprobaciones de validez: L2 reproduce al decimal las predicciones de M1 en JevBench (231 de 231 en el top-1, diferencia máxima 2e-6); el cross-encoder ONNX fp32 da 0,5108 en JevBench, igual que el informe oficial de PyTorch (`g5-2058ffa`).
+Comprobaciones de validez: L2 reproduce al decimal las predicciones de M1 en JevBench (231 de 231 en el top-1, diferencia máxima 2e-6); el cross-encoder ONNX fp32 da 0,5108 en JevBench, igual que el informe oficial de PyTorch (`g5-41e8e2a`).
 
 **kNN-e5 con 8 ejemplos por clase iguala al cross-encoder entrenado en la agrupada (0,578 frente a 0,574) y supera a L2 en 6,2 puntos.** Soporte: 8 por clase del split train de cada fuente (en hatecheck, apartados del mismo fichero y fuera de la evaluación), 32 vecinos, temperatura 0,05, vectores de e5 con media de tokens (`linea_base_knn_e5`). No es zero-shot: usa 2 a 472 ejemplos por tarea.
 
@@ -90,7 +90,7 @@ Tamaño: 470 MB fp32, 118 MB int8. Diferencia máxima de puntuación frente a Py
 | Latencia con la máquina libre (fp32 e int8) | CPU de 4 hilos, sin otra carga | ~10 min | `onnx/ce_{fp32,int8}.onnx` (se regeneran con `python -m model.alt.onnx_ce exportar`) |
 | Informe | cualquiera (solo numpy) | segundos | `python -m model.alt.p0_medir informe …` con las predicciones |
 
-**Dónde están las entradas:** el checkpoint del hito 4 (`mejor`, sha256 `70df6ae0…53e`) **solo está en el PC de pruebas** (`~/orquestador/alt-pruebas/ck/mejor`, y su `mejor-e5-small.tgz` de 387 MB); no lo busqué en S3 porque estaba en local. M1 (`datos/m1.pt`, sha256 `4336e971…aa9c`) tampoco consta en S3 con una clave que yo conozca (el lote anterior lo bajaba de `s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt`; no verificado). Las predicciones de este informe están en el PC (`~/orquestador/fable/arq/res/pred`) y una copia en el scratchpad de la sesión; no se versionan. e5: `intfloat/multilingual-e5-small` @ 614241f622f53c4eeff9890bdc4f31cfecc418b3.
+**Dónde están las entradas:** el checkpoint del hito 4 (`mejor`, sha256 `70df6ae0…53e`) **solo está en el PC de pruebas** (`~/orquestador/alt-pruebas/ck/mejor`, y su `mejor-e5-small.tgz` de 387 MB); no lo busqué en S3 porque estaba en local. M1 (`datos/m1.pt`, sha256 `4336e971…aa9c`) tampoco consta en S3 con una clave que yo conozca (el lote anterior lo bajaba de `s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt`; no verificado). Las predicciones de este informe están en el PC (`~/orquestador/fable/arq/res/pred`) y una copia en el scratchpad de la sesión; no se versionan. e5: `intfloat/multilingual-e5-small` @ 614241f622f53c4eeff9890bdc4f31cfecc418b3.
 
 ## 7. Comandos exactos
 
@@ -105,7 +105,7 @@ Tamaño: 470 MB fp32, 118 MB int8. Diferencia máxima de puntuación frente a Py
 
 Pruebas: `python3 -m unittest discover -s model/alt -t .` (50, todas OK en el PC).
 
-## 8. P3 y techo del LLM: preparados, sin lanzar (código 0be529b)
+## 8. P3 y techo del LLM: preparados, sin lanzar (código d36f8ab)
 
 Criterio actualizado por Juan: la vara de P3 es la batería de §1 (agrupada y por tarea) y `hatecheck-es` se informa aparte como la única tarea de verdad no vista (§0); se mantienen los criterios de latencia y AUROC de la revisión. El paquete lo calcula solo: `python -m model.alt.p0_medir informe-l2x` escribe `informe-l2x.{json,md}` con exactitud (IC95) y macro-F1 de L2x, L2, cruzado del hito 4 y kNN-e5 por tarea y agrupados, el bloque de `hatecheck-es`, McNemar de L2x frente a L2 y al cruzado (agrupado y por tarea) y los criterios:
 - C1 macro-F1 medio de las 6 tareas ≥ L2 + 12 pts; C2 ≥ cruzado − 1 pt; C3 exactitud agrupada ≥ cruzado − 1 pt;
@@ -116,9 +116,9 @@ Las referencias (L2, cruzado, kNN) van en `baseline-top1.json` dentro de `bateri
 
 ### 8.1 Instancia L2x (g5.xlarge SPOT, ≤ 6 h)
 
-- Código y entrada: `codigo.tgz` (sha256 `f1a9f41f3f87e2c6…`, 464 262 B, de `empaquetar_l2x.sh 0be529b`, con `sdk/python`, sin los informes) y `bateria-no-vista.tgz` (sha256 `d9887ba5f84c13a8…`, 701 909 B).
-- user-data: `model/alt/aws/lanzados/ud-l2x-0be529b.sh` (11 835 B, sha256 `387d4e4d1ba9d1656d867291940b1c425b09ec2ce1fe1076dcbe0c195a08c359`).
-- Claves (bucket `chispa-pruebas-cuenta-aws`, todas por nombre exacto): **lee** `l2x-0be529b/{codigo.tgz,bateria-no-vista.tgz}` (subidos), `meta-20261027/meta/tsjev/{train,dev}-*` (13 ficheros), `meta-20261027/meta/synzs/train-00000..00007.jsonl.gz` y `synzs/dev-00000.jsonl.gz`, `blandas/e2deac55256e3314/blandas.jsonl.gz`; **escribe** `l2x-0be529b/{log.txt,listo,resultados.tgz,ckpt/mejor-l2x.tgz,onnx/l2x_int8.onnx,onnx/exportacion.json}`; **espera** `l2x-0be529b/verificado` hasta 30 min. Comprobadas con `head-object`: las 29 claves de lectura existen y las 11 de escritura están libres.
+- Código y entrada: `codigo.tgz` (sha256 `f1a9f41f3f87e2c6…`, 464 262 B, de `empaquetar_l2x.sh d36f8ab`, con `sdk/python`, sin los informes) y `bateria-no-vista.tgz` (sha256 `d9887ba5f84c13a8…`, 701 909 B).
+- user-data: `model/alt/aws/lanzados/ud-l2x-d36f8ab.sh` (11 835 B, sha256 `387d4e4d1ba9d1656d867291940b1c425b09ec2ce1fe1076dcbe0c195a08c359`).
+- Claves (bucket `chispa-pruebas-cuenta-aws`, todas por nombre exacto): **lee** `l2x-d36f8ab/{codigo.tgz,bateria-no-vista.tgz}` (subidos), `meta-20261027/meta/tsjev/{train,dev}-*` (13 ficheros), `meta-20261027/meta/synzs/train-00000..00007.jsonl.gz` y `synzs/dev-00000.jsonl.gz`, `blandas/e2deac55256e3314/blandas.jsonl.gz`; **escribe** `l2x-d36f8ab/{log.txt,listo,resultados.tgz,ckpt/mejor-l2x.tgz,onnx/l2x_int8.onnx,onnx/exportacion.json}`; **espera** `l2x-d36f8ab/verificado` hasta 30 min. Comprobadas con `head-object`: las 29 claves de lectura existen y las 11 de escritura están libres.
 - Cierre: tras subir `listo`, la instancia sondea cada 30 s la clave `verificado` (≤ 30 min) y luego apaga; `shutdown -h +360` es el tope duro (el vigilante cierra y sube 42 min antes) y la instancia se termina sola.
 - Coste máximo: 6 h × 0,51 USD/h spot ≈ 3,1 USD; con `MaxPrice=0,60` ≤ 3,6 USD; EBS de 150 GB < 0,2 USD. No puede caer a bajo demanda.
 - Comando (`describe-images`: dispositivo raíz `/dev/xvda`, AMI disponible; `describe-security-groups`: `sg-ejemplo` es el grupo `default` de `vpc-ejemplo`; `describe-subnets`: `subnet-ejemplo` es us-east-1f de la misma VPC, con IP pública; `g5.xlarge` ofrecida en us-east-1f). Con `--dry-run` la respuesta fue `DryRunOperation: Request would have succeeded, but DryRun flag is set.`
@@ -128,10 +128,10 @@ Las referencias (L2, cruzado, kNN) van en `baseline-top1.json` dentro de `bateri
         --instance-initiated-shutdown-behavior terminate \
         --instance-market-options 'MarketType=spot,SpotOptions={MaxPrice=0.60,SpotInstanceType=one-time}' \
         --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":150,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-        --user-data file://model/alt/aws/lanzados/ud-l2x-0be529b.sh \
-        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-l2x-0be529b}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-l2x-0be529b}]'
+        --user-data file://model/alt/aws/lanzados/ud-l2x-d36f8ab.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-l2x-d36f8ab}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-l2x-d36f8ab}]'
 
-  Cuando `listo` aparezca en S3: bajar `resultados.tgz`, verificarlo y `aws s3 cp <fichero con cualquier contenido> s3://chispa-pruebas-cuenta-aws/l2x-0be529b/verificado`.
+  Cuando `listo` aparezca en S3: bajar `resultados.tgz`, verificarlo y `aws s3 cp <fichero con cualquier contenido> s3://chispa-pruebas-cuenta-aws/l2x-d36f8ab/verificado`.
 
 ### 8.2 Instancia LLM (g5.xlarge BAJO DEMANDA, ≤ 60 min)
 
@@ -150,8 +150,8 @@ Instancia aparte, bajo demanda: dura menos de una hora (spot no ahorra casi nada
   Es una muestra pequeña y elegida entre las inválidas: demuestra que el esquema elimina los JSON parciales y que las sumas mal hechas quedan en lo que corrige el reintento, no mide la tasa final. **Sin verificar:** vLLM 0.33.0 con `response_format: json_schema` en la A10G (el i7 solo pudo probar la gramática de llama.cpp). El script lo comprueba antes de gastar nada: autoprueba de 3 casos y FALLO si menos de 2 son válidas.
 - Runtime y modelo fijados: vLLM 0.33.0 (la versión de la ronda de destilación del 3 de noviembre en esta AMI), `Qwen/Qwen3-4B-Instruct-2507` @ cdbee75f17c01a7cc42f958dc650907174af0554 (Apache-2.0), bf16, `--max-model-len 16384`. Es bf16, no el Q4_K_M de L3: el techo sale algo más alto que el del servidor de producción.
 - Se recalculan los 231 casos con el mismo método (no se saltan los 67 del primer intento: 41 eran inválidos por el formato libre y mezclar métodos falsearía el techo). Las 26 válidas del primer intento se usan solo para contar cuántas inválidas pasan a válidas. Salida: `llm_techo.json` con exactitud estricta y permisiva (IC95 de 2 000 remuestreos), tasa de inválidas, errores, la referencia de L2 y del cruzado en los mismos casos y el criterio `< 0,60`.
-- Paquete: `llm-0be529b/llm.tgz` (sha256 `12afc145157cf132…`), `jev_filas.jsonl` (231 casos, sha256 `f06caab0564b6c2d…`), `l3_jevbench_parcial.jsonl` (67 filas), `baseline-top1.json`; user-data `model/alt/aws/lanzados/ud-llm-0be529b.sh` (7 135 B, sha256 `6d3c7deb1ce1fddeb9da7d56778b98b31f8909bfd5353e523a8cf384a452031b`).
-- Claves: **lee** `llm-0be529b/{llm.tgz,jev_filas.jsonl,l3_jevbench_parcial.jsonl,baseline-top1.json}` (subidos y comprobados); **escribe** `llm-0be529b/{log.txt,listo,resultados.tgz}`; **espera** `llm-0be529b/verificado` hasta 8 min. Modelo desde Hugging Face (no S3).
+- Paquete: `llm-d36f8ab/llm.tgz` (sha256 `12afc145157cf132…`), `jev_filas.jsonl` (231 casos, sha256 `f06caab0564b6c2d…`), `l3_jevbench_parcial.jsonl` (67 filas), `baseline-top1.json`; user-data `model/alt/aws/lanzados/ud-llm-d36f8ab.sh` (7 135 B, sha256 `6d3c7deb1ce1fddeb9da7d56778b98b31f8909bfd5353e523a8cf384a452031b`).
+- Claves: **lee** `llm-d36f8ab/{llm.tgz,jev_filas.jsonl,l3_jevbench_parcial.jsonl,baseline-top1.json}` (subidos y comprobados); **escribe** `llm-d36f8ab/{log.txt,listo,resultados.tgz}`; **espera** `llm-d36f8ab/verificado` hasta 8 min. Modelo desde Hugging Face (no S3).
 - Coste máximo: `shutdown -h +60` → 1,006 USD (+ EBS de 100 GB < 0,02 USD). El vigilante cierra y sube 14 min antes del tope.
 - Comando (`--dry-run`: `DryRunOperation: Request would have succeeded`):
 
@@ -159,8 +159,8 @@ Instancia aparte, bajo demanda: dura menos de una hora (spot no ahorra casi nada
         --subnet-id subnet-ejemplo --security-group-ids sg-ejemplo --iam-instance-profile Name=rol-ec2-pruebas \
         --instance-initiated-shutdown-behavior terminate \
         --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-        --user-data file://model/alt/aws/lanzados/ud-llm-0be529b.sh \
-        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-0be529b}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-0be529b}]'
+        --user-data file://model/alt/aws/lanzados/ud-llm-d36f8ab.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-d36f8ab}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-d36f8ab}]'
 
 ### 8.3 Qué demostró la prueba en seco
 
@@ -172,9 +172,9 @@ Un primer intento falló por el entorno del i7 (la caché de e5 no tenía `refs/
 
 ## 9. Resultado del techo del LLM (EC2, 2026-11-13)
 
-Primera ronda, inst-12 con el código 0be529b: vLLM 0.33.0 no arrancó. Durante el profile_run, el muestreador de FlashInfer se compila con JIT y pide nvcc, y la DLAMI no lo trae. Costó ≈ 0,32 USD.
-Arreglo en 5eb239c: `VLLM_USE_FLASHINFER_SAMPLER=0`, y la espera se corta si vLLM muere.
-Segunda ronda, inst-17 con el prefijo llm-5eb239c: 672 s en total y los 231 casos en 206 s. Agregado en `llm-techo-5eb239c.json`.
+Primera ronda, inst-12 con el código d36f8ab: vLLM 0.33.0 no arrancó. Durante el profile_run, el muestreador de FlashInfer se compila con JIT y pide nvcc, y la DLAMI no lo trae. Costó ≈ 0,32 USD.
+Arreglo en 3fcfd14: `VLLM_USE_FLASHINFER_SAMPLER=0`, y la espera se corta si vLLM muere.
+Segunda ronda, inst-17 con el prefijo llm-3fcfd14: 672 s en total y los 231 casos en 206 s. Agregado en `llm-techo-3fcfd14.json`.
 
 | | Exactitud (IC95) |
 |---|---|
@@ -189,12 +189,12 @@ Segunda ronda, inst-17 con el prefijo llm-5eb239c: 672 s en total y los 231 caso
 
 ## 10. Resultado de P3: L2x refutado (2026-11-13)
 
-**Entrenamiento:** en EC2, inst-23 con 0be529b, en una g5.xlarge bajo demanda porque la cuenta no tiene cuota de spot G. Tres épocas: exactitud en dev 0,606, 0,605 y 0,633. Costó ≈ 2,2 USD.
+**Entrenamiento:** en EC2, inst-23 con d36f8ab, en una g5.xlarge bajo demanda porque la cuenta no tiene cuota de spot G. Tres épocas: exactitud en dev 0,606, 0,605 y 0,633. Costó ≈ 2,2 USD.
 En esa ronda fallaron la evaluación y el informe: el `bateria-no-vista.tgz` hecho en el Mac llevaba entradas AppleDouble `._*.jsonl`, que GNU tar extrae.
 
-**Arreglo** (9ce491c): `cargar_bateria` ignora los ficheros que empiezan por «.», `l2x.sh` borra `._*`, transformers queda fijado a 5.22.2 (la última en PyPI a la hora del entrenamiento) y hay un modo «solo evaluar».
+**Arreglo** (7658e08): `cargar_bateria` ignora los ficheros que empiezan por «.», `l2x.sh` borra `._*`, transformers queda fijado a 5.22.2 (la última en PyPI a la hora del entrenamiento) y hay un modo «solo evaluar».
 
-**Evaluación:** la del checkpoint de 0be529b se hizo en el i7 por CPU (torch 2.5.1, transformers 4.46.3, fp32, 6 hilos): 6 882 filas en 1 445 s. Informe completo en `informe-l2x.md` y `informe-l2x.json`.
+**Evaluación:** la del checkpoint de d36f8ab se hizo en el i7 por CPU (torch 2.5.1, transformers 4.46.3, fp32, 6 hilos): 6 882 filas en 1 445 s. Informe completo en `informe-l2x.md` y `informe-l2x.json`.
 
 | Agrupada (6 651 filas) | Exactitud (IC95) | Macro-F1 |
 |---|---|---|
@@ -345,7 +345,7 @@ Los JSON de este directorio solo llevan cifras (ningún texto de la batería).
 ## 12. Paso 2: techo del LLM en la batería y el LLM como etiquetador (preparado, sin lanzar)
 
 Aprobado por Juan con tope de 1,5 USD dentro de la partida de 35 y sin push. Código: `model/alt/llm_bateria.py` (muestra, fondo, medición; test `model/alt/tests/test_llm_bateria.py`)
-y `model/alt/aws/llm_bateria.sh` (user-data). El cliente es `llm_jevbench.py` sin cambios: el método de llm-5eb239c (esquema con todos los ids obligatorios, contexto 16 k,
+y `model/alt/aws/llm_bateria.sh` (user-data). El cliente es `llm_jevbench.py` sin cambios: el método de llm-3fcfd14 (esquema con todos los ids obligatorios, contexto 16 k,
 temperatura 0, un reintento con la suma anterior como retroalimentación).
 
 **Criterio congelado.** PASA si la exactitud agrupada del LLM bf16 es ≥ 0,65, si en hatecheck-es saca ≥ 5 puntos sobre kNN (el mayor del guardado y el recalculado) y si el Q4_K_M
@@ -394,7 +394,7 @@ Fases en orden de prioridad. Cada una tiene su tope y lo cortado queda escrito (
 3. **C. Fondo:** vLLM otra vez, hasta que queden 15 min.
 
 El vigilante cierra a los 71 min y sube los resultados; `shutdown -h +85` es el tope duro.
-- Paquete en `llm-bateria-4994f3e/` (subido y vuelto a bajar con el mismo sha256):
+- Paquete en `llm-bateria-0e58743/` (subido y vuelto a bajar con el mismo sha256):
 
   | fichero | sha256 |
   |---|---|
@@ -403,7 +403,7 @@ El vigilante cierra a los 71 min y sube los resultados; `shutdown -h +85` es el 
   | `filas-q4.jsonl` | `757fcae0…` |
   | `fondo.jsonl` | `5bb146ef…` |
 
-  user-data: `model/alt/aws/lanzados/ud-llm-bateria-4994f3e.sh` (13 853 B, sha256 `34ae1ab2862c744d0193bfae5895f7515e0f5cf24957e7c77ce62d8fa0828088`).
+  user-data: `model/alt/aws/lanzados/ud-llm-bateria-0e58743.sh` (13 853 B, sha256 `34ae1ab2862c744d0193bfae5895f7515e0f5cf24957e7c77ce62d8fa0828088`).
 - Claves:
   - **Lee:** esos 4 ficheros.
   - **Escribe:** `log.txt`, `listo` y `resultados.tgz`.
@@ -419,15 +419,15 @@ El vigilante cierra a los 71 min y sube los resultados; `shutdown -h +85` es el 
   | fusión | 0,606 | 0,610 |
   | cruzado | 0,572 | 0,574 |
 
-  **No probado:** vLLM en esta ronda (sí en llm-5eb239c), el binario CUDA de llama.cpp en la A10G (que no le falte ninguna biblioteca) y el reinicio de vLLM tras el Q4. Si el Q4 falla, A y C siguen y queda un FALLO en el log.
+  **No probado:** vLLM en esta ronda (sí en llm-3fcfd14), el binario CUDA de llama.cpp en la A10G (que no le falte ninguna biblioteca) y el reinicio de vLLM tras el Q4. Si el Q4 falla, A y C siguen y queda un FALLO en el log.
 - Orden (`--dry-run`: `DryRunOperation: Request would have succeeded`):
 
       aws ec2 run-instances --region us-east-1 --image-id ami-ejemplo --instance-type g5.xlarge --count 1 \
         --subnet-id subnet-ejemplo --security-group-ids sg-ejemplo --iam-instance-profile Name=rol-ec2-pruebas \
         --instance-initiated-shutdown-behavior terminate \
         --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-        --user-data file://model/alt/aws/lanzados/ud-llm-bateria-4994f3e.sh \
-        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-bateria-4994f3e}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-bateria-4994f3e}]'
+        --user-data file://model/alt/aws/lanzados/ud-llm-bateria-0e58743.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-bateria-0e58743}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-bateria-0e58743}]'
 
   Cuando aparezca `listo`, se baja `resultados.tgz` y se mide en el i7 con
   `python -m model.alt.llm_bateria medir --muestra $D/muestra --bf16 res/l3_bateria.jsonl --q4 res/l3_q4.jsonl --bateria …/p3-eval/full/bat --pred …/fusion-knn-l2/pred --vec …/fusion-knn-l2/vec`
@@ -437,7 +437,7 @@ El vigilante cierra a los 71 min y sube los resultados; `shutdown -h +85` es el 
 ### 12.5 Resultado (EC2 inst-08, 2026-11-13): INCOMPLETO, falta el Q4; sin Q4 no pasaría (agrupada 0,6497 frente a 0,65)
 
 Duró 3 468 s hasta `listo`; `verificado` se subió al momento y la instancia se terminó sola. Costó ≈ 1,0 USD (≈ 60 min a 1,006 USD/h, con el EBS de 100 GB aparte).
-Cifras en `llm-bateria-4994f3e.json` (medición) y `llm-bateria-fondo-4994f3e.json` (fondo). Ninguno de los dos lleva textos.
+Cifras en `llm-bateria-0e58743.json` (medición) y `llm-bateria-fondo-0e58743.json` (fondo). Ninguno de los dos lleva textos.
 
 | fase | resultado |
 |---|---|
@@ -500,7 +500,7 @@ Una ronda solo de Q4 con el user-data de esta y las fases A y C desactivadas cos
 
 ### 12.6 Ronda solo de Q4: llama.cpp en el contenedor oficial CUDA (preparada, sin lanzar)
 
-Juan eligió la opción (a), con tope de 0,6 USD. User-data: `model/alt/aws/llm_q4.sh` → `lanzados/ud-llm-q4-8deacf2.sh`
+Juan eligió la opción (a), con tope de 0,6 USD. User-data: `model/alt/aws/llm_q4.sh` → `lanzados/ud-llm-q4-875debc.sh`
 (7 796 B, sha256 `4bdc197bc0855d56184989b8da6ee9db69aa61c357c6b96148c79eaeb3afd727`).
 
 - **Imagen fijada por digest:** `ghcr.io/ggml-org/llama.cpp@sha256:e110d1ae4a3572398950e7b64b5abd585a3eab678ae726484f743a12140bdc40`. Es el manifiesto linux/amd64 de
@@ -519,7 +519,7 @@ Juan eligió la opción (a), con tope de 0,6 USD. User-data: `model/alt/aws/llm_
   Antes de las 3 116 filas hay una autoprueba de una fila por tarea.
 - **Tiempo y coste:** `shutdown -h +33`; el cliente de las 3 116 filas no tiene tope propio: lo corta el vigilante cuando quedan 11 min (a los 22 min); el resto se mide en las filas con respuesta. Espera `verificado` hasta 6 min.
   Coste máximo ≈ 0,57 USD (con el arranque), más el EBS de 100 GB.
-- **Claves en `llm-q4-8deacf2/`:**
+- **Claves en `llm-q4-875debc/`:**
   - **Lee:** `llm.tgz` y `filas-q4.jsonl`. Subidas y vueltas a bajar con el mismo sha256.
   - **Escribe:** `log.txt`, `listo` y `resultados.tgz`.
   - **Espera:** `verificado`.
@@ -534,14 +534,14 @@ Juan eligió la opción (a), con tope de 0,6 USD. User-data: `model/alt/aws/llm_
         --subnet-id subnet-ejemplo --security-group-ids sg-ejemplo --iam-instance-profile Name=rol-ec2-pruebas \
         --instance-initiated-shutdown-behavior terminate \
         --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-        --user-data file://model/alt/aws/lanzados/ud-llm-q4-8deacf2.sh \
-        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-8deacf2}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-8deacf2}]'
+        --user-data file://model/alt/aws/lanzados/ud-llm-q4-875debc.sh \
+        --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-875debc}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-q4-875debc}]'
 
 ### 12.7 Resultado de la ronda de Q4 (EC2 inst-13, 2026-11-15): el Q4 pierde 3,05 puntos y no cumple ≤ 2
 
 Duró 999 s hasta `listo` y costó ≈ 0,31 USD (≈ 18 min). La autoprueba de docker y la GPU pasó: docker 25.0.14, la imagen en 50 s, `CUDA0: NVIDIA A10G`.
 El runtime es **llama.cpp b12375** (commit 9d25e00), no el b12138 de la prueba en el i7.
-Las 3 116 filas se hicieron en 824 s; 3 027 respuestas son válidas. Cifras en `llm-bateria-q4-8deacf2.json`.
+Las 3 116 filas se hicieron en 824 s; 3 027 respuestas son válidas. Cifras en `llm-bateria-q4-875debc.json`.
 
 | tarea | n | bf16 | Q4_K_M | Q4 − bf16 [IC95 por pares] | McNemar (solo Q4 / solo bf16, p) | inválidas bf16 → Q4 |
 |---|---|---|---|---|---|---|
@@ -569,7 +569,7 @@ Las 3 116 filas se hicieron en 824 s; 3 027 respuestas son válidas. Cifras en `
   Encaja más como etiquetador o como juez de casos de pocas opciones que como cascada general.
 
 
-## 13. Rondas R1, R2 y R3 hacia uso general (preparadas, sin lanzar; código 1208cd9)
+## 13. Rondas R1, R2 y R3 hacia uso general (preparadas, sin lanzar; código b039509)
 
 Objetivo: que Chispa sirva para tareas que no ha visto (zero-shot y few-shot). Rama `llm-rondas-r123`, sin push. Gasto antes de estas rondas ≈ 4,1 de 35 USD.
 
@@ -589,8 +589,8 @@ soporte medio por clase que hubo de verdad (hatecheck-es solo tiene 180 textos d
 
 - Instancia: c7i.2xlarge bajo demanda (0,357 USD/h), la misma DLAMI (arranca sin GPU), 100 GB gp3, terminate al apagar, `shutdown -h +40`, espera de `verificado` 6 min.
 - Pasos: transformers 5.22.2 → entradas por nombre exacto y recuentos → criterio (sha) → e5-small @ 614241f6 → vectores de batería y fondo → `knn_soporte_llm medir`.
-- Entradas en `s3://chispa-pruebas-cuenta-aws/knn-llm-1208cd9/` (sha256): codigo.tgz `f04d66d5…`, bateria.tgz `b1b2ca54…`, vec-paso1.tgz `19d903fc…`,
-  fondo.jsonl `5bb146ef…`, l3_fondo.jsonl `927e84d2…`, fondo-fuente.jsonl `9a4f7fd2…`. User-data: `lanzados/ud-knn-llm-1208cd9.sh`.
+- Entradas en `s3://chispa-pruebas-cuenta-aws/knn-llm-b039509/` (sha256): codigo.tgz `f04d66d5…`, bateria.tgz `b1b2ca54…`, vec-paso1.tgz `19d903fc…`,
+  fondo.jsonl `5bb146ef…`, l3_fondo.jsonl `927e84d2…`, fondo-fuente.jsonl `9a4f7fd2…`. User-data: `lanzados/ud-knn-llm-b039509.sh`.
 - **Prueba en seco en el i7** (modo local, el ud sin sustituir, 300 textos de fondo y los vectores del paso 1): entradas, criterio, vectores (54 s) y medir (46 s)
   pasaron en 158 s. El kNN de oro reproduce 0,5801. Las cifras del LLM con 300 textos no significan nada (unos 50 por tarea) y no se usan.
 
@@ -609,7 +609,7 @@ da ≥ 0,62 y hatecheck-es ≥ 0,75. **REFUTADO** si la agrupada da < 0,58. Si n
 - Estimación en el i7 para el modelo que pase: hasta ahora solo hay una medida, Q4 de 4B en CPU (unos 65 s por fila de hatecheck y unos 6 min por fila de massive-es, §12.2). Escalar por parámetros (1,7/4) es una cota gruesa. Si pasa, conviene medir 20 filas en el i7 con el GGUF Q4 del 1.7B.
 - Medición fuera: `python -m model.alt.llm_bateria pequeno --muestra DIR --ref l3_bateria.jsonl --modelo qwen3-1.7b=l3-qwen3-1.7b.jsonl --lat qwen3-1.7b=lat-qwen3-1.7b.jsonl …`.
   Sobre la salida del 4B contra sí mismo da 0,6497 y diferencia 0, lo que confirma la medida del paso 2.
-- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-pequeno-1208cd9/`: llm.tgz `e22e3395…`, filas.jsonl `7ea97957…`. User-data: `lanzados/ud-llm-pequeno-1208cd9.sh`.
+- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-pequeno-b039509/`: llm.tgz `e22e3395…`, filas.jsonl `7ea97957…`. User-data: `lanzados/ud-llm-pequeno-b039509.sh`.
 - **Prueba en seco en el i7**: el ud sin sustituir, contra un servidor OpenAI falso que devuelve probabilidades uniformes. Pasaron los dos modelos (autoprueba, latencia, muestra y resumen). Las 12 peticiones llevaron `enable_thinking: false`.
 
 ### 13.3 R3: tareas nuevas en español (sin AWS)
@@ -627,19 +627,19 @@ aws ec2 run-instances --region us-east-1 --image-id ami-ejemplo --instance-type 
   --subnet-id subnet-ejemplo --security-group-ids sg-ejemplo --iam-instance-profile Name=rol-ec2-pruebas \
   --instance-initiated-shutdown-behavior terminate \
   --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-  --user-data file://model/alt/aws/lanzados/ud-knn-llm-1208cd9.sh \
-  --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-knn-llm-1208cd9}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-knn-llm-1208cd9}]'
+  --user-data file://model/alt/aws/lanzados/ud-knn-llm-b039509.sh \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-knn-llm-b039509}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-knn-llm-b039509}]'
 aws ec2 run-instances --region us-east-1 --image-id ami-ejemplo --instance-type g5.xlarge --count 1 \
   --subnet-id subnet-ejemplo --security-group-ids sg-ejemplo --iam-instance-profile Name=rol-ec2-pruebas \
   --instance-initiated-shutdown-behavior terminate \
   --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":100,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-  --user-data file://model/alt/aws/lanzados/ud-llm-pequeno-1208cd9.sh \
-  --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-1208cd9}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-1208cd9}]'
+  --user-data file://model/alt/aws/lanzados/ud-llm-pequeno-b039509.sh \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-b039509}]' 'ResourceType=volume,Tags=[{Key=proyecto,Value=chispa},{Key=Name,Value=chispa-llm-pequeno-b039509}]'
 ```
 
 ### 13.5 Resultado de R1 (EC2 inst-26, c7i.2xlarge, 2026-11-15): PASA
 
-La instancia corrió 7 min de trabajo (427 s) y unos 10 min en total contando la espera de `verificado`, por ≈ 0,06 USD. Las cifras están en `knn-llm-1208cd9.json`, que no lleva textos. Se comprobó el criterio contra el sha256 congelado `5e0c38a6…`.
+La instancia corrió 7 min de trabajo (427 s) y unos 10 min en total contando la espera de `verificado`, por ≈ 0,06 USD. Las cifras están en `knn-llm-b039509.json`, que no lleva textos. Se comprobó el criterio contra el sha256 congelado `5e0c38a6…`.
 
 **El kNN con soporte etiquetado por el LLM gana al de oro por 6,0 puntos agrupados** [IC95 +4,7, +7,3]: 0,6381 frente a 0,5783, en las 6 651 filas. hatecheck-es da 0,730.
 Se cumplen los tres criterios: no pierde frente al oro (gana), la agrupada da ≥ 0,55 y hatecheck-es ≥ 0,60. No está refutado.
@@ -681,7 +681,7 @@ Lectura y reservas:
 
 ### 13.6 Resultado de R2 (EC2 inst-19, g5.xlarge, 2026-11-15): los dos REFUTADOS
 
-La instancia corrió 22 min de trabajo (1 330 s) y unos 25 min en total con la espera, por ≈ 0,42 USD. Las cifras están en `llm-pequeno-1208cd9.json` (sin textos), medidas con `llm_bateria pequeno` contra `CRIT5` (sha256 `767064e1…`). Las 3 116 filas tienen respuesta en los dos modelos.
+La instancia corrió 22 min de trabajo (1 330 s) y unos 25 min en total con la espera, por ≈ 0,42 USD. Las cifras están en `llm-pequeno-b039509.json` (sin textos), medidas con `llm_bateria pequeno` contra `CRIT5` (sha256 `767064e1…`). Las 3 116 filas tienen respuesta en los dos modelos.
 
 | | Qwen3-4B bf16 (paso 2) | Qwen3-1.7B | Qwen3-0.6B |
 |---|---|---|---|
@@ -710,7 +710,7 @@ El mismo cliente da 0,6497 con el 4B. La latencia de un hilo es baja en las tare
 
 Reserva: el arnés pide probabilidades en JSON, que es exigente para un modelo pequeño. Otro formato, como logprobs sobre la etiqueta, podría dar más. Sería otro método, no una repetición, y habría que congelarlo aparte.
 
-### 13.7 R3 convertido en el i7 (código 912a77b): dos tareas, MultiEURLEX no viable
+### 13.7 R3 convertido en el i7 (código 9115d46): dos tareas, MultiEURLEX no viable
 
 **Uso: solo para medir, nunca para entrenar.**
 
@@ -719,7 +719,7 @@ Las tres fuentes se bajaron a `/mnt/nfs-lab/chispa-audio/tareas-nuevas/hub` en s
 - test barajado con un tope de 2 000;
 - texto cortado a 3 000 caracteres.
 
-La batería nueva está en `tareas-nuevas/bat/` (sha256: lexboe.jsonl `2f2af9de…`, fakenews-es.jsonl `b28b5dae…`). El manifiesto, que solo lleva cifras, está en `tareas-nuevas-manifiesto-912a77b.json`.
+La batería nueva está en `tareas-nuevas/bat/` (sha256: lexboe.jsonl `2f2af9de…`, fakenews-es.jsonl `b28b5dae…`). El manifiesto, que solo lleva cifras, está en `tareas-nuevas-manifiesto-9115d46.json`.
 
 Ninguna de las tres fuentes aparece en los manifiestos de entrenamiento: `manifiesto-entrenamiento.json`, `manifiesto-l2x.json` y `model/datos`. tsjev no está en el i7, así que no se filtró contra tsjev. El riesgo es bajo, porque son dominios distintos.
 
@@ -740,7 +740,7 @@ No se encontró ninguna cuarta tarea apta que no sea legal. La única dudosa, ho
 
 ## 14. Rondas R4, R5 y R6 y la integración (preparadas, sin lanzar; rama `llm-rondas-r456`)
 
-### 14.1 R4: zero-shot del 4B en las tareas nuevas y fondo ampliado (g5.xlarge, ≤ 60 min, ≈ 1,0 USD; código 9f68027)
+### 14.1 R4: zero-shot del 4B en las tareas nuevas y fondo ampliado (g5.xlarge, ≤ 60 min, ≈ 1,0 USD; código 33ad02c)
 
 **Criterio congelado antes de medir** (`knn_soporte_llm.CRIT4`, `--criterio r4`). Es el sha256 `a273e9271013035e5725af0fbec6580d4dcd6c995da3b98465b083fa0c0950ce` de
 `{"fondo": "fondo+fondo2", "pasa_agrupada_min": 0.66, "refutado_si_agrupada_le": 0.638, "variante": "llm/todo"}`.
@@ -762,13 +762,13 @@ Qué etiqueta el 4B (mismo arnés que el paso 2):
 - Lo etiquetado queda aunque se corte. Total esperado: unos 16–18 k textos con el fondo de R1.
 
 Datos:
-- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-r4-9f68027/`: llm.tgz `c8c0cdfd…`, filas-nuevas.jsonl `9dab2c69…`, fondo2.jsonl `b788b574…`.
-- User-data: `lanzados/ud-llm-r4-9f68027.sh` (sha256 `dfa4c847…`).
+- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-r4-33ad02c/`: llm.tgz `c8c0cdfd…`, filas-nuevas.jsonl `9dab2c69…`, fondo2.jsonl `b788b574…`.
+- User-data: `lanzados/ud-llm-r4-33ad02c.sh` (sha256 `dfa4c847…`).
 
 Prueba en seco en el i7, con el ud sin sustituir y el servidor falso: pasaron entradas, autoprueba, nuevas y fondo2. `run-instances --dry-run` da DryRunOperation.
-Orden de lanzamiento: el de §13.4 para la g5, con `--user-data file://model/alt/aws/lanzados/ud-llm-r4-9f68027.sh` y Name `chispa-llm-r4-9f68027`.
+Orden de lanzamiento: el de §13.4 para la g5, con `--user-data file://model/alt/aws/lanzados/ud-llm-r4-33ad02c.sh` y Name `chispa-llm-r4-33ad02c`.
 
-### 14.2 Integración (`integracion-uso-general` @ 4799323, sin push y sin tocar main)
+### 14.2 Integración (`integracion-uso-general` @ 40c5c8a, sin push y sin tocar main)
 
 Se creó desde `llm-rondas-r123`:
 - Se fusionaron audio-experimento y servidor-p1-m1, sin conflictos.
@@ -789,7 +789,7 @@ Fallos que ya estaban antes de la integración, comprobados en las ramas de orig
 - hay aserciones que ya fallaban en model/datos (test_fuentes, test_libres, test_reglas), cascada (test_capas, test_informe), l1, liston y l2 (test_corpus_poda, test_aumento, test_w2);
 - los tests de torch y pyarrow sin ejecutar en el Mac, entre ellos model/audio.
 
-### 14.3 R5: el paso 5 con logprobs en vez de JSON (g5.xlarge, ≤ 52 min, ≈ 0,87 USD; código 0bcbd78)
+### 14.3 R5: el paso 5 con logprobs en vez de JSON (g5.xlarge, ≤ 52 min, ≈ 0,87 USD; código f85da01)
 
 **Criterio congelado** (`llm_bateria.CRIT5L`, `pequeno --criterio r5`): sha256 `17c1ea124ed0a2f9f1221f339b964af3a25dffca4f2bee509f4e9a3a6d5c1576`. Mismos umbrales que CRIT5:
 - **PASA** con agrupada ≥ 0,62 y hatecheck-es ≥ 0,75;
@@ -812,11 +812,11 @@ Riesgos sin verificar contra un vLLM real:
 - que el 4B, el último, quepa en el tope.
 
 Datos:
-- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-logprobs-0bcbd78/`: llm.tgz `af1c3c9a…` (llm_logprobs.py y llm_jevbench.py), filas.jsonl `7ea97957…`.
-- User-data: `lanzados/ud-llm-logprobs-0bcbd78.sh` (sha256 `d51132db…`).
+- Entradas en `s3://chispa-pruebas-cuenta-aws/llm-logprobs-f85da01/`: llm.tgz `af1c3c9a…` (llm_logprobs.py y llm_jevbench.py), filas.jsonl `7ea97957…`.
+- User-data: `lanzados/ud-llm-logprobs-f85da01.sh` (sha256 `d51132db…`).
 Prueba en seco: el subagente que lo escribió corrió el ud con LOCAL=1 contra un servidor falso de logprobs; pasaron los tres modelos y salieron resumen.json y resultados.tgz. pytest da 10 pruebas en verde y `run-instances --dry-run` da DryRunOperation.
 
-### 14.4 R6: simulación del paso 4 en una c7i, más la medida de R4, las versiones y la latencia (≤ 55 min, ≈ 0,33 USD; código 805d1e0)
+### 14.4 R6: simulación del paso 4 en una c7i, más la medida de R4, las versiones y la latencia (≤ 55 min, ≈ 0,33 USD; código 28c8020)
 
 **Criterio congelado** (`model/alt/prequential.py`, `CRIT_R6`): sha256 `288d1260f7bb5868218ec0c676e390710a42c642b2166aa2942fbea2acd8f064` de
 `{"alfa": 0.5, "nuevas": ["hatecheck-es", "lexboe", "fakenews-es"], "perdida_max_original": 0.02, "ref_nuevas": "oro_estatico", "ref_originales": "oro_llm_estatico", "refutado_si_dif_le": 0.0, "regla": "peso", "retraso": 50, "sube_min": 0.05, "temp": 0.05, "variante": "preq_oro_fondo", "vecinos": 32}`.
@@ -850,12 +850,12 @@ Otros pasos de la misma máquina, por prioridad:
 
 Prueba en seco en el i7 (el ud sin sustituir, 400 textos de fondo, etiquetas falsas de R4): entradas, criterios, vectores (645 s), R4 (48 s) y R6 (16 s) pasaron. Los veredictos de esa prueba no significan nada.
 
-Entradas: en `s3://chispa-pruebas-cuenta-aws/knn-r6-805d1e0/` ya están todas menos `l3_fondo2.jsonl` y `l3_nuevas.jsonl`, que se suben al verificar R4. User-data: `lanzados/ud-knn-r6-805d1e0.sh` (sha256 `8276b475…`). `--dry-run` da DryRunOperation.
+Entradas: en `s3://chispa-pruebas-cuenta-aws/knn-r6-28c8020/` ya están todas menos `l3_fondo2.jsonl` y `l3_nuevas.jsonl`, que se suben al verificar R4. User-data: `lanzados/ud-knn-r6-28c8020.sh` (sha256 `8276b475…`). `--dry-run` da DryRunOperation.
 **Se lanza solo después de que yo suba las dos entradas de R4**: sin ellas el ud se para en el paso 2.
 
 ### 14.5 Resultado de R5 (EC2 inst-01, g5.xlarge, 2026-11-15): pequeños REFUTADOS; el 4B por logprobs da 0,729
 
-La instancia corrió 25 min de trabajo (1 511 s), unos 28 min en total contando la espera, por ≈ 0,47 USD. Las cifras están en `llm-logprobs-0bcbd78.json`, que no lleva textos ni `raw`, medidas con `llm_bateria pequeno --criterio r5` (CRIT5L, sha256 `17c1ea12…`).
+La instancia corrió 25 min de trabajo (1 511 s), unos 28 min en total contando la espera, por ≈ 0,47 USD. Las cifras están en `llm-logprobs-f85da01.json`, que no lleva textos ni `raw`, medidas con `llm_bateria pequeno --criterio r5` (CRIT5L, sha256 `17c1ea12…`).
 Respondieron las 3 116 filas de los tres modelos y no hubo ninguna inválida. El relleno por `prompt_logprobs` funcionó: no se anotó ni un error. Las 250 filas de massive-es llevan, además, el piso en alguna opción.
 
 | | 4B en JSON (paso 2) | **4B por logprobs** | 1.7B por logprobs | 0.6B por logprobs |
@@ -878,7 +878,7 @@ Veredicto con CRIT5L:
 **Lectura para L3:** el cambio que más gana no es un modelo más pequeño, sino el formato. El mismo 4B, pidiéndole una etiqueta y leyendo logprobs, es más exacto y mucho más rápido. Hay que confirmarlo con otra muestra antes de adoptarlo: la muestra es la del paso 2, que ya se miró, aunque el método se congeló antes de ver estas cifras.
 Las etiquetas del fondo de R1 y R4 están hechas en JSON; un fondo etiquetado por logprobs podría tener menos ruido (sin medir).
 
-### 14.6 R7: confirmación del 4B por logprobs y reetiquetado del soporte (g5.xlarge, ≤ 50 min, ≈ 0,84 USD; código 4747eb1)
+### 14.6 R7: confirmación del 4B por logprobs y reetiquetado del soporte (g5.xlarge, ≤ 50 min, ≈ 0,84 USD; código e2355f8)
 
 **Criterio congelado** (`llm_bateria.CRIT7`, `llm_bateria confirmar`): sha256 `90b2ad87440627d9780b4675ab7d129e272cb71f8a9878eba4f6f2e45d58ba12`.
 - Se mide el 4B con logprobs (el mismo código que R5) en el test de la batería que no entró en la muestra del paso 2: 3 535 filas (jailbreak 150, massive-es 1 253, massive-esc 1 188, tuits-es 944).
@@ -896,8 +896,8 @@ Tiempo, medido en R5: con logprobs una fila de massive-es cuesta 1,17 s de pared
 
 Datos:
 - `llm.tgz` lleva el mismo `llm_logprobs.py` y `llm_jevbench.py` que R5, con los mismos sha256 de fichero, aunque el tarball cambie.
-- Entradas en `s3://…/llm-r7-4747eb1/`: llm.tgz `8df0eb7b…`, filas-confirma.jsonl `0b6b5eb1…`, reetiqueta.jsonl `fd7d00d0…`.
-- User-data: `lanzados/ud-llm-r7-4747eb1.sh`.
+- Entradas en `s3://…/llm-r7-e2355f8/`: llm.tgz `8df0eb7b…`, filas-confirma.jsonl `0b6b5eb1…`, reetiqueta.jsonl `fd7d00d0…`.
+- User-data: `lanzados/ud-llm-r7-e2355f8.sh`.
 
 Prueba en seco en el i7, con el ud sin sustituir y un servidor de logprobs falso: pasaron entradas, autoprueba, confirmación y reetiquetado. `--dry-run` da DryRunOperation.
 
@@ -907,7 +907,7 @@ La instancia corrió su tope de 60 min (≈ 1,0 USD), con `verificado` subido.
 
 **(a) Test de las tareas nuevas:** 2 572 de 2 572 filas respondidas, pero solo 1 477 válidas. fakenews-es tiene 572/572 válidas y **lexboe 905/2 000**.
 - En lexboe, el JSON del 4B no suma 1: pone 0,93 en dos clases a la vez.
-- Zero-shot del 4B en JSON (`llm-r4-nuevas-9f68027.json`, IC95 bootstrap):
+- Zero-shot del 4B en JSON (`llm-r4-nuevas-33ad02c.json`, IC95 bootstrap):
 
 | tarea | estricta | permisiva |
 |---|---|---|
@@ -922,15 +922,15 @@ La instancia corrió su tope de 60 min (≈ 1,0 USD), con `verificado` subido.
 
 R6 se mide tal como se congeló, con estas etiquetas en JSON. En lexboe, el flujo prequential solo añade al banco las 905 etiquetas válidas.
 
-**R6 con las etiquetas de R4** (código 12ebb49):
-- User-data: `lanzados/ud-knn-r6-12ebb49.sh` (sha256 `1df0d07f…`). Sustituye al de 805d1e0, que no tenía el modelo int8.
-- Entradas, todas en `s3://…/knn-r6-12ebb49/`: l3_fondo2 `a100a537…`, l3_nuevas `52874409…`, codigo.tgz `7a0f2884…`, latencia.tgz `cc6aeb84…`.
-- Latencia con `modelo-int8.chispa` de `movil-90e3263c/movil`; el sha256 se comprueba antes de medir.
+**R6 con las etiquetas de R4** (código 56240ff):
+- User-data: `lanzados/ud-knn-r6-56240ff.sh` (sha256 `1df0d07f…`). Sustituye al de 28c8020, que no tenía el modelo int8.
+- Entradas, todas en `s3://…/knn-r6-56240ff/`: l3_fondo2 `a100a537…`, l3_nuevas `52874409…`, codigo.tgz `7a0f2884…`, latencia.tgz `cc6aeb84…`.
+- Latencia con `modelo-int8.chispa` de `movil-f6acb278/movil`; el sha256 se comprueba antes de medir.
 - `--dry-run` da DryRunOperation.
 
 ### 14.8 Resultados de R6 en la c7i (EC2 inst-34, 2026-11-15): R4 NO PASA, R6 REFUTADO; versiones y latencia
 
-La instancia trabajó 995 s y terminó a los ≈ 19 min, por ≈ 0,11 USD. Ficheros (solo cifras): `knn-r4-12ebb49.json`, `prequential-r6-12ebb49.json`, `versiones-r6-12ebb49.jsonl` y `latencia-1vcpu-12ebb49.json`.
+La instancia trabajó 995 s y terminó a los ≈ 19 min, por ≈ 0,11 USD. Ficheros (solo cifras): `knn-r4-56240ff.json`, `prequential-r6-56240ff.json`, `versiones-r6-56240ff.jsonl` y `latencia-1vcpu-56240ff.json`.
 
 **R4, kNN con el fondo ampliado (CRIT4 `a273e927…`): NO PASA.**
 - La agrupada da 0,6389, frente a 0,6381 en R1. No llega a 0,66, pero tampoco cae a ≤ 0,638.
@@ -986,7 +986,7 @@ Lectura:
 ### 14.9 Resultado de R7 (EC2 inst-04, g5.xlarge, 2026-11-15): confirmación NO PASA por poco; logprobs arregla las tareas nuevas
 
 La instancia trabajó 38 min (2 294 s), unos 40 min en total con la espera, por ≈ 0,68 USD.
-Ficheros: `llm-r7-confirma-4747eb1.json` y `llm-r7-nuevas-4747eb1.json`, solo cifras.
+Ficheros: `llm-r7-confirma-e2355f8.json` y `llm-r7-nuevas-e2355f8.json`, solo cifras.
 No hubo ninguna respuesta inválida en ninguna fila.
 
 **Confirmación fuera de la muestra (CRIT7 `90b2ad87…`): NO PASA.**
@@ -1019,7 +1019,7 @@ Mismas filas, 4B por logprobs frente a 4B en JSON (permisivo):
 **R6b tal como se congeló no informaría.** Su CRIT6B compara el kNN con el fondo reetiquetado por logprobs frente al de JSON. Como no se reetiquetó ni un texto del fondo, las dos variantes serían idénticas y la diferencia daría 0 por construcción. No conviene lanzarlo así.
 Hace falta antes una ronda que reetiquete el fondo. Lo que tiene más ruido en JSON son lexboe, massive-esc e inyecciones; massive-es cuesta 1,17 s por texto.
 
-### 14.10 R7b: reetiquetado por logprobs en dos g5 a la vez y alcance de R6b (preparado, sin lanzar; código 540c8c1)
+### 14.10 R7b: reetiquetado por logprobs en dos g5 a la vez y alcance de R6b (preparado, sin lanzar; código b94c7e6)
 
 El ud es el de R7 sin la confirmación (`llm_r7b.sh`), con el mismo cliente y el mismo modelo. Lleva un tope de 35 min por máquina (≈ 0,59 USD cada una).
 Solo se reetiquetan textos que ya tienen etiqueta JSON, para que R6b compare etiquetas y no tamaños de soporte.
@@ -1032,10 +1032,10 @@ Colas, en orden de prioridad (estimación con los costes de R5 y R7):
 | B, 4 721 textos | massive-esc de fondo2 con etiqueta de R4 (2 721); fondo de R1 de massive-es (2 000) | ≈ 17 min más massive-es a 1,17 s por texto; massive-es llegará a ≈ 500–600 |
 
 Entradas:
-- `s3://…/llm-r7b-a-540c8c1/`: reetiqueta.jsonl `1b08bac9…`.
-- `s3://…/llm-r7b-b-540c8c1/`: reetiqueta.jsonl `9da77e8b…`.
+- `s3://…/llm-r7b-a-b94c7e6/`: reetiqueta.jsonl `1b08bac9…`.
+- `s3://…/llm-r7b-b-b94c7e6/`: reetiqueta.jsonl `9da77e8b…`.
 - El llm.tgz es el mismo de R5 en contenido.
-- User-data: `ud-llm-r7b-a-540c8c1.sh` (sha256 `ee33bfd8…`) y `ud-llm-r7b-b-540c8c1.sh` (sha256 `b08000a3…`).
+- User-data: `ud-llm-r7b-a-b94c7e6.sh` (sha256 `ee33bfd8…`) y `ud-llm-r7b-b-b94c7e6.sh` (sha256 `b08000a3…`).
 - Prueba en seco en el i7 con el servidor falso: OK. Los `--dry-run` dan DryRunOperation.
 
 **Alcance de R6b**, fijado antes de medir (`knn_soporte_llm.CRIT6B_ALCANCE`, sha256 `7e885b2a04e36f42b295de8d66416871cbfe1df0696be859b574ce70af4feeed`).
@@ -1062,15 +1062,15 @@ Junto con R7, `lp_reetiqueta.jsonl` reúne 11 405 etiquetas por logprobs:
 
 **massive-es se queda prácticamente sin reetiquetar** (7 de 2 000). Por el alcance congelado (≥ 50 %), R6b la deja fuera.
 
-**R6b (código 4cb8cc7)** se ejecuta en una c7i.2xlarge con un tope de 40 min (≈ 0,24 USD):
-- User-data: `lanzados/ud-knn-r6b-4cb8cc7.sh` (sha256 `3774b223…`).
-- Entradas en `s3://…/knn-r6b-4cb8cc7/`: lp_reetiqueta `7d22bae3…` (R7 + A + B), lp_bateria `16274abf…` (el 4B por logprobs de R5), codigo.tgz `9716c83b…`. El resto, igual que en R6.
+**R6b (código f5b44b8)** se ejecuta en una c7i.2xlarge con un tope de 40 min (≈ 0,24 USD):
+- User-data: `lanzados/ud-knn-r6b-f5b44b8.sh` (sha256 `3774b223…`).
+- Entradas en `s3://…/knn-r6b-f5b44b8/`: lp_reetiqueta `7d22bae3…` (R7 + A + B), lp_bateria `16274abf…` (el 4B por logprobs de R5), codigo.tgz `9716c83b…`. El resto, igual que en R6.
 - Criterios: CRIT6B `75922ecb…` y su alcance `7e885b2a…`. El prequential descriptivo reutiliza CRIT_R6 `288d1260…`.
 - `--dry-run` da DryRunOperation.
 
 ### 14.12 Resultado de R6b (EC2 inst-09, c7i.2xlarge, 2026-11-15): NO PASA (+1,7 puntos, pedía +2)
 
-La instancia trabajó 12 min (719 s) por ≈ 0,09 USD. Ficheros: `knn-r6b-4cb8cc7.json` y `prequential-r6b-4cb8cc7.json`, solo cifras.
+La instancia trabajó 12 min (719 s) por ≈ 0,09 USD. Ficheros: `knn-r6b-f5b44b8.json` y `prequential-r6b-f5b44b8.json`, solo cifras.
 
 **CRIT6B (`75922ecb…`, alcance `7e885b2a…`): NO PASA.**
 - Medido sobre el soporte del kNN; la variante con etiquetas por logprobs se compara por pares con la de JSON.
@@ -1101,7 +1101,7 @@ La instancia trabajó 12 min (719 s) por ≈ 0,09 USD. Ficheros: `knn-r6b-4cb8cc
 
 ## 15. Tanda R8 (rama `llm-rondas-r8`, sin push)
 
-### 15.1 R8: reetiquetar por logprobs lo que sigue en JSON (dos g5 a la vez, ≤ 35 min cada una; código d10bc5c)
+### 15.1 R8: reetiquetar por logprobs lo que sigue en JSON (dos g5 a la vez, ≤ 35 min cada una; código 076f7fb)
 
 El ud es el de R7b (`llm_r7b.sh`, que no cambia) y el cliente es el de R5. Se saltan los 11 405 textos que ya están reetiquetados.
 
@@ -1111,8 +1111,8 @@ El ud es el de R7b (`llm_r7b.sh`, que no cambia) y el cliente es el de R5. Se sa
 | B, 6 996 textos | la 1.ª mitad del massive-es del fondo de R1 (996); después el massive-es de fondo2 (6 000, sin etiqueta JSON: es soporte nuevo) | ≈ 19 min la 1.ª mitad; de fondo2, unos 300 |
 
 Datos:
-- Entradas en `s3://…/llm-r8-a-d10bc5c/` (reetiqueta.jsonl `1b7b6a20…`) y en `s3://…/llm-r8-b-d10bc5c/` (reetiqueta.jsonl `59ad1b56…`).
-- User-data: `ud-llm-r8-a-d10bc5c.sh` y `ud-llm-r8-b-d10bc5c.sh`.
+- Entradas en `s3://…/llm-r8-a-076f7fb/` (reetiqueta.jsonl `1b7b6a20…`) y en `s3://…/llm-r8-b-076f7fb/` (reetiqueta.jsonl `59ad1b56…`).
+- User-data: `ud-llm-r8-a-076f7fb.sh` y `ud-llm-r8-b-076f7fb.sh`.
 - `--dry-run` da DryRunOperation.
 
 ### 15.2 Regla de escalado L2→L3 (sin AWS, en el i7; código del commit siguiente a este texto)
@@ -1138,9 +1138,9 @@ Datos:
 - `medir` se niega a mezclar vectores de versiones distintas.
 - **Condición para R8b**, añadida antes de medir por orden de la sesión madre: R8b mide la cascada con la misma versión de vectores con la que se fija la regla, transformers 4.46.3 y torch 2.5.1+cpu. Su ud tiene que instalar esas versiones y llamar a `vectores --transformers 4.46.3`; el umbral se aplica sobre esos mismos vectores.
 
-### 15.3 Resultado de la regla de escalado (i7, 0 USD; código b61eb53): NO PASA, por poco en las dos condiciones
+### 15.3 Resultado de la regla de escalado (i7, 0 USD; código be13523): NO PASA, por poco en las dos condiciones
 
-Ficheros: `escalado-b61eb53.json`, solo cifras. Vectores calculados en el i7 con transformers 4.46.3, también los 26 137 del fondo. El fondo lleva logprobs de R7, R7b y R8 sobre el JSON.
+Ficheros: `escalado-be13523.json`, solo cifras. Vectores calculados en el i7 con transformers 4.46.3, también los 26 137 del fondo. El fondo lleva logprobs de R7, R7b y R8 sobre el JSON.
 
 **Selección** (semillas 0–4): la señal elegida es el **margen**, con AUROC medio 0,690. Las demás quedaron así: pmax 0,674, sim_vecino 0,627, −entropía 0,577 y sim_oro 0,564. La fracción de escalado es **f = 0,30**: la cascada mejora de forma monótona con f, de 0,673 con f = 0,05 a 0,710 con f = 0,30.
 
@@ -1176,21 +1176,21 @@ Ficheros: `escalado-b61eb53.json`, solo cifras. Vectores calculados en el i7 con
 - **Cola B:** etiquetó 808 de massive-es, todos del fondo de R1; de fondo2 no llegó ninguno.
 - En total quedan 1 039 de los 2 000 massive-es del fondo de R1 etiquetados por logprobs.
 
-**R8b**, código cc82027, se lanza en una c7i.2xlarge con tope de 25 min (≈ 0,15 USD) y solo usa numpy.
+**R8b**, código a47a1d9, se lanza en una c7i.2xlarge con tope de 25 min (≈ 0,15 USD) y solo usa numpy.
 - Va con **los mismos vectores con los que se fijó la regla de escalado**: los del i7, transformers 4.46.3, `vec-i7.tgz`. El ud comprueba esa versión en el `.npz` antes de medir.
 - **Criterios congelados:** CRIT_R8B (sha256 `2d97fcc6f8e210d7a1be814ebae3eb740bfff91e6d897132b1dd40f4fbcf9a58`) usa los umbrales de CRIT_R6, pero con la variante `preq_oro_fondo_umbral`. CRIT8E (`81c88b31…`) se aplica con la regla congelada: margen, f = 0,30.
 - **Qué mide:**
   1. El prequential con todo el soporte por logprobs (R7, R7b y R8 sobre el JSON). En los flujos, el L3 va por logprobs: R5, R7 y el test nuevo de R7/R7b.
   2. La cascada L2→L3 en la batería y en las tareas nuevas.
 - **Datos:**
-  - User-data: `lanzados/ud-knn-r8b-cc82027.sh` (sha256 `de074711…`). Entradas en `s3://…/knn-r8b-cc82027/`.
+  - User-data: `lanzados/ud-knn-r8b-a47a1d9.sh` (sha256 `de074711…`). Entradas en `s3://…/knn-r8b-a47a1d9/`.
   - Prueba en seco en el i7, con las etiquetas L3 recortadas a 300 filas: pasó.
   - `--dry-run`: DryRunOperation.
 - **Siguiente hipótesis** (anotada; no se mide sobre estos datos): una señal propia para hatecheck-es, o escalar siempre las tareas cuyo margen tenga un AUROC < 0,55 en la selección. Se congela antes de medir y se valida en semillas nuevas.
 
 ### 15.5 Resultado de R8b (EC2 inst-11, c7i.2xlarge, 2026-11-16): prequential NO PASA; la cascada alcanza a L3 escalando el 30 %
 
-Ficheros: `prequential-r8b-cc82027.json` y `cascada-r8b-cc82027.json`, solo cifras. Usa los vectores del i7 (transformers 4.46.3). El soporte va por logprobs donde lo hay. Los flujos tienen ahora todas las filas de test con L3, por eso son más largos que en R6.
+Ficheros: `prequential-r8b-a47a1d9.json` y `cascada-r8b-a47a1d9.json`, solo cifras. Usa los vectores del i7 (transformers 4.46.3). El soporte va por logprobs donde lo hay. Los flujos tienen ahora todas las filas de test con L3, por eso son más largos que en R6.
 
 **CRIT_R8B (`2d97fcc6…`): NO PASA. No está refutado.**
 - Las nuevas agrupadas con `preq_oro_fondo_umbral` dan 0,640, frente a 0,634 del oro estático: +0,6 puntos, cuando se pedían +5.
@@ -1236,11 +1236,11 @@ Al sumar las tareas nuevas, la cascada **iguala o supera a L3 solo escalando el 
 
 ## 16. Tanda R9 (rama `llm-rondas-r9`, sin push)
 
-### 16.1 R9-m: el resto de massive-es por logprobs (g5, ≤ 35 min; código d778d88)
+### 16.1 R9-m: el resto de massive-es por logprobs (g5, ≤ 35 min; código 4d5802f)
 
 - Se usa el ud de R7b sin cambios y el cliente de R5.
 - La cola tiene 6 961 textos. Van primero los 961 del fondo de R1 que faltaban, unos 19 min a 1,17 s por texto. Detrás van los 6 000 de massive-es de fondo2, de los que caben unos 250.
-- Entradas en `s3://…/llm-r9m-d778d88/`: reetiqueta.jsonl `317f8507…`. User-data: `lanzados/ud-llm-r9m-d778d88.sh` (sha256 `4777ec3c…`).
+- Entradas en `s3://…/llm-r9m-4d5802f/`: reetiqueta.jsonl `317f8507…`. User-data: `lanzados/ud-llm-r9m-4d5802f.sh` (sha256 `4777ec3c…`).
 - `--dry-run` da DryRunOperation.
 
 ### 16.2 Regla de escalado por tarea: criterio congelado antes de usar las semillas nuevas
@@ -1258,7 +1258,7 @@ Al sumar las tareas nuevas, la cascada **iguala o supera a L3 solo escalando el 
 - **Validación:** **solo en las semillas 10–19, que nunca se han usado**, en su mitad de validación.
 - **Datos:** los mismos que en §15.3. Vectores del i7 con transformers 4.46.3; fondo con logprobs de R7, R7b y R8; L3 de R5 y R7. Batería original.
 
-**Resultado (i7, 0 USD; `escalado-r9-03479c2.json`): NO PASA por los topes de escalado; la exactitud de la cascada iguala a L3**
+**Resultado (i7, 0 USD; `escalado-r9-92ba1c8.json`): NO PASA por los topes de escalado; la exactitud de la cascada iguala a L3**
 
 Selección (semillas 0–9):
 - AUROC del margen por tarea: hatecheck-es **0,520**, inyecciones 0,905, jailbreak 0,850, massive-es 0,755, massive-esc 0,748, tuits-es 0,643.
@@ -1291,7 +1291,7 @@ Validación (semillas 10–19, nuevas):
 - Falla por el tope total del 50 %, que es aritmético: hatecheck-es pesa un 33 % de las filas y el 30 % del resto añade ≈ 20 %.
 - Con f = 0,25 el total quedaría por debajo del 50 %, con una cascada media de 0,732 en la selección. Pero la regla ya está congelada y no se vuelve a ajustar sobre estas semillas.
 
-### 16.3 R9-e2e: el servidor Go entero con vLLM real y L3 por logprobs (g5, ≤ 30 min; código 4669b60)
+### 16.3 R9-e2e: el servidor Go entero con vLLM real y L3 por logprobs (g5, ≤ 30 min; código 9fe3572)
 
 **Criterio congelado** (`model/alt/crit-r9-e2e.json`): sha256 `7a6cd9789d79b6a65d64c824443d09a5208117ced88479c5a01438789ed3e29b`.
 - Fase (a): con L3 forzado en el servidor (`forzar_l3: true`, `l3.modo = "logprobs"`), la exactitud agrupada ponderada (argmax de las probs; inválidas = fallo) de las 3 116 filas de la muestra del paso 2 tiene que quedar a ≤ 0,5 puntos de R5. R5 es el Python `llm_logprobs.py` con el 4B y dio 0,7294 en esas mismas filas.
@@ -1306,13 +1306,13 @@ Validación (semillas 10–19, nuevas):
 - Go 1.27.1, verificado con sha256 `63d339f0…` (go.dev).
 - ORT 1.31.1, con el sha256 del Dockerfile del servidor.
 - Módulos Go dentro del tgz, con go.sum.
-- `modelo-int8.chispa` (995dd6a7…) y `e5.chispa-tok` (356d7ef0…, 12 111 120 bytes) de `movil-90e3263c/movil/`; los sha se comprueban.
+- `modelo-int8.chispa` (995dd6a7…) y `e5.chispa-tok` (356d7ef0…, 12 111 120 bytes) de `movil-f6acb278/movil/`; los sha se comprueban.
 - Prioridad de las fases: (a) > (d) > (b) > (c).
 - La preparación se estima en 10–12 min; si no queda tiempo, cada fase se salta.
 
 Datos:
-- Entradas en `s3://…/r9-e2e-4669b60/`: codigo.tgz (42 MB) `d39d9d91…`, filas.jsonl `7ea97957…`.
-- User-data: `lanzados/ud-r9-e2e-4669b60.sh` (sha256 `9a03d780…`, 13 840 bytes).
+- Entradas en `s3://…/r9-e2e-9fe3572/`: codigo.tgz (42 MB) `d39d9d91…`, filas.jsonl `7ea97957…`.
+- User-data: `lanzados/ud-r9-e2e-9fe3572.sh` (sha256 `9a03d780…`, 13 840 bytes).
 - Prueba en seco local en el Mac, con un vLLM falso y el `.chispa` de testdata (solo L0): las fases (a)–(d) pasaron. L1/L2 reales y ORT solo se prueban en la g5.
 - `--dry-run` da DryRunOperation.
 
@@ -1323,7 +1323,7 @@ Cambio de método, por la revisión externa (estrategia, método y producto):
 - Dejan de hacerse rondas de escalado, prequential o reetiquetado sobre las 6 tareas de la batería: sería ajustarse a ella.
 - Desde aquí se informa siempre **macro por tarea** y **agrupada sin hatecheck-es** (media de tareas). La agrupada por filas deja de ser métrica de decisión.
 
-### 17.1 T1, auditoría de lo ya medido (i7, 0 USD; `auditoria-ab084ba.json`): correcciones y reservas, sin criterio
+### 17.1 T1, auditoría de lo ya medido (i7, 0 USD; `auditoria-2bf89e1.json`): correcciones y reservas, sin criterio
 
 Vectores del i7 (transformers 4.46.3). Las cifras pueden diferir en décimas de las de R1 y R6b, que se midieron con 5.22.2.
 
@@ -1398,7 +1398,7 @@ AUROC del margen en B por tarea: inyecciones 0,90, massive-esc 0,76, jailbreak 0
 - **(d) Tope de tiempo** en la fila de massive-es de 60 opciones:
   - Con el tope normal responde en 1,40–1,64 s, con la respuesta correcta y 15 probabilidades distintas.
   - Con `timeout_fila` = 150 ms, en 3 de 5 repeticiones devuelve parciales con piso en 151 ms (correctas, 11 probabilidades distintas). En las otras 2 escala con motivo `incompleta` y sin probs. Siempre responde HTTP 200 en ≈ 151 ms.
-- **(c) Cola:** con 32 clientes y `max_concurrente` 8 (código 4669b60, antes del endurecimiento):
+- **(c) Cola:** con 32 clientes y `max_concurrente` 8 (código 9fe3572, antes del endurecimiento):
   - 7,25 peticiones/s;
   - total p50 4,24 s, p95 8,29 s, p99 10,78 s;
   - sin errores ni descartes;
@@ -1442,7 +1442,7 @@ AUROC del margen en B por tarea: inyecciones 0,90, massive-esc 0,76, jailbreak 0
   - rtp, por el texto de origen;
   - CFPB, que no declara licencia explícita (es dominio público de EE. UU.).
 
-### 17.4 T4: cliente L3 endurecido (fusionado) y ud del barrido de caudal (código 8a7e74e)
+### 17.4 T4: cliente L3 endurecido (fusionado) y ud del barrido de caudal (código cb84c73)
 
 Cliente L3 del servidor Go (`l3-endurecido`, con `go test -race`, vet, `make test` y smoke en verde):
 - cortacircuitos con estado semiabierto;
@@ -1460,14 +1460,14 @@ Cliente L3 del servidor Go (`l3-endurecido`, con `go test -race`, vet, `make tes
 - **(b):** la cascada por defecto con 1 cliente sobre 600 filas intercaladas.
 - **Barrido:** con L3 forzado, `max_concurrente` 8, 16 y 32 combinado con 8, 16, 32 y 64 clientes, en puntos de 50 s. Primero van los más informativos; calculo que caben entre 8 y 10 de los 12.
 - **Datos:**
-  - User-data: `lanzados/ud-r10-caudal-8a7e74e.sh` (sha256 `0b721058…`, 14 502 bytes).
-  - Entradas en `s3://…/r10-caudal-8a7e74e/`.
+  - User-data: `lanzados/ud-r10-caudal-cb84c73.sh` (sha256 `0b721058…`, 14 502 bytes).
+  - Entradas en `s3://…/r10-caudal-cb84c73/`.
   - Prueba en seco local con el vLLM falso: OK.
   - `--dry-run`: DryRunOperation.
 
 ### 17.5 Resultado de R10-caudal (EC2 inst-33, g5, 2026-11-16; ≈ 0,45 USD)
 
-Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`. Como los pip y las descargas iban en paralelo, la preparación duró 7,3 min (en R9, 13).
+Recibió `verificado`. Las cifras están en `r10-caudal-cb84c73/*-resumen.json`. Como los pip y las descargas iban en paralelo, la preparación duró 7,3 min (en R9, 13).
 
 **(b) Cascada por defecto del servidor, con 1 cliente y 600 filas (100 por tarea)** (`.chispa` movil-int8, τ de CALIB):
 - **El 98,8 % de las filas acaba en L3.** L2 contesta 1 de 600 y 6 escalan.
@@ -1529,7 +1529,7 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 - El kNN tiene una interfaz `ConVectorConsulta`. Sin el vector, no opina y todo va a L3 (`chispa_knn_sin_vector_total`).
 - Para completarlo hacen falta el ONNX de multilingual-e5-small sin ajustar (media de tokens, «query: », 256 tokens) y una prueba de paridad de vectores, con coseno ≥ 0,999 esperado.
 
-### 17.7 T3: líneas base en v2-dev (preparado, sin lanzar; código 9ca7524, rama `r10-t3` fusionada)
+### 17.7 T3: líneas base en v2-dev (preparado, sin lanzar; código 63f7a16, rama `r10-t3` fusionada)
 
 **Lectura congelada** (`model/alt/crit-r10-t3.json`, sha256 `db6fdacba87fab217edee0e81c02f2729aaa0bcc1cee30c4cd29630d56c073bd`; el ud la comprueba antes de medir):
 - Δ = macro(Qwen3-14B-AWQ zero-shot) − macro(Qwen3-4B zero-shot por logprobs), sobre las 6 tareas de v2-dev.
@@ -1548,7 +1548,7 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 | 4B con 8 ejemplos en contexto | el mismo, con `llm_logprobs.py --ejemplos --k 8`; sin la opción, el prompt es idéntico | Apache-2.0 |
 | 14B zero-shot | Qwen/Qwen3-14B-AWQ @ 31c69efc, sin pensar, contexto 8 192 | Apache-2.0 |
 | NLI | mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb3 | MIT |
-| L2 zero-shot | `ajuste-80ab8ef/ckpt/mejor.pt` | pesos de Chispa |
+| L2 zero-shot | `ajuste-4a2e745/ckpt/mejor.pt` | pesos de Chispa |
 | kNN-e5 con 8 de oro | e5 @ 614241f6 | MIT |
 
 **Instancia:** una g5 con tope de 110 min (≈ 1,85 USD).
@@ -1557,12 +1557,12 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 - Estimación: 80–90 min.
 
 **Datos:**
-- Entradas en `s3://…/r10-t3-9ca7524/`: codigo.tgz `ead12b14…`, dev.tgz `b9233488…`.
-- User-data: `lanzados/ud-r10-t3-9ca7524.sh` (sha256 `76a26cb5…`, 14 823 bytes).
+- Entradas en `s3://…/r10-t3-63f7a16/`: codigo.tgz `ead12b14…`, dev.tgz `b9233488…`.
+- User-data: `lanzados/ud-r10-t3-63f7a16.sh` (sha256 `76a26cb5…`, 14 823 bytes).
 - Prueba en seco en el i7, con 10 filas por tarea y un servidor falso para los LLM: pasó.
 - Riesgos sin probar: vLLM con el 14B AWQ en la A10G, y NLI/L2 en CUDA.
 
-### 17.8 C: few-shot real en v2-dev (preparado; código 8e27680, rama `r10-c` fusionada)
+### 17.8 C: few-shot real en v2-dev (preparado; código 1480852, rama `r10-c` fusionada)
 
 **Criterio congelado** (`model/alt/crit-r10-c.json`, sha256 `45cb5b048f26d3e4de3eed7dc451f77895486f3684df66154660c00d8df0b834`):
 - La métrica es kNN-e5 y la cabeza de prototipos se informa al lado.
@@ -1588,7 +1588,7 @@ Recibió `verificado`. Las cifras están en `r10-caudal-8a7e74e/*-resumen.json`.
 - Va con el ud de R7b sin cambios, tope de 35 min.
 - La cola (10 000 textos) está ordenada por coste: primero las tareas baratas, hasta 1 000 por tarea, y finanzas, con 59 opciones a ≈ 1,2 s por texto, intercalada.
 - Calculo que entran ≈ 4 500 textos y ≈ 416 de finanzas (unos 7 por clase).
-- Entradas en `s3://…/r10-c-lp-8e27680/`: reetiqueta.jsonl `1175ed52…`. User-data: `lanzados/ud-r10-c-lp-8e27680.sh`.
+- Entradas en `s3://…/r10-c-lp-1480852/`: reetiqueta.jsonl `1175ed52…`. User-data: `lanzados/ud-r10-c-lp-1480852.sh`.
 
 **Medición en una c7i** (`r10_c_medir.sh`, tope 30 min, transformers 5.22.2 fijado): se empaqueta cuando la g5 esté verificada.
 
@@ -1635,13 +1635,13 @@ El ud se está recortando porque supera los 16 KB de user-data.
 
 ### 17.10 Ud listos: e2e de T5b y piloto de destilación (sin lanzar)
 
-**T5b-e2e** (g5, tope 30 min; código 0a55923):
-- User-data: `lanzados/ud-r10-t5e2e-0a55923ae11cd849a4f26c269c6f99458d34a950.sh` (sha256 `f7e7b9e3…`, 4 620 bytes).
+**T5b-e2e** (g5, tope 30 min; código f175d71):
+- User-data: `lanzados/ud-r10-t5e2e-f175d71cf409ead200d5633193ccaf7a0a7dcafb.sh` (sha256 `f7e7b9e3…`, 4 620 bytes).
 - Las fases están en `model/alt/aws/r10_t5e2e_fases.sh`, dentro de codigo.tgz.
-- Entradas en `s3://…/r10-t5e2e-0a55923ae11cd849a4f26c269c6f99458d34a950/`, con sha256 comprobado dentro del ud: codigo.tgz `cb0fcd29…`, bancos.tgz `95a14540…`, consultas.jsonl `519057c4…`, e5.onnx `c30444b4…`.
+- Entradas en `s3://…/r10-t5e2e-f175d71cf409ead200d5633193ccaf7a0a7dcafb/`, con sha256 comprobado dentro del ud: codigo.tgz `cb0fcd29…`, bancos.tgz `95a14540…`, consultas.jsonl `519057c4…`, e5.onnx `c30444b4…`.
 - `--dry-run` da DryRunOperation.
 
-**Piloto de destilación 4B → biencoder** (g5, tope 88 min ≈ 1,5 USD; código d8e7e67, rama `r10-piloto-destil` fusionada).
+**Piloto de destilación 4B → biencoder** (g5, tope 88 min ≈ 1,5 USD; código cf0095b, rama `r10-piloto-destil` fusionada).
 
 Criterio congelado (`model/alt/crit-r10-piloto.json`, sha256 `dd2d102b001e1882f52d07b2ea60a34410332802dd530dfa6ac642a0a8f4bccb`):
 - Métrica: macro-F1 por tarea ×100, media simple de las 6 dev, en int8.
@@ -1649,7 +1649,7 @@ Criterio congelado (`model/alt/crit-r10-piloto.json`, sha256 `dd2d102b001e1882f5
 - También se informa la macro sin las sintéticas. El IC sobre tareas es informativo.
 
 Partida y datos:
-- **Partida:** el checkpoint de producción `ajuste-80ab8ef/ckpt/mejor.pt`, porque la comparación tiene que ser con la misma base.
+- **Partida:** el checkpoint de producción `ajuste-4a2e745/ckpt/mejor.pt`, porque la comparación tiene que ser con la misma base.
   - **Reserva de licencia:** según `model/datos/pesos-licencias.md`, ese checkpoint entrenó con SIB-200 (CC-BY-SA) y con datos dudosos. Lo que salga de él solo sirve para decidir si seguimos, no para publicar.
   - El plan completo se reentrenaría desde e5 con el manifiesto.
 - **Blandas:** se reutilizan las de `blandas/e2deac55…` (Qwen3-4B; ninguna de Jev). Hay 168 362 filas con blanda, de tsjev y de las fuentes del manifiesto. synzs no tiene blandas.
@@ -1663,12 +1663,12 @@ Entrenamiento:
 
 Evaluación y datos de la ronda:
 - Se evalúa en int8 por el camino de producción (perfil movil-int8), base frente a destilado, en CPU y dentro de la misma g5.
-- Entradas en `s3://…/r10-piloto-d8e7e67/`: codigo.tgz `3349352f…`, dev.tgz `8721b083…` (solo las 6 dev).
-- User-data: `lanzados/ud-r10-piloto-d8e7e67.sh` (sha256 `8d06833a…`, 12 748 bytes).
+- Entradas en `s3://…/r10-piloto-cf0095b/`: codigo.tgz `3349352f…`, dev.tgz `8721b083…` (solo las 6 dev).
+- User-data: `lanzados/ud-r10-piloto-cf0095b.sh` (sha256 `8d06833a…`, 12 748 bytes).
 - Prueba en seco en el Mac con pesos aleatorios: OK. El export ONNX con e5 real no se ha probado.
 - `--dry-run` da DryRunOperation.
 
-**Redefinición del piloto, única y anterior a cualquier medida** (por orden de la sesión madre). El ud `ud-r10-piloto-d8e7e67.sh` queda **anulado** y se regenera:
+**Redefinición del piloto, única y anterior a cualquier medida** (por orden de la sesión madre). El ud `ud-r10-piloto-cf0095b.sh` queda **anulado** y se regenera:
 - Parte de **e5-small puro @ 614241f6**, no de `mejor.pt`. Así el piloto predice lo que haría el plan completo, que reentrena desde e5, y no arrastra la licencia de `mejor.pt` (SIB-200, -SA).
 - **Δ frente a dos bases:**
   - **e5 puro**: zero-shot y k = 8, medidos en la misma instancia y en int8. El criterio SIGUE/PARA se aplica contra esta base.
@@ -1681,11 +1681,11 @@ Evaluación y datos de la ronda:
 **Etiquetado de C** (EC2 inst-25, g5, ≈ 0,45 USD; `verificado`):
 - Se etiquetaron 4 383 de 10 000 textos por logprobs, todos válidos: cfpb 1 000, congreso-eeuu 1 000, horeca 1 000, usajobs 1 100 y **finanzas 283** (unos 5 por clase).
 - **Medición de C** en una c7i, con tope de 30 min. Criterio `45cb5b04…`, comprobado dentro del ud.
-  - User-data: `lanzados/ud-r10-c-medir-9590d2a.sh` (sha256 `99318076…`, 7 112 bytes).
-  - Entradas en `s3://…/r10-c-medir-9590d2a/`.
+  - User-data: `lanzados/ud-r10-c-medir-f524ee9.sh` (sha256 `99318076…`, 7 112 bytes).
+  - Entradas en `s3://…/r10-c-medir-f524ee9/`.
   - `--dry-run` da DryRunOperation.
 
-**Piloto regenerado** (código e11aee1):
+**Piloto regenerado** (código bbc41ab):
 - **Partida:** e5-small puro. Las ranuras, la torre y las cabezas arrancan con init. Se entrena unos 55 min, hasta 3 épocas.
 - **Base frente a la que se compara:** e5 puro en int8.
   - Zero-shot: coseno entre «query: texto» y «passage: pregunta · opción · descripción».
@@ -1695,11 +1695,11 @@ Evaluación y datos de la ronda:
 - **Corrección:** en las dev reales, el campo `tarea` de cada fila no coincide con el nombre del fichero. Sin arreglarlo, el criterio no habría marcado las sintéticas.
 - **Prueba en seco con el e5 real en el i7:** 6 pasos y 20 filas por tarea. Entrenamiento, export int8 y evaluación de las dos bases salen OK. Las cifras no significan nada.
 - **Lanzamiento:** g5 con tope de 110 min (≈ 1,85 USD).
-  - User-data: `lanzados/ud-r10-piloto-e11aee1.sh` (sha256 `a3702fbf…`, 12 793 bytes).
-  - Entradas en `s3://…/r10-piloto-e11aee1/`: codigo.tgz `0ee1065b…` y dev.tgz `44e5aec3…` (solo las 6 dev).
+  - User-data: `lanzados/ud-r10-piloto-bbc41ab.sh` (sha256 `a3702fbf…`, 12 793 bytes).
+  - Entradas en `s3://…/r10-piloto-bbc41ab/`: codigo.tgz `0ee1065b…` y dev.tgz `44e5aec3…` (solo las 6 dev).
   - `--dry-run` da DryRunOperation.
 
-**Piloto sin tuits ni Reddit** (código 3c1a7ca):
+**Piloto sin tuits ni Reddit** (código edb29db):
 - Se excluyen del entrenamiento ciberacoso, toxicidad_protestas y toxicidad_constitucion, que son tuits, y goemociones_es, que viene de Reddit.
 - La exclusión es explícita (`EXCLUIDOS_PLATAFORMA`) y no toca el manifiesto. La licencia declarada es comercial, pero los términos de la plataforma prohíben redistribuir los textos.
 - `manifiesto validar` no comprueba licencias, solo el sellado: es **deuda**.
@@ -1710,12 +1710,12 @@ Evaluación y datos de la ronda:
   - twitter-financial-news-sentiment, 4 075 filas.
   - tweet_sentiment_multilingual, ya excluida por la v1.
 - **Datos del lanzamiento:**
-  - User-data: `lanzados/ud-r10-piloto-3c1a7ca.sh` (sha256 `4554758b…`, 12 715 bytes).
-  - Entradas en `s3://…/r10-piloto-3c1a7ca/`: codigo.tgz `1671bf09…`, dev.tgz `babc1c65…`.
+  - User-data: `lanzados/ud-r10-piloto-edb29db.sh` (sha256 `4554758b…`, 12 715 bytes).
+  - Entradas en `s3://…/r10-piloto-edb29db/`: codigo.tgz `1671bf09…`, dev.tgz `babc1c65…`.
   - El criterio sigue siendo `d9ee43f5…`.
-  - Los ud `d8e7e67` y `e11aee1` quedan anulados.
+  - Los ud `cf0095b` y `bbc41ab` quedan anulados.
 
-**Resultado de C** (EC2 inst-31, c7i, ≈ 0,05 USD; `verificado`; `c-few-shot-9590d2a.json`): **REFUTADO.**
+**Resultado de C** (EC2 inst-31, c7i, ≈ 0,05 USD; `verificado`; `c-few-shot-f524ee9.json`): **REFUTADO.**
 - Con el criterio congelado `45cb5b04…`, kNN, macro de 6 tareas: Δ = macro(oro32 ∪ LLM) − macro(oro32) = **+0,9 puntos [IC95 por tareas −2,1, +4,3]**. Queda por debajo de +1.
 - Sin sintéticas da +2,2 [−1,7, +6,2].
 - Con la cabeza de prototipos y oro32 ∪ LLM, +0,1.
@@ -1739,7 +1739,7 @@ Evaluación y datos de la ronda:
 - Con 32 de oro por clase, el soporte del LLM casi no aporta en media.
 - En v2-dev, un fondo del LLM solo sirve para las tareas en las que el LLM ya es bueno. Queda pendiente un filtro por tarea, a congelar aparte.
 
-### 17.11 Resultado de T5b-e2e (EC2 inst-22, g5, ≈ 0,45 USD; `verificado`; `r10-t5e2e-0a55923/`)
+### 17.11 Resultado de T5b-e2e (EC2 inst-22, g5, ≈ 0,45 USD; `verificado`; `r10-t5e2e-f175d71/`)
 
 **Paridad de vectores en x86** (ORT oficial 1.31.1, 1 000 consultas): **PASA** el criterio `912ccec7…`.
 - fp32: coseno mín/p01 = 1,000000 y top-1 del kNN 100 %. Codificador en serie: p50 8,6 ms, p95 77 ms.
@@ -1798,11 +1798,11 @@ Con L3 forzado (R9-e2e) coincidía en el 99,84 %. Hipótesis: en cascada el serv
 - **Paridad:** 4 clientes, `timeout_fila` 60 s.
 - **Capacidad:** 16 clientes, `timeout_fila` 30 s. Las filas que agotan el tiempo se cuentan aparte.
 - **Barrido:** 16 y 64 clientes.
-- User-data: `lanzados/ud-r10-t5e2e-082f6f25668b838c9d40ab6ed8b63259418d87e3.sh` (sha256 `bae19135…`, 4 620 bytes).
-- Entradas en `s3://…/r10-t5e2e-082f6f25…/`: codigo.tgz `e781fc19…`; bancos.tgz, consultas.jsonl y e5.onnx no cambian.
+- User-data: `lanzados/ud-r10-t5e2e-a2c786597a0aa48cea5e7c31bc7c56db24d74af1.sh` (sha256 `bae19135…`, 4 620 bytes).
+- Entradas en `s3://…/r10-t5e2e-a2c78659…/`: codigo.tgz `e781fc19…`; bancos.tgz, consultas.jsonl y e5.onnx no cambian.
 - `--dry-run` da DryRunOperation.
 
-### 17.13 Resultado de T3 (EC2 inst-35, g5, 71 min ≈ 1,2 USD; `verificado`; `t3-cifras-9ca7524.json`): **no medido**
+### 17.13 Resultado de T3 (EC2 inst-35, g5, 71 min ≈ 1,2 USD; `verificado`; `t3-cifras-63f7a16.json`): **no medido**
 
 **Lectura congelada** (`db6fdacb…`): exige que los dos sistemas cubran el 100 % del test, y finanzas-documentos (59 opciones, ≈ 65 s por fila con 32 hilos) se quedó a medias. El 4B zero-shot cubrió el 69 % y el 14B el 41 %. Las otras 5 tareas quedaron completas. Por la regla, el veredicto es **«no medido»**.
 
@@ -1830,7 +1830,7 @@ Lectura informativa, que no es el veredicto:
   - **T3a:** NLI, L2 y kNN en una c7i con torch CPU fijado.
   - **T3b:** variantes de especificación del 4B en dev: rúbrica en las tareas score, esperanza ordinal, fs8 + rúbrica, y preselección top-k con kNN para muchas opciones.
 
-### 17.14 Resultado de la e2e corregida (EC2 inst-02, g5, ≈ 0,45 USD; `verificado`; `r10-t5e2e-082f6f2/`): **la cascada por HTTP iguala a Python**
+### 17.14 Resultado de la e2e corregida (EC2 inst-02, g5, ≈ 0,45 USD; `verificado`; `r10-t5e2e-a2c7865/`): **la cascada por HTTP iguala a Python**
 
 Cascada completa por HTTP: servidor Go, codificador e5 con un pool de 4 sesiones, kNN por tarea, L3 por logprobs con vLLM y el 4B, sobre 4 244 consultas con texto y descripciones.
 
@@ -1853,7 +1853,7 @@ Cascada completa por HTTP: servidor Go, codificador e5 con un pool de 4 sesiones
 
 **Lectura:** la cascada que funciona ya está en el servidor y la exactitud coincide con Python. El cuello es L3: vLLM con una sola g5 y prompts largos (las descripciones y las 60 opciones de massive).
 
-### 17.15 Resultado del piloto de destilación (EC2 inst-29, g5, 51 min de trabajo ≈ 0,95 USD; `verificado`; `r10-piloto-3c1a7ca/`): **PARA**
+### 17.15 Resultado del piloto de destilación (EC2 inst-29, g5, 51 min de trabajo ≈ 0,95 USD; `verificado`; `r10-piloto-edb29db/`): **PARA**
 
 Criterio `d9ee43f5…`: macro-F1 de las 6 tareas dev, en int8, comparado con e5 puro.
 
@@ -1911,7 +1911,7 @@ Criterio `d9ee43f5…`: macro-F1 de las 6 tareas dev, en int8, comparado con e5 
 - `runtime/tok`;
 - firmar los artefactos.
 
-### 17.18 T3a y T3b (preparados; código afb29a1, rama `r10-t3b` fusionada)
+### 17.18 T3a y T3b (preparados; código d2b04b8, rama `r10-t3b` fusionada)
 
 **Sesgo de nivel en las tareas score** (predicciones de T3, solo dev): **no es un fallo de código.**
 - El mapeo A–K de usajobs es correcto y el orden de niveles de jql no está invertido.
@@ -1939,8 +1939,8 @@ La esperanza ordinal sola no mueve nada.
 - **Causa del fallo en T3:** transformers 5.22.2 exige torch ≥ 2.6. Ahora se usa torch 2.7.1 CPU.
 - NLI va con un tope de 40 filas por tarea porque en finanzas no cabe: 27 200 pares. Por eso es informativo.
 - Ficheros:
-  - User-data: `lanzados/ud-r10-t3a-afb29a1.sh` (sha256 `c5914597…`, 9 565 bytes).
-  - Entradas en `s3://…/r10-t3a-afb29a1/`: codigo.tgz `dc420f54…` y dev.tgz `bcf7859b…`.
+  - User-data: `lanzados/ud-r10-t3a-d2b04b8.sh` (sha256 `c5914597…`, 9 565 bytes).
+  - Entradas en `s3://…/r10-t3a-d2b04b8/`: codigo.tgz `dc420f54…` y dev.tgz `bcf7859b…`.
 
 **T3b** (g5, tope 45 min ≈ 0,76 USD, solo el 4B; criterio `823cf37adf04d635ab201cee40b44d8abc699f7082c4f07c79c01bb360083cfb`; rúbrica `a89ec5b1…`).
 
@@ -1959,12 +1959,12 @@ Choice (informativo):
 Cliente: añade `--demos` en `llm_logprobs.py` para que D pueda dar las demostraciones de cada fila (apagado por defecto).
 
 Ficheros:
-- User-data: `lanzados/ud-r10-t3b-afb29a1.sh` (sha256 `fff6cfba…`, 13 839 bytes).
-- Entradas en `s3://…/r10-t3b-afb29a1/`: codigo.tgz `dc420f54…`, dev.tgz `d113e14f…` y t3.tgz `2cc557db…`.
+- User-data: `lanzados/ud-r10-t3b-d2b04b8.sh` (sha256 `fff6cfba…`, 13 839 bytes).
+- Entradas en `s3://…/r10-t3b-d2b04b8/`: codigo.tgz `dc420f54…`, dev.tgz `d113e14f…` y t3.tgz `2cc557db…`.
 
 Las dos pruebas en seco en el i7 pasaron. El `--dry-run` da DryRunOperation en los dos.
 
-### 17.19 Resultado de T3a (EC2 inst-10, c7i, ≈ 0,1 USD; `verificado`; `t3a-cifras-afb29a1.json`): informativo
+### 17.19 Resultado de T3a (EC2 inst-10, c7i, ≈ 0,1 USD; `verificado`; `t3a-cifras-d2b04b8.json`): informativo
 
 Exactitud por tarea en las 6 de dev, con cobertura del 100 % salvo NLI:
 
@@ -1985,7 +1985,7 @@ Exactitud por tarea en las 6 de dev, con cobertura del 100 % salvo NLI:
 - **NLI:** con el tope de 40 filas por tarea queda en una señal débil, sin cobertura.
 - **Consecuencia para D:** mezclar la posterior del kNN-oro con la del 4B tiene margen en finanzas y, quizá, en las tareas score.
 
-### 17.20 T3b corregido y D (preparados; código 91deb47, rama `r10-d` fusionada)
+### 17.20 T3b corregido y D (preparados; código d0fc6d7, rama `r10-d` fusionada)
 
 **T3b, causa del fallo:** `snapshot_download` se ejecutaba con el venv de transformers antes de que este terminara de instalarse.
 
@@ -1995,8 +1995,8 @@ Corrección:
 - El criterio (`823cf37a…`) y la rúbrica (`a89ec5b1…`) no cambian.
 
 Datos de lanzamiento:
-- User-data: `lanzados/ud-r10-t3b-91deb47.sh` (sha256 `55c7cdc4…`, 14 411 bytes).
-- Entradas en `s3://…/r10-t3b-91deb47/`: codigo `0836911f…`, dev `b4e36d3f…`, t3 `3ba29458…`.
+- User-data: `lanzados/ud-r10-t3b-d0fc6d7.sh` (sha256 `55c7cdc4…`, 14 411 bytes).
+- Entradas en `s3://…/r10-t3b-d0fc6d7/`: codigo `0836911f…`, dev `b4e36d3f…`, t3 `3ba29458…`.
 
 **D, oro bien usado** (g5, tope 110 min ≈ 1,85 USD; criterio `38bc5612e580001b0f5d34f69abde105f5cdc1a1169a60c3a1acdb740f2f1585`):
 - **Demostraciones por kNN:** 8 del soporte de oro por fila, las más parecidas según e5, con al menos una por clase si caben. Se pasan con `--demos`.
@@ -2008,12 +2008,12 @@ Datos de lanzamiento:
 - **Estimación:** 55–70 min.
 
 Datos de lanzamiento:
-- User-data: `lanzados/ud-r10-d-91deb47.sh` (sha256 `b54ffae8…`, 14 444 bytes).
-- Entradas en `s3://…/r10-d-91deb47/`: codigo `0836911f…`, dev `48cdd7ee…`, t3 `292049db…`.
+- User-data: `lanzados/ud-r10-d-d0fc6d7.sh` (sha256 `b54ffae8…`, 14 444 bytes).
+- Entradas en `s3://…/r10-d-d0fc6d7/`: codigo `0836911f…`, dev `48cdd7ee…`, t3 `292049db…`.
 
 Las pruebas en seco LOCAL en el i7 pasaron con los pythons ya corregidos. Los dos `--dry-run` dan DryRunOperation.
 
-### 17.21 Resultado de T3b (EC2 inst-36, g5, ≈ 0,5 USD; `verificado`; `t3b-cifras-91deb47.json`): **PASA con rúbrica + umbrales calibrados**
+### 17.21 Resultado de T3b (EC2 inst-36, g5, ≈ 0,5 USD; `verificado`; `t3b-cifras-d0fc6d7.json`): **PASA con rúbrica + umbrales calibrados**
 
 Criterio `823cf37a…`, sobre las 3 tareas score (horeca, jql y usajobs). La base es el 4B zero-shot de T3. Las tres tienen cobertura completa.
 
@@ -2059,7 +2059,7 @@ Exactitud por tarea, con QWK y MAE entre paréntesis:
 Si no pasa, queda escrito que la cascada solo funciona cuando hay datos (un fondo etiquetado).
 sha256 de CRIT_E: `f85f635960d3a3999163a7ca1f79f35cb471563e50bdc5301a0883587cebf6ab`.
 
-### 17.23 Resultado de E (i7, 0 USD; `e-cascada-sin-fondo-9030c9b.json`): **NO PASA — la cascada solo funciona con datos**
+### 17.23 Resultado de E (i7, 0 USD; `e-cascada-sin-fondo-a880aee.json`): **NO PASA — la cascada solo funciona con datos**
 
 Vectores e5 de v2-dev calculados en el i7 (transformers 4.46.3). En la mitad A se elige f = 0,50 (u = 0,0392), y la medida es sobre la mitad B (n entre 232 y 259 por tarea).
 
@@ -2085,7 +2085,7 @@ Curva en B: la cascada no llega a todo-L3 hasta escalar el 60–70 % (0,489 con 
 - Escalando la mitad de las filas, la cascada pierde 1,3 puntos frente a mandar todo a L3. **Queda escrito:** la cascada L2→L3 solo funciona cuando hay datos, es decir, un fondo etiquetado (el +2,7 de T1). Sin fondo, la configuración por defecto es todo a L3.
 - En jql y usajobs el kNN supera al 4B zero-shot, pero eso dejará de ser así con rúbrica + calibración (T3b: 0,478 y 0,222).
 
-### 17.24 Resultado de D (EC2 inst-24, g5, 54 min ≈ 1,0 USD; `verificado`; `d-cifras-91deb47.json`): **NO MEDIDO por cobertura (0,902 < 1); informativo: demos por kNN +5,5, la mezcla no aporta**
+### 17.24 Resultado de D (EC2 inst-24, g5, 54 min ≈ 1,0 USD; `verificado`; `d-cifras-d0fc6d7.json`): **NO MEDIDO por cobertura (0,902 < 1); informativo: demos por kNN +5,5, la mezcla no aporta**
 
 Criterio `38bc5612…`. El veredicto formal es «no medido»: el fs8 de finanzas (59 opciones, 8 demostraciones) chocó con el tope de tiempo. fs8-topk se quedó en 277 de 461 filas y fs8-knn en 193 de 461. El sistema final elegido en A, fs8-knn+knn con w = 0,6, cubre el 90,2 %.
 
@@ -2106,9 +2106,9 @@ Mitad B, exactitud por tarea:
 - **Cuello de botella:** fs8 con muchas opciones (≈ 1,3 s por fila en finanzas), incluso con top-k. En finanzas la mejor opción sigue siendo el zero-shot con top-k (0,802).
 - **Score:** fs8-knn da 0,370 de exactitud y 0,60 de QWK, por debajo de rúbrica + calibración (T3b: 0,419 y 0,70 de media). En score se queda rúbrica + calibración.
 
-### 17.25 Apertura única de las selladas (preparada; configuración congelada en 29c441f)
+### 17.25 Apertura única de las selladas (preparada; configuración congelada en 3d86859)
 
-**Configuración final**, congelada con el criterio `crit-r10-apertura.json` (sha256 `a79d33a9712d4c5a02228509e951ecc3764235b6d3a56afe8503edbc0b77cc9d`, de la config de 1635175):
+**Configuración final**, congelada con el criterio `crit-r10-apertura.json` (sha256 `a79d33a9712d4c5a02228509e951ecc3764235b6d3a56afe8503edbc0b77cc9d`, de la config de 7b01ee5):
 - **choice:** 4B por logprobs con 8 demostraciones elegidas por kNN, sin mezcla (D).
 - **score:** rúbrica mecánica + umbrales isotónicos (T3b). La rúbrica no la escribe nadie: la descripción de cada nivel es la de la opción, o «Etiqueta N = nivel N de K.» si no la hay, y el ejemplo es la primera fila del soporte de ese nivel por id, recortada a 130 caracteres.
 - **top-k:** k = 10 si una tarea tiene más de 20 opciones. Ninguna sellada llega (arxiv tiene 18).
@@ -2123,14 +2123,14 @@ Mitad B, exactitud por tarea:
 - Nadie leyó las filas.
 
 **Dos g5 en paralelo**, con tope de 110 min cada una (≈ 3,7 USD como máximo):
-- **a** (`r10-apertura-29c441f-a`, ud sha256 `d9a68a86…`, 15 074 bytes): el sistema final, con rub-sop 3 min, rub 8 min y fs8-knn 60 min. El kNN y la mayoritaria van en CPU.
-- **b** (`r10-apertura-29c441f-b`, ud sha256 `4292abe3…`, 15 074 bytes): primero el 4B zs (score 12 min, choice 20 min) y después fs8 al azar (score 15 min, choice 25 min).
+- **a** (`r10-apertura-3d86859-a`, ud sha256 `d9a68a86…`, 15 074 bytes): el sistema final, con rub-sop 3 min, rub 8 min y fs8-knn 60 min. El kNN y la mayoritaria van en CPU.
+- **b** (`r10-apertura-3d86859-b`, ud sha256 `4292abe3…`, 15 074 bytes): primero el 4B zs (score 12 min, choice 20 min) y después fs8 al azar (score 15 min, choice 25 min).
 - Los topes salen de los ritmos de dev × 1,5. A fs8-knn se le dio más margen porque las choice selladas tienen 9–18 opciones, frente a 2–11 en dev.
 - Entradas: codigo.tgz `c6b57e16…` y selladas.tgz `a2bb334e…`, en los dos prefijos.
 - La prueba en seco se hizo en el i7 con vLLM falso: una tarea dev (horeca) y después dos, con las partes a y b. Salió «medido».
 - El `--dry-run` de las dos instancias da DryRunOperation.
 
-### 17.26 Resultado de la apertura única de las selladas (2 g5: a inst-03, b inst-18; ≈ 2,1 USD; `verificado` en las dos; `apertura-selladas-29c441f.json`): **MEDIDO**
+### 17.26 Resultado de la apertura única de las selladas (2 g5: a inst-03, b inst-18; ≈ 2,1 USD; `verificado` en las dos; `apertura-selladas-3d86859.json`): **MEDIDO**
 
 Criterio `a79d33a9…`. Es **válido**: el sistema final y el 4B zs cubren el 100 % de las 2 955 filas de test, sin filas inválidas. El fs8-knn de la parte a tardó 57,4 min de sus 60.
 
@@ -2221,14 +2221,14 @@ Orden de Juan (vía la sesión madre): medir tres alternativas que no habíamos 
 - Los ids de «yes» y «no» (9693 y 2152) coinciden con la configuración del reranker.
 - **Riesgos sin probar:** los pesos reales en CUDA y la memoria del reranker con lotes de 64 secuencias de hasta ≈ 1 000 tokens. Se usa `logits_to_keep=1`.
 
-**Lanzable** (código `ba463e8`):
-- User-data: `lanzados/ud-r11-alternativas-ba463e8.sh` (sha256 `8fa2845e…`, 11 634 bytes).
-- Entradas, ya subidas a `s3://…/r11-alternativas-ba463e8/`:
+**Lanzable** (código `b0e2ea3`):
+- User-data: `lanzados/ud-r11-alternativas-b0e2ea3.sh` (sha256 `8fa2845e…`, 11 634 bytes).
+- Entradas, ya subidas a `s3://…/r11-alternativas-b0e2ea3/`:
   - codigo.tgz `1d2c3fb3…`;
   - dev.tgz `728defd8…`;
   - ref.tgz `12e8fa31…`, con 9 110 filas.
 
-### 18.2 Resultado de R11 (EC2 inst-21, g5, us-east-1b; 04:28:57 → ≈ 04:53 UTC, ≈ 24 min ≈ 0,4 USD; `verificado`; `r11-alternativas-ba463e8.json`)
+### 18.2 Resultado de R11 (EC2 inst-21, g5, us-east-1b; 04:28:57 → ≈ 04:53 UTC, ≈ 24 min ≈ 0,4 USD; `verificado`; `r11-alternativas-b0e2ea3.json`)
 
 El trabajo llevó 1 047 s, sin fallos y con cobertura del 100 % en todos los sistemas. El kNN-e5 de esta máquina reproduce T3a fila a fila: acuerdo del 100 % en las 6 tareas.
 
@@ -2280,13 +2280,13 @@ Macro de las 6 tareas de dev (entre paréntesis, sin las sintéticas):
 - ud preparado y NO lanzado: `aws/l2qwen3emb.sh` (+ `l2qwen3emb_fases.sh`, `empaquetar_l2qwen3emb.sh`); c7i.xlarge, CPU, 4 hilos.
 - Verificado sin el modelo real (Qwen3 en miniatura, arquitectura real, pesos aleatorios): tokens 1700/1700 y coseno 1,0 frente a transformers 5.22.0, y las probabilidades del servidor por HTTP iguales a las del Python de R11 (máx. 1e-6, 60 filas × v32/v8 × 6 tareas).
 
-### 19.2 Primera corrida (EC2 inst-05, c7i.xlarge; arranque del ud 07:31:04 UTC → `listo` 07:38:02, `verificado` 07:39; ≈ 9 min ≈ 0,03 USD; ud `ud-l2-qwen3emb-0524ac5.sh`): **FALLÓ por entorno**
+### 19.2 Primera corrida (EC2 inst-05, c7i.xlarge; arranque del ud 07:31:04 UTC → `listo` 07:38:02, `verificado` 07:39; ≈ 9 min ≈ 0,03 USD; ud `ud-l2-qwen3emb-09e17c5.sh`): **FALLÓ por entorno**
 - Pasó entorno, modelo (rev. 97b0c614), exportación del tokenizador, referencia de transformers 5.22.2 (200 textos, 20 truncados a 320) y el ONNX fp32 (coseno 1,0 frente a torch).
 - Cayó en `preparar_go` (rc=3): la descarga de onnxruntime 1.31.1 desde las releases de GitHub devolvió 404. Sin cifras de Go.
 - El int8 de esa exportación (dinámico, por tensor, todo cuantizado) dio coseno mínimo 0,494 frente a torch.
-- Arreglo (5d9e86c): ORT desde NuGet (`Microsoft.ML.OnnxRuntime` 1.31.1) con sha256 del nupkg (6871ccbc…) y de `libonnxruntime.so` (a96f132e…); y un único y último intento de int8 (por canal, solo MatMul, sin las 28 `down_proj`): si su coseno no llega a 0,99 queda «int8 no viable» y solo se mide fp32. El criterio no cambia.
+- Arreglo (3126880): ORT desde NuGet (`Microsoft.ML.OnnxRuntime` 1.31.1) con sha256 del nupkg (6871ccbc…) y de `libonnxruntime.so` (a96f132e…); y un único y último intento de int8 (por canal, solo MatMul, sin las 28 `down_proj`): si su coseno no llega a 0,99 queda «int8 no viable» y solo se mide fp32. El criterio no cambia.
 
-### 19.3 Segunda corrida (EC2 inst-15, c7i.xlarge, us-east-1f; LaunchTime 07:44:30 UTC → `listo` 09:20:43, `verificado` 09:21; ≈ 97 min ≈ 0,29 USD; ud `ud-l2-qwen3emb-5d9e86c.sh`; `l2-qwen3emb-5d9e86c.json`): **PASA** (pasa_todo=True)
+### 19.3 Segunda corrida (EC2 inst-15, c7i.xlarge, us-east-1f; LaunchTime 07:44:30 UTC → `listo` 09:20:43, `verificado` 09:21; ≈ 97 min ≈ 0,29 USD; ud `ud-l2-qwen3emb-3126880.sh`; `l2-qwen3emb-3126880.json`): **PASA** (pasa_todo=True)
 - Entorno: Xeon Platinum 8488C, 4 vCPU, 7 GB; python 3.11, torch 2.15.0+cpu, transformers 5.22.2, onnxruntime 1.31.1 (NuGet, .so comprobada), Go 1.27.1.
 - **Tokens**: 200/200 iguales a transformers 5.22.2 con el vocabulario real (151 643 + 26 añadidos; plantilla: secuencia + `<|endoftext|>`, que también es el relleno).
 - **Coseno** Go/ORT fp32 frente a transformers: mínimo 1,000000 (0 textos bajo 0,999).
@@ -2307,24 +2307,24 @@ Macro de las 6 tareas de dev (entre paréntesis, sin las sintéticas):
 
 ## 20. Tanda opción A: W1 (fs8 por el servidor), W4 (techo local) y batería v3 (rama `integracion-opcion-a`, sin push)
 
-### 20.1 W1: e2e fs8 del servidor general en modo gpu, Go frente a Python (`w1-fs8-01914fe.json`; criterio `../crit-w1-fs8-e2e.json`, sha256 343365bd…): **PASA justo en la tolerancia**
+### 20.1 W1: e2e fs8 del servidor general en modo gpu, Go frente a Python (`w1-fs8-182d52c.json`; criterio `../crit-w1-fs8-e2e.json`, sha256 343365bd…): **PASA justo en la tolerancia**
 - Configuración: servidor general modo gpu, fs8 con demostraciones kNN por consulta, Qwen3-Embedding para elegir las demos, vLLM con Qwen3-4B. Es dev (100 filas por tarea, 6 tareas, n = 600), no sellado.
 - **Macro Go 0,540 frente a Python 0,535; dif = 0,005 exactamente** (`dif` 0,005, `tolerancia` 0,005): pasa en el borde. Con 100 filas por tarea la granularidad de la macro es 0,01/6; la dif. de 0,005 es media décima de acierto en una sola tarea (0,03/6), es decir, 3 filas netas repartidas entre tareas.
 - Cobertura 1,0 en Go y en Python; selección de demos 60/60 registradas, acuerdo 1,0 (mínimo 0,97).
 - Por tarea (Go / Python; acuerdo fila a fila): cfpb 0,69 / 0,69 (1,00); congreso 0,64 / 0,63 (0,99); finanzas 0,82 / 0,81 (0,99); horeca 0,68 / 0,68 (1,00); jql 0,13 / 0,14 (0,97); usajobs 0,28 / 0,26 (0,96). Fuente: `por_tarea`.
-- Tres corridas: la primera (g5, a6c5293) se cortó por el tope sin cifras; después la fase A en c7i (ONNX y bancos) y la B en g5 (Go 600/600; Python cortado por el tope en finanzas) y la B2 en g5 (solo las 312 filas de Python que faltaban, juntadas con `w1_juntar.py` sin re-medir Go).
+- Tres corridas: la primera (g5, 27fdfc9) se cortó por el tope sin cifras; después la fase A en c7i (ONNX y bancos) y la B en g5 (Go 600/600; Python cortado por el tope en finanzas) y la B2 en g5 (solo las 312 filas de Python que faltaban, juntadas con `w1_juntar.py` sin re-medir Go).
 
-### 20.2 W4: techo local (`techo-local-f07a800.json`; criterio `../crit-techo-local.json`, sha256 0f39c265…): **EL 4B SE QUEDA**
+### 20.2 W4: techo local (`techo-local-8eb1dbe.json`; criterio `../crit-techo-local.json`, sha256 0f39c265…): **EL 4B SE QUEDA**
 - Mitad B, fs8, diferencia de macro frente a Qwen3-4B con IC95 pareado: Qwen3-30B-A3B-Instruct-2507-FP8 **+0,14 puntos** (+0,0014; IC95 [−1,98, +2,28] puntos: el 0 dentro), 4,0 req/s frente a 2,1 del 4B en una L40S (g6e.xlarge); gpt-oss-20b **−4,44** (IC [−6,64, −2,20]), 5,3 req/s (sin razonamiento: harmony cerrado en el canal final, así que no es del todo comparable). Fuente: `pareadas`, `modelos`, `veredicto`.
 - **El 4B se cortó en su mitad A (5186 de 6028 filas): las cifras «A» y «todo» no son comparables entre modelos y no se citan como resultado.**
-- La primera corrida (9f82add) falló por el intérprete de la preselección (sin torch ni jinja2); la segunda (f07a800) lo arregla.
+- La primera corrida (a92d781) falló por el intérprete de la preselección (sin torch ni jinja2); la segunda (8eb1dbe) lo arregla.
 - Informativo de dev: confirmarlo exige la batería v3.
 
-### 20.3 Batería v3, fase 2 corregida (8e1bc6d; `bateria-v3-8e1bc6d-resumen.json`, `bateria-v3-8e1bc6d-manifiesto.json`)
+### 20.3 Batería v3, fase 2 corregida (6a172f2; `bateria-v3-6a172f2-resumen.json`, `bateria-v3-6a172f2-manifiesto.json`)
 - 37 candidatas, 21 construidas, **cuentan 16**: choice 5, yesno 5, score 6; en español 6 (en inglés 10). **Todos los tipos en «n bajo»** (< 8 por tipo).
 - Fuera las 9 federales (y grants y fsis) por HTTP 404 de la API CKAN de catalog.data.gov (también `status_show` da 404, así que la API no está en esa dirección; no es la licencia). Otros fuera: Twitter/X (readability-es), sin licencia (arena-preferencia-es), gated (cares), repo inexistente (noticias-es), sin ficheros (ethics-justicia), licencia «other» (worldbank).
 - Decisiones de la sesión madre para el criterio de apertura: ethics-justicia y los 6 benchmarks públicos (mmmlu, bbh, gsm8k, math, strategyqa, pubmedqa) son informativos; helpsteer3-es cuenta solo si helpsteer2 no está en v2 ni en el entrenamiento; tsjev parcial → «solape no comprobado».
 - Era la última iteración: abrir con n bajo o seguir es decisión de Juan.
 
 ### 20.4 Gasto de AWS de la tanda
-De los logs de cada ud (arranque→listo + ≈ 3 min de arranque y espera; g5 1,006, c7i 0,1785, g6e 1,861 USD/h): W1 ≈ 2,40 USD (g5 a6c5293 ≈ 0,88; c7i A ≈ 0,06; g5 B ≈ 1,19; g5 B2 ≈ 0,27); W4 ≈ 2,06 (g6e 9f82add ≈ 0,48; g6e f07a800 ≈ 1,58); v3 ≈ 0,08 (dos c7i). Total ≈ 4,5 USD (+ EBS). Cuenta de delega de la tanda: W1 8,62, W2 0,67, W3 9,27, W4 3,04 USD.
+De los logs de cada ud (arranque→listo + ≈ 3 min de arranque y espera; g5 1,006, c7i 0,1785, g6e 1,861 USD/h): W1 ≈ 2,40 USD (g5 27fdfc9 ≈ 0,88; c7i A ≈ 0,06; g5 B ≈ 1,19; g5 B2 ≈ 0,27); W4 ≈ 2,06 (g6e a92d781 ≈ 0,48; g6e 8eb1dbe ≈ 1,58); v3 ≈ 0,08 (dos c7i). Total ≈ 4,5 USD (+ EBS). Cuenta de delega de la tanda: W1 8,62, W2 0,67, W3 9,27, W4 3,04 USD.

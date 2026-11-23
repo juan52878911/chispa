@@ -1,6 +1,6 @@
 # M1 con el ajuste v2 (texto de torre sin id) por servidor: peor que el ajuste 1. **No es la línea base oficial.**
 
-- `/healthz`: `texto_torre: "v2_sin_id"` y `torre_al_vuelo: true`. Código: `sdk` `5d285f1` (VF20). c6a.2xlarge, 18 min.
+- `/healthz`: `texto_torre: "v2_sin_id"` y `torre_al_vuelo: true`. Código: `sdk` `49c3f8a` (VF20). c6a.2xlarge, 18 min.
 - **Exactitud 0,5836 y F1 0,5296**, determinista. Con el ajuste 1 era 0,6436 y 0,5769.
 
 | conjunto | v2 | ajuste 1 |

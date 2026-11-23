@@ -1,6 +1,6 @@
 {
  "checkpoint": {
-  "s3": "s3://chispa-pruebas-cuenta-aws/ajuste-80ab8ef/ckpt/mejor.pt",
+  "s3": "s3://chispa-pruebas-cuenta-aws/ajuste-4a2e745/ckpt/mejor.pt",
   "sha256": "4336e97148dc37ea89c0e2a3ff3158ae2e50c3c2b4f7bbd2811081ec34dcaa9c",
   "bytes": 4113441,
   "texto_torre": "v1"

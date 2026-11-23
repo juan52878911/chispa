@@ -1,4 +1,4 @@
-# Corrida final de la tanda (integracion @ 798a68f: chispa-sdk a797bd4, calib_completa)
+# Corrida final de la tanda (integracion @ 5782a16: chispa-sdk 1e50326, calib_completa)
 
 ## JevBench por servidor
 - `chispa train --ckpt`, sin pasos manuales.
@@ -19,11 +19,11 @@
   - El test es `CacheYErroresTest.l2cUsaTauL2cSiEsMayorOIgualACero` (`CacheYErroresTest.kt:107`).
   - Espera escalar con 0,7 < `tauConj` 0,9.
 - No hay APK de demo, porque el fallo corta `assembleDebug`.
-- Log completo: `server/deploy/resultados/android-sdk-798a68f.log`.
+- Log completo: `server/deploy/resultados/android-sdk-5782a16.log`.
 - Es del producto, en `sdk/android`, zona de la otra sesión. Probablemente tiene que ver con H7, «el respaldo de L2c se
   corta con `tau_escalate_l2`», y el test no se actualizó.
 
-## Tests sobre el sha final (V3, 639158a)
+## Tests sobre el sha final (V3, 68b129c)
 - `unittest` de `model`: 445 OK.
 - `make test` OK.
 - `make smoke` OK.

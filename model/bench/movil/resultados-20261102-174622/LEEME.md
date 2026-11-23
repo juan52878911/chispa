@@ -1,6 +1,6 @@
 # Latencia de Chispa en un Android real: moto g24 power (MediaTek Helio G85, 8 núcleos, 8 GB, Android 14), 2026-11-02
 
-- **App:** demo «Medir» (APK `ae49d46`).
+- **App:** demo «Medir» (APK `1f95943`).
 - **Modelos:** los del perfil móvil del ajuste 1 (`modelos.sh`): `modelo-int8.chispa` (250 MB) y `modelo-fp16.chispa`
   (332 MB), más `e5.chispa-tok`.
 - **Cómo se midió:** `medir.sh` con N = 1000 se quedó sin tiempo (40 min por perfil). Se midió a mano: `am start … --ei n 50`

@@ -7,7 +7,7 @@
 - Kotlin y Swift todavía no:
   - Kotlin, con `lowercase(Locale.ROOT)`, da «i̇» (con punto combinante);
   - Swift, con `lowercased()`, da «ς» al final de palabra.
-- Tu base ya trae YB: score `1..K` y `escalate_reason`, fusionado con la rama `sdk` `4b1afce`.
+- Tu base ya trae YB: score `1..K` y `escalate_reason`, fusionado con la rama `sdk` `35e1534`.
 
 ## Terminado cuando
 - **Kotlin:** la normalización baja a minúsculas por punto de código con `Character.toLowerCase(codePoint)`.

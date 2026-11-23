@@ -1,7 +1,7 @@
 # V2 Verificar el sha final de `integracion`: perfil móvil fp16 y CALIB completa de L2
 
 ## Antecedentes
-- `integracion` acaba de fusionar `chispa-sdk` (`f91e143`) y D1b, y cambia:
+- `integracion` acaba de fusionar `chispa-sdk` (`8d7f553`) y D1b, y cambia:
   - el perfil `movil` de `model/l2/exportar.py`, que pasa a fp16 con poda ampliada;
   - el nuevo perfil `movil-int8`, el int8 dinámico de antes;
   - las peticiones de JevBench (`cuerpo_decide`), que ahora envían descripciones en noul y score;

@@ -43,4 +43,4 @@ bash -n "$ud"
 grep -n '__[A-Z0-9_]*__' "$ud" && { echo "quedan placeholders sin sustituir" >&2; exit 1; }
 [ "$(wc -c < "$ud")" -le 16384 ] || { echo "el ud pasa de 16 KB" >&2; exit 1; }
 wc -c "$ud"; (cd "$sal" && shasum -a 256 codigo.tgz dev.tgz); echo "criterio sha256 $crit; test=$nt soporte=$ns"
-echo "sube a s3://chispa-pruebas-cuenta-aws/r10-t3-$sha/: codigo.tgz y dev.tgz; lanza $ud (lee ademas ajuste-80ab8ef/ckpt/mejor.pt)"
+echo "sube a s3://chispa-pruebas-cuenta-aws/r10-t3-$sha/: codigo.tgz y dev.tgz; lanza $ud (lee ademas ajuste-4a2e745/ckpt/mejor.pt)"

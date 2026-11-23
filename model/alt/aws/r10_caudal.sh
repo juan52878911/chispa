@@ -2,7 +2,7 @@
 CHISPA_S3=__CHISPA_S3__
 # R10-caudal: g5.xlarge BAJO DEMANDA (DLAMI GPU PyTorch AL2023 ami-ejemplo), tope duro CHISPA_MIN=30 min. Mismo montaje que r9_e2e.sh
 # (vLLM 0.33.0 real con Qwen3-4B-Instruct-2507 @ cdbee75f, servidor Go endurecido compilado aquí con -pruebas y l3.modo="logprobs",
-# .chispa int8 y tokenizador de movil-90e3263c/movil con sha256) pero con otras fases, por prioridad:
+# .chispa int8 y tokenizador de movil-f6acb278/movil con sha256) pero con otras fases, por prioridad:
 #   (b) cascada por defecto del servidor con 1 cliente sobre 600 filas intercaladas por tarea: p50/p95 por capa, fracción por capa, exactitud;
 #   (e) barrido de caudal con L3 forzado: pares max_concurrente:clientes en el orden de CHISPA_BARRIDO (lo más informativo primero), DURA_P s por punto.
 # Preparación en paralelo: pip de vLLM, descarga del modelo (venv aparte con huggingface_hub) y compilación de Go (+ .chispa, ORT).
@@ -17,7 +17,7 @@ GO_VERSION=1.27.1
 GO_SHA256=__GO_SHA256__                  # go${GO_VERSION}.linux-amd64.tar.gz (de https://go.dev/dl/); lo sustituye empaquetar_r10_caudal.sh
 ORT_VERSION=1.31.1                       # onnxruntime_go v1.38.0 (server/go.mod; README del servidor)
 ORT_SHA256=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9   # onnxruntime-linux-x64-1.31.1.tgz (server/deploy/Dockerfile)
-MOVIL_S3=${CHISPA_MOVIL_S3:-s3://chispa-pruebas-cuenta-aws/movil-90e3263c/movil}
+MOVIL_S3=${CHISPA_MOVIL_S3:-s3://chispa-pruebas-cuenta-aws/movil-f6acb278/movil}
 MOVIL_SHA=995dd6a7276a7026ce12ad3e04a5324714f62dc05a1c20b11141a580c30db6f4; MOVIL_BYTES=249716640   # model/bench/movil/resultados-20261102-210131/manifiesto.json
 TOK_SHA=356d7ef09425121e93a0a595ca5a4591fbebeb8785b0fc5f405a374459cd1ed6; TOK_BYTES=12111120        # e5.chispa-tok, mismo manifiesto
 DURA_P=${CHISPA_DURA_P:-50}
@@ -110,7 +110,7 @@ else
   VPY=/opt/vllm/bin/python; PY=python3
   wait $PDL 2>/dev/null; [ "$(cat "$BASE/descarga-modelo.rc" 2>/dev/null || echo 9)" = 0 ] || { tail -3 "$BASE/descarga-modelo.log"; fallo "descarga del modelo"; estado vllm "FALLO modelo"; cierre; }
   URL=http://127.0.0.1:8000
-  export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+  export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
   nohup "$VPY" -m vllm.entrypoints.openai.api_server --model "$BASE/modelo" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
     --gpu-memory-utilization 0.85 --max-logprobs 20 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm-4b.log" 2>&1 &
   VP=$!

@@ -1,4 +1,4 @@
-He encontrado 7 fallos de paridad entre lo que entrena y exporta W4 y lo que hace el runtime. Los tres más graves están en la calibración: el τ de CALIB se mide sobre una regla de decisión y una confianza distintas de las que usa el servidor. Revisé la rama `delega/chispa-rm4` en el sha `71a7374`; no hay commits ni cambios en el árbol, y borré `/tmp/rm4` y `/tmp/rm4_s.py`. El directorio `/tmp/tmppgb3rm4n` no lo creé yo y lo dejé.
+He encontrado 7 fallos de paridad entre lo que entrena y exporta W4 y lo que hace el runtime. Los tres más graves están en la calibración: el τ de CALIB se mide sobre una regla de decisión y una confianza distintas de las que usa el servidor. Revisé la rama `delega/chispa-rm4` en el sha `dd2a7c6`; no hay commits ni cambios en el árbol, y borré `/tmp/rm4` y `/tmp/rm4_s.py`. El directorio `/tmp/tmppgb3rm4n` no lo creé yo y lo dejé.
 
 **Hallazgos, de más a menos grave:**
 

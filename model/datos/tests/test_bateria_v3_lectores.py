@@ -226,7 +226,7 @@ def test_huellas_por_ficheros_borra_cada_fichero_y_marca_parcial_si_no_hay_cupo(
 
 
 # ---------------------------------------------------------------------------------------------------------------- contra lo que dejó la fase 2 (fixture real)
-FASE2 = Path(__file__).parent / "fixtures_v3" / "fase2-100de63"
+FASE2 = Path(__file__).parent / "fixtures_v3" / "fase2-65304bb"
 
 
 @pytest.mark.parametrize("nombre", ["unam-tesis-carrera", "biotech-evento", "moral-stories-accion", "fake-news-es", "wnli-es"])

@@ -18,7 +18,7 @@ if [ "$LOCAL" != 1 ]; then
     echo "torch después: $($VPY -c 'import torch; print(torch.__version__, torch.__file__)' 2>&1 | tail -1)"
     $VPY -c "import torch, vllm; assert torch.cuda.is_available()" || { kill $HFP 2>/dev/null; return 6; }   # el torch del venv de vLLM carga y ve la GPU
     wait $HFP || return 2
-    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda 0be529b)
+    export VLLM_USE_FLASHINFER_SAMPLER=0   # la DLAMI no trae nvcc (ronda d36f8ab)
     nohup $VPY -m vllm.entrypoints.openai.api_server --model "$BASE/modelo4b" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
       --gpu-memory-utilization 0.85 --max-logprobs 20 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm-4b.log" 2>&1 &
     echo $! > "$BASE/vllm.pid"

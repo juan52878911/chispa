@@ -63,7 +63,7 @@ else
     || { fallo "descarga del modelo"; estado modelo "FALLO"; cierre; }
   estado modelo "OK Qwen/Qwen3-4B-Instruct-2507@$REV"
   # --- 3. servidor: contexto 16 k, un solo modelo, sin caché de red; arranque con espera de hasta 12 min
-  # la DLAMI no trae nvcc: el muestreador de FlashInfer se compila con JIT y tumba el arranque (ronda 0be529b); se usa el de PyTorch
+  # la DLAMI no trae nvcc: el muestreador de FlashInfer se compila con JIT y tumba el arranque (ronda d36f8ab); se usa el de PyTorch
   export VLLM_USE_FLASHINFER_SAMPLER=0
   nohup "$VPY" -m vllm.entrypoints.openai.api_server --model "$MODELO" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
     --gpu-memory-utilization 0.85 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/vllm.log" 2>&1 &

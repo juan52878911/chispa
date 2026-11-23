@@ -1,4 +1,4 @@
-# Tanda de estabilidad: medidas con el checkpoint de G.8 (c6a.2xlarge, `5f136b6`, 16 min, ≈ 0,1 USD)
+# Tanda de estabilidad: medidas con el checkpoint de G.8 (c6a.2xlarge, `d21ff9f`, 16 min, ≈ 0,1 USD)
 
 | pieza | resultado | ¿listo? |
 |---|---|---|

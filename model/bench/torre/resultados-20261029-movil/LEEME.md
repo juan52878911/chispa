@@ -1,4 +1,4 @@
-# P2b, variantes del perfil móvil con el checkpoint real (c6a.2xlarge, `248e763`, 2026-10-29): ninguna cumple
+# P2b, variantes del perfil móvil con el checkpoint real (c6a.2xlarge, `8084a5e`, 2026-10-29): ninguna cumple
 
 Objetivo: top-1 ≥ 0,93 con consulta y torre ≤ 60 MB cada una. Detalle en `informe.md`.
 

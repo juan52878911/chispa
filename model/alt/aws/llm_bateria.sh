@@ -6,7 +6,7 @@ CHISPA_S3=__CHISPA_S3__
 # Lee:     $CHISPA_S3/{llm.tgz,filas.jsonl,filas-q4.jsonl,fondo.jsonl}
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar.
 # Fases, en orden de prioridad (cada una con su tope; si se acaba el tiempo se corta la última y se sube lo que haya):
-#   A. bf16: Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f (Apache-2.0), vLLM 0.33.0, mismo método que llm-5eb239c (esquema con todos los ids,
+#   A. bf16: Qwen/Qwen3-4B-Instruct-2507 @ cdbee75f (Apache-2.0), vLLM 0.33.0, mismo método que llm-3fcfd14 (esquema con todos los ids,
 #      contexto 16 k, un reintento) sobre filas.jsonl (muestra estratificada; hatecheck-es completa).
 #   B. Q4_K_M: unsloth/Qwen3-4B-Instruct-2507-GGUF @ a06e946b (el GGUF de L3), llama.cpp b12138 CUDA 12.8 (binario oficial, sha256
 #      comprobado), sobre filas-q4.jsonl (la submuestra anidada primero, luego el resto intercalado), hasta Q4_MIN minutos.
@@ -60,7 +60,7 @@ urls() { for _ in $(seq "$2"); do printf -- '--url %s ' "$1"; done; }
 validas() { [ -f "$1" ] || { echo 0; return; }; grep -c '"valida": true' "$1"; }
 lineas() { [ -f "$1" ] && wc -l < "$1" | tr -d ' ' || echo 0; }
 
-# --- 1. entorno: venv con vLLM fijado (el de llm-5eb239c en esta AMI)
+# --- 1. entorno: venv con vLLM fijado (el de llm-3fcfd14 en esta AMI)
 echo "== 1. entorno $(date -u +%T)"
 if [ "$LOCAL" = 1 ]; then PY=${CHISPA_PY:-python3}; VPY=$PY
 else
@@ -89,7 +89,7 @@ estado entradas "OK $N_FILAS filas, $N_Q4 q4, $N_FONDO fondo, $(lineas "$BASE/au
 MAX=(); [ "$LOCAL" = 1 ] && MAX=(--max "${CHISPA_LOCAL_MAX:-2}")
 
 arrancar_vllm() {   # $1 = log
-  # la DLAMI no trae nvcc: el muestreador de FlashInfer se compila con JIT y tumba el arranque (ronda 0be529b); se usa el de PyTorch
+  # la DLAMI no trae nvcc: el muestreador de FlashInfer se compila con JIT y tumba el arranque (ronda d36f8ab); se usa el de PyTorch
   export VLLM_USE_FLASHINFER_SAMPLER=0
   nohup "$VPY" -m vllm.entrypoints.openai.api_server --model "$BASE/modelo" --served-model-name qwen3-4b --dtype bfloat16 --max-model-len 16384 \
     --gpu-memory-utilization 0.85 --enable-prefix-caching --host 127.0.0.1 --port 8000 > "$BASE/$1.log" 2>&1 &

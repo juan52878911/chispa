@@ -1,6 +1,6 @@
-# Ajuste fino v2 de G.8: texto de torre sin id, aumento y W5 (g5.xlarge, `23b38e6`, 26 min, ≈ 0,45 USD)
+# Ajuste fino v2 de G.8: texto de torre sin id, aumento y W5 (g5.xlarge, `73c3ca2`, 26 min, ≈ 0,45 USD)
 
-Checkpoint: `s3://chispa-pruebas-cuenta-aws/ajuste-v2-23b38e6/ckpt/mejor.pt`, con `texto_torre = v2_sin_id`.
+Checkpoint: `s3://chispa-pruebas-cuenta-aws/ajuste-v2-73c3ca2/ckpt/mejor.pt`, con `texto_torre = v2_sin_id`.
 **Es el mejor modelo hasta ahora.**
 
 | criterio | v2 | G.8 | ¿cumple? |

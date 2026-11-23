@@ -51,8 +51,8 @@ def test_empaquetador_escribe_ud_y_tgz_sin_subir_nada(empaquetado):
 
 def test_ud_fija_nombres_y_sha_de_v2_dev_y_selladas(empaquetado):
     ud = empaquetado["ud"].read_text(encoding="utf-8")
-    assert "s3://chispa-pruebas-cuenta-aws/w1-fs8-a6c5293/dev.tgz" in ud and "DEV_SHA256=ce0423dc05a5b393067b6aeb2c1da4aa4d6192d249d1a52061c5f579e8dd3ca9" in ud
-    assert "s3://chispa-pruebas-cuenta-aws/r10-apertura-29c441f-a/selladas.tgz" in ud and "SEL_SHA256=a2bb334e5a1e0961a3d79f011d9525dfb872112d5e305a14303dbf16b5f487a0" in ud
+    assert "s3://chispa-pruebas-cuenta-aws/w1-fs8-27fdfc9/dev.tgz" in ud and "DEV_SHA256=ce0423dc05a5b393067b6aeb2c1da4aa4d6192d249d1a52061c5f579e8dd3ca9" in ud
+    assert "s3://chispa-pruebas-cuenta-aws/r10-apertura-3d86859-a/selladas.tgz" in ud and "SEL_SHA256=a2bb334e5a1e0961a3d79f011d9525dfb872112d5e305a14303dbf16b5f487a0" in ud
     assert ud.index("sha_ok \"$DEV_SHA256\"") < ud.index("fases_main") and ud.index("sha_ok \"$SEL_SHA256\"") < ud.index("fases_main")      # sha comprobado antes de usar nada
 
 

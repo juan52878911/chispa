@@ -1,4 +1,4 @@
-# P5 tras R9 (c6a.2xlarge, `248e763`, 2026-10-29): las torres al vuelo funcionan, pero el servidor no reproduce a Python
+# P5 tras R9 (c6a.2xlarge, `8084a5e`, 2026-10-29): las torres al vuelo funcionan, pero el servidor no reproduce a Python
 
 - Se calcularon 368 torres, 0 errores. L2 contesta 15 de 231 con τ de CALIB y 185 de 231 con `tau_l2_esquema_nuevo` = 0,276.
 - **Exactitud servidor frente a Python k = 0:** 0,437 frente a 0,485. Igual que antes de R9: con torres al vuelo no se usa

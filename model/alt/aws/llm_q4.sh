@@ -1,7 +1,7 @@
 #!/bin/bash
 CHISPA_S3=__CHISPA_S3__
 # Paso 2, ronda solo de Q4: Qwen3-4B-Instruct-2507 Q4_K_M (el GGUF de L3) con llama.cpp en el contenedor oficial CUDA, sobre las mismas
-# filas-q4.jsonl, con el mismo cliente y método que la ronda bf16 (llm-bateria-4994f3e). g5.xlarge BAJO DEMANDA, tope duro CHISPA_MIN=33 min
+# filas-q4.jsonl, con el mismo cliente y método que la ronda bf16 (llm-bateria-0e58743). g5.xlarge BAJO DEMANDA, tope duro CHISPA_MIN=33 min
 # (≈ 0,55 USD). user-data (DLAMI GPU PyTorch AL2023, rol rol-ec2-pruebas sin ListBucket), --instance-initiated-shutdown-behavior terminate.
 # Lee:     $CHISPA_S3/{llm.tgz,filas-q4.jsonl}
 # Escribe: $CHISPA_S3/{log.txt,listo,resultados.tgz}; espera $CHISPA_S3/verificado (ESPERA_MIN) antes de apagar.

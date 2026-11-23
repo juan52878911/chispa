@@ -1,4 +1,4 @@
-# (c) Segundo ajuste fino de G.8: 3 épocas, con W5 (RM4) (g5.xlarge, `0e0da2b`, 35 min, ≈ 0,6 USD)
+# (c) Segundo ajuste fino de G.8: 3 épocas, con W5 (RM4) (g5.xlarge, `b463a61`, 35 min, ≈ 0,6 USD)
 
 **No cumple el criterio.**
 
@@ -16,4 +16,4 @@
   - **Mayúsculas.** La variante de E2 no pone todo en mayúsculas, así que la regla del 70 % casi nunca se activa.
 
   Ninguna de las dos cosas se arregla con más épocas.
-- **El mejor modelo disponible sigue siendo el ajuste 1** (`s3://…/ajuste-80ab8ef/ckpt/mejor.pt`), con JevBench 0,4935.
+- **El mejor modelo disponible sigue siendo el ajuste 1** (`s3://…/ajuste-4a2e745/ckpt/mejor.pt`), con JevBench 0,4935.

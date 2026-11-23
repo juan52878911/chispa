@@ -5,7 +5,7 @@ Sigue el trabajo de T1.1, que está en tu rama: `model/datos/` ya tiene un conve
 probado solo con fixtures para Banking77, CLINC150, deepset y XNLI.
 
 ## Hipótesis
-- El dorado `personal-chispa` (rehecho en `5404117`) trae en `~/hf` `PolyAI/banking77`,
+- El dorado `personal-chispa` (rehecho en `3320944`) trae en `~/hf` `PolyAI/banking77`,
   `clinc/clinc_oos`, `deepset/prompt-injections` y `facebook/xnli` (solo `es/`). El T1.1 anterior no
   los encontró: o corrió en un dorado viejo, o los buscó en otra ruta. Se refuta en 1 minuto con
   `ls ~/hf/hub` y `find ~/hf -maxdepth 3 -name 'datasets--*'`.
